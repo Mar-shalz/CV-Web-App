@@ -1,14 +1,43 @@
 {
   "version": "2026-10-12",
   "consents": {
-    "terms": { "version": "terms-v0.1", "required": true },
-    "privacy": { "version": "privacy-v0.1", "required": true },
-    "marketing": { "version": "marketing-v0.1", "required": false }
+    "terms": {
+      "version": "terms-v0.1",
+      "required": true
+    },
+    "privacy": {
+      "version": "privacy-v0.1",
+      "required": true
+    },
+    "marketing": {
+      "version": "marketing-v0.1",
+      "required": false
+    },
+    "sensitive_details": {
+      "version": "sensitive-v0.1",
+      "required": false
+    }
   },
   "processors": [
-    { "name": "Supabase", "purpose": "Database, sign in and file storage", "region": "Nearest region to Lagos the provider offers" },
-    { "name": "Anthropic", "purpose": "Reading job posts and writing CV drafts", "region": "United States" },
-    { "name": "Paystack", "purpose": "Payments", "region": "Nigeria" },
-    { "name": "PostHog", "purpose": "Product analytics with no names, emails or CV text", "region": "European Union" }
+    {
+      "name": "Supabase",
+      "purpose": "Database, sign in and file storage",
+      "region": "Nearest region to Lagos the provider offers"
+    },
+    {
+      "name": "Anthropic",
+      "purpose": "Reading job posts and writing CV drafts",
+      "region": "United States"
+    },
+    {
+      "name": "Paystack",
+      "purpose": "Payments",
+      "region": "Nigeria"
+    },
+    {
+      "name": "PostHog",
+      "purpose": "Product analytics with no names, emails or CV text",
+      "region": "European Union"
+    }
   ]
 }

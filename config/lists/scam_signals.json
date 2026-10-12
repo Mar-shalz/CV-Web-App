@@ -1,0 +1,11 @@
+{
+  "version": "2026-10-12",
+  "owner": "Not yet assigned. Review monthly.",
+  "banks": ["access bank", "gtbank", "guaranty trust", "first bank", "firstbank", "zenith", "uba", "united bank for africa", "fidelity", "union bank", "stanbic", "sterling", "wema", "polaris", "ecobank", "fcmb", "keystone", "unity bank", "providus", "opay", "palmpay", "moniepoint", "kuda", "jaiz", "heritage", "standard chartered", "citibank", "globus", "titan trust", "lotus bank", "taj bank", "parallex", "premiumtrust", "signature bank", "optimus"],
+  "large_employer_words": ["bank", "plc", "limited", "nigeria limited", "international", "group", "telecom", "oil", "petroleum", "airline", "airways", "insurance", "university"],
+  "payment_words": ["pay", "payment", "fee", "fees", "registration", "training fee", "medical", "uniform", "processing", "logistics", "form fee", "charge", "deposit", "transfer"],
+  "pressure_phrases": ["within 24 hours", "within 48 hours", "limited slots", "limited space", "pay today", "first come first served", "few slots", "hurry", "urgent payment"],
+  "guarantee_phrases": ["no interview", "guaranteed job", "guaranteed employment", "guaranteed placement", "guaranteed visa", "visa and flight", "visa sponsorship for a fee", "100% job placement"],
+  "pay_threshold_monthly_ngn": { "entry": 1500000, "graduate_programme": 1500000, "mid": 4000000, "senior": 12000000, "unknown": 3000000 },
+  "pay_threshold_note": "Hypothesis thresholds. Tune with posted salary data."
+}

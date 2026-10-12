@@ -36,5 +36,10 @@
     "truth_report_sla_hours": 48,
     "weekly_cv_sample": 20,
     "list_review_days": 30
+  },
+  "legitimacy": {
+    "max_searches": 4,
+    "cache_days_post": 7,
+    "cache_days_employer": 30
   }
 }

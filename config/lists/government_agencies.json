@@ -1,0 +1,28 @@
+{
+  "version": "2026-10-12",
+  "owner": "Not yet assigned. Review monthly.",
+  "status": "DRAFT: every official domain below must be checked against the agency's own website before launch.",
+  "agencies": [
+    { "name": "Federal Airports Authority of Nigeria", "aliases": ["FAAN"], "domains": ["faan.gov.ng"] },
+    { "name": "National Insurance Commission", "aliases": ["NAICOM"], "domains": ["naicom.gov.ng"] },
+    { "name": "Nigerian Midstream and Downstream Petroleum Regulatory Authority", "aliases": ["NMDPRA"], "domains": ["nmdpra.gov.ng"] },
+    { "name": "Central Bank of Nigeria", "aliases": ["CBN"], "domains": ["cbn.gov.ng"] },
+    { "name": "Federal Inland Revenue Service", "aliases": ["FIRS"], "domains": ["firs.gov.ng"] },
+    { "name": "Nigeria Customs Service", "aliases": ["NCS", "Customs"], "domains": ["customs.gov.ng"] },
+    { "name": "Nigeria Immigration Service", "aliases": ["NIS", "Immigration"], "domains": ["immigration.gov.ng"] },
+    { "name": "Nigeria Security and Civil Defence Corps", "aliases": ["NSCDC", "Civil Defence"], "domains": ["nscdc.gov.ng"] },
+    { "name": "Nigeria Police Force", "aliases": ["NPF", "Police"], "domains": ["npf.gov.ng", "policerecruitment.gov.ng"] },
+    { "name": "Federal Road Safety Corps", "aliases": ["FRSC"], "domains": ["frsc.gov.ng"] },
+    { "name": "Nigerian Ports Authority", "aliases": ["NPA"], "domains": ["nigerianports.gov.ng"] },
+    { "name": "Asset Management Corporation of Nigeria", "aliases": ["AMCON"], "domains": ["amcon.com.ng"] },
+    { "name": "National Youth Service Corps", "aliases": ["NYSC"], "domains": ["nysc.gov.ng"] },
+    { "name": "Federal Civil Service Commission", "aliases": ["FCSC"], "domains": ["fedcivilservice.gov.ng"] },
+    { "name": "Nigerian National Petroleum Company", "aliases": ["NNPC", "NNPCL"], "domains": ["nnpcgroup.com"] },
+    { "name": "National Drug Law Enforcement Agency", "aliases": ["NDLEA"], "domains": ["ndlea.gov.ng"] },
+    { "name": "Nigerian Correctional Service", "aliases": ["NCoS"], "domains": ["corrections.gov.ng"] },
+    { "name": "Nigerian Army", "aliases": ["Army"], "domains": ["army.mil.ng"] },
+    { "name": "Nigerian Navy", "aliases": ["Navy"], "domains": ["navy.mil.ng"] },
+    { "name": "Nigerian Air Force", "aliases": ["NAF", "Air Force"], "domains": ["airforce.mil.ng"] }
+  ],
+  "official_tlds": [".gov.ng", ".mil.ng"]
+}
