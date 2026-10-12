@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { CopyButton } from "@/components/ui/copy-button";
 import { StatusUpdate } from "@/components/applications/status-update";
 import { Timeline } from "@/components/applications/timeline";
+import { LateReply } from "@/components/applications/late-reply";
 import { ArrowLeft2, ArrowRight, Verify, DocumentDownload, DocumentText, Sms, Calendar, Location, Clipboard, MessageQuestion, Teacher, Send2, ShieldTick } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Application" };
@@ -57,6 +58,8 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
 
       {notSent ? (
         <Banner tone="brand" icon={<Send2 size={24} variant="bulk" />} title="You haven't sent this one yet" body="Your CV and everything the employer asked for are ready. Send it from your phone, then tell us." href={`/jobs/${app.jobId}/pack`} cta="Finish and send" />
+      ) : app.status === "no_response" ? (
+        <LateReply applicationId={app.id} days={daysSince(app.sentAt)} />
       ) : INVITED.has(app.status) ? (
         <Banner tone="proof" icon={<Teacher size={24} variant="bulk" />} title="You're invited. Let's get you ready." body="Likely questions from this job and the CV you sent, practice answers with feedback, and a checklist for the day." href={`/applications/${app.id}/shortlist`} cta="Prepare for the interview" />
       ) : hadInterview && !debriefed ? (
@@ -189,6 +192,10 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
       </div>
     </div>
   );
+}
+
+function daysSince(iso: string | null): number | null {
+  return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) : null;
 }
 
 function Fact({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {

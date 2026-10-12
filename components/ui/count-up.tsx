@@ -11,6 +11,7 @@ export function CountUp({ value, duration = 900 }: { value: number; duration?: n
     const el = ref.current;
     if (!el || value === 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let raf = 0;
+    let done: ReturnType<typeof setTimeout> | undefined;
     const io = new IntersectionObserver(([entry]) => {
       if (!entry?.isIntersecting) return;
       io.disconnect();
@@ -22,11 +23,14 @@ export function CountUp({ value, duration = 900 }: { value: number; duration?: n
       };
       setShown(0);
       raf = requestAnimationFrame(tick);
+      // Animation frames pause in background tabs; the real number always lands.
+      done = setTimeout(() => setShown(value), duration + 150);
     });
     io.observe(el);
     return () => {
       io.disconnect();
       cancelAnimationFrame(raf);
+      clearTimeout(done);
     };
   }, [value, duration]);
 

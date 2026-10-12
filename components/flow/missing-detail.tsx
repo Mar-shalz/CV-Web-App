@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { saveDetail, type DetailState } from "@/app/(app)/jobs/[id]/check/actions";
 import type { MissingDetail } from "@/lib/rules/eligibility/types";
 import { inputClass } from "@/components/ui/field";
@@ -199,9 +200,9 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
           Save and update the check
         </SubmitButton>
       ) : (
-        <a href="/vault/new" className="inline-flex min-h-12 items-center rounded-2xl bg-brand-600 px-5 text-sm font-semibold text-white">
+        <Link href="/vault/new" className="inline-flex min-h-12 items-center rounded-2xl bg-brand-600 px-5 text-sm font-semibold text-white">
           Add education
-        </a>
+        </Link>
       )}
     </form>
   );

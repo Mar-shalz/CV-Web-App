@@ -106,3 +106,15 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-038 Offline records.** The service worker keeps the applications list and each application page (job snapshot and the CV sent) for offline reading, up to 40 pages, on this phone only. Signing out deletes them. Pages are network first, so they're never stale while online.
 
 **Unstyled screens (no Figma frames yet):** applications list and detail, send pack, debrief, Shortlist mode and drill, paywall, payment result, all Settings sub screens. Built from the design tokens.
+
+## Founder feedback round 3 (12 Oct 2026)
+
+**D-039 Home order.** Overview numbers first, then "Heard back yet?", then the Tailor card, then recent applications. Spacing tightened to 16px between sections and 12px inside grids. Card radius tokens lowered: cards 20 to 14px, panels and the hero 28 to 20px (`app/globals.css`, `design/tokens.json`). On phones the overview cards stack icon, label and number so labels never truncate.
+
+**D-040 Check in window.** "Heard back yet?" shows only applications sent in the last 30 days that are due a check in, and disappears when there are none. Applications past 30 days are closed to No reply on read (as well as by the daily job), so the card never shows stale ones. A No reply application opens with "Heard back late?": one tap for "I got invited" (opens interview prep), "Invited to a test", or paste their message. The applications list explains this on the Closed filter.
+
+**D-041 Tailor my CV as a modal.** Every "Tailor my CV" link opens the capture form over the current page through an intercepting route (`app/(app)/@modal/(.)jobs/new`). It is a bottom sheet on phones and a centred dialog from 640px, built on the native dialog element (focus trap, Escape and backdrop close, which go back). A refresh, a shared link or the Android share target still opens the full page at `/jobs/new`. A catch all slot route closes the modal on any other navigation.
+
+**D-042 Sidebar active item.** Matched to the founder's reference: an inset pill with all corners rounded, a flat soft periwinkle wash, and a navy bar as the pill's left edge (the clipped corners give it the curve). Icon and label turn navy; the icon stays in its outline style. Inactive labels stay ink-500 rather than the lighter grey in the reference, to keep 4.5:1 contrast.
+
+**D-043 Count up fallback.** Animation frames pause in background tabs, which left stat numbers part counted. The final number is now set by a timer after the animation's length.

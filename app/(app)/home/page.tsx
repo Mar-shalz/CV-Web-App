@@ -32,7 +32,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const name = firstName(viewer.fullName);
 
   return (
-    <div className="stagger space-y-5 lg:space-y-6">
+    <div className="stagger space-y-4">
       <header style={{ "--i": 0 } as CSSProperties}>
         <p className="text-sm text-ink-500">{formatDate(new Date())}</p>
         <h1 className="mt-0.5 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">
@@ -42,45 +42,47 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <p className="mt-1 text-[0.9375rem] text-ink-500">{isNew ? "Let's set you up to apply with proof." : "Here's where your job hunt stands."}</p>
       </header>
 
-      <div style={{ "--i": 1 } as CSSProperties}>
-        <TailorHero trialReady={access.kind === "trial_ready"} />
-      </div>
-
-      <div style={{ "--i": 2 } as CSSProperties}>
-        <CheckInCard items={data.checkIns} />
-      </div>
-
       {isNew ? (
-        <div style={{ "--i": 3 } as CSSProperties}>
+        <div style={{ "--i": 1 } as CSSProperties}>
           <GettingStarted doneUpTo={vaultReady ? 1 : 0} />
         </div>
       ) : (
-        <ul style={{ "--i": 3 } as CSSProperties} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4 xl:grid-cols-4" aria-label="Your numbers">
+        <ul style={{ "--i": 1 } as CSSProperties} className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Your numbers">
           <li>
-            <StatCard label="Applications sent" value={data.stats.sent} icon={<Send2 size={26} variant="bulk" />} tint="brand" hint="Quality over quantity" />
+            <StatCard label="Applications sent" value={data.stats.sent} icon={<Send2 size={22} variant="bulk" />} tint="brand" hint="Quality over quantity" />
           </li>
           <li>
-            <StatCard label="Interview invites" value={data.stats.invites} icon={<TickCircle size={26} variant="bulk" />} tint="proof" hint="From employers who replied" />
+            <StatCard label="Interview invites" value={data.stats.invites} icon={<TickCircle size={22} variant="bulk" />} tint="proof" hint="From employers who replied" />
           </li>
           <li>
-            <StatCard label="Waiting to hear back" value={data.stats.awaiting} icon={<Clock size={26} variant="bulk" />} tint="care" hint="We'll check in for you" />
+            <StatCard label="Waiting to hear back" value={data.stats.awaiting} icon={<Clock size={22} variant="bulk" />} tint="care" hint="Sent in the last 30 days" />
           </li>
           <li>
-            <StatCard label="Experience items" value={data.stats.vaultConfirmed} icon={<Briefcase size={26} variant="bulk" />} tint="sky" hint="Confirmed by you" />
+            <StatCard label="Experience items" value={data.stats.vaultConfirmed} icon={<Briefcase size={22} variant="bulk" />} tint="sky" hint="Confirmed by you" />
           </li>
         </ul>
       )}
 
+      {data.checkIns.length ? (
+        <div style={{ "--i": 2 } as CSSProperties}>
+          <CheckInCard items={data.checkIns} />
+        </div>
+      ) : null}
+
+      <div style={{ "--i": 3 } as CSSProperties}>
+        <TailorHero trialReady={access.kind === "trial_ready"} />
+      </div>
+
       <div
         style={{ "--i": 4 } as CSSProperties}
-        className={isNew ? "grid gap-5 md:grid-cols-2 lg:gap-6" : "grid gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_360px]"}
+        className={isNew ? "grid gap-4 md:grid-cols-2" : "grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]"}
       >
         {isNew ? null : (
           <div className="min-w-0">
             <RecentApplications items={data.recent} />
           </div>
         )}
-        <div className={isNew ? "contents" : "space-y-5 lg:space-y-6"}>
+        <div className={isNew ? "contents" : "space-y-4"}>
           <div className="lg:hidden">
             <AccessCard state={access} />
           </div>

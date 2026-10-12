@@ -77,7 +77,7 @@ Icons are decorative: always next to a word or an sr-only label.
 
 **Inputs**: filled grey wells, 56px tall, 16px radius; white with a blue ring on focus; red border and tint on error, with an icon and a fix in words.
 
-**Cards**: white, 20px radius, 1px ink-150 border, soft shadow. Cards that are links lift 2px on hover.
+**Cards**: white, 14px radius (panels and the hero 20px), 1px ink-150 border, soft shadow. Cards that are links lift 2px on hover.
 
 **Badges**: pill, icon plus word, tinted by status.
 

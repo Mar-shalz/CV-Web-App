@@ -5,7 +5,7 @@ import { listApplications } from "@/lib/applications/data";
 import type { HomeApplication } from "@/lib/home-data";
 import { RecentApplications } from "@/components/home/recent-applications";
 import { ButtonLink } from "@/components/ui/button";
-import { Magicpen, SearchNormal1, Receipt21 } from "@/components/icons";
+import { Magicpen, SearchNormal1, Receipt21, InfoCircle } from "@/components/icons";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 
 export const metadata: Metadata = { title: "Applications" };
@@ -85,6 +85,12 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
               <Link href={active.id === "all" ? "/applications" : `/applications?status=${active.id}`} className="font-semibold text-brand-700 hover:underline">
                 Clear search
               </Link>
+            </p>
+          ) : null}
+          {(active.id === "closed" || active.id === "all") && items.some((a) => a.status === "no_response") ? (
+            <p className="flex items-start gap-2 rounded-xl bg-brand-50 px-4 py-3 text-[0.8125rem] leading-5 text-brand-800">
+              <InfoCircle size={18} className="mt-px shrink-0" />
+              No reply after 30 days closes an application, not the door. If they get back to you later, open it and update it. An invite opens interview prep.
             </p>
           ) : null}
           {items.length ? (

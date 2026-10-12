@@ -64,8 +64,8 @@
   --font-sans: var(--font-lufga), var(--font-urbanist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: var(--font-lufga), var(--font-urbanist), ui-sans-serif, system-ui, sans-serif;
 
-  --radius-card: 20px;
-  --radius-panel: 28px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
 
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 6px 20px -10px rgb(15 23 42 / 0.10);
   --shadow-hover: 0 2px 6px rgb(15 23 42 / 0.05), 0 18px 36px -18px rgb(23 47 135 / 0.28);
@@ -200,8 +200,10 @@ body {
 }
 
 /* Sidebar active item, as in the reference: a soft wash that fades to the right */
+/* Sidebar active item, from the founder's reference: an inset pill in a flat, soft
+   periwinkle wash with a navy bar as its left edge. Icon and label turn navy. */
 .nav-active {
-  background: linear-gradient(90deg, rgb(30 71 217 / 0.16) 0%, rgb(30 71 217 / 0.07) 45%, rgb(30 71 217 / 0) 100%);
+  background: rgb(30 71 217 / 0.08);
 }
 
 /* The torn edge: only on record cards (job snapshot, the CV you sent). */
@@ -259,6 +261,16 @@ body {
 /* Hide scrollbars on horizontal chip rows while keeping them scrollable */
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Route modal: a bottom sheet on phones, a centred card from sm up. */
+.route-modal[open] { animation: sheet-up 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.route-modal[open]::backdrop { animation: backdrop-in 0.2s ease-out; }
+@media (min-width: 40rem) {
+  .route-modal[open] { animation: modal-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+}
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes modal-pop { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* A short burst of confetti on a confirmed payment. Pure CSS, no library. */
 .confetti {

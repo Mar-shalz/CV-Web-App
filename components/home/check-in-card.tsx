@@ -6,21 +6,21 @@ import { Notification, TickCircle, CloseCircle, Clock } from "@/components/icons
 export function CheckInCard({ items }: { items: HomeApplication[] }) {
   if (items.length === 0) return null;
   return (
-    <section id="checkins" aria-labelledby="checkin-title" className="scroll-mt-28 rounded-[var(--radius-card)] border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-4 lg:p-6">
+    <section id="checkins" aria-labelledby="checkin-title" className="scroll-mt-28 rounded-[var(--radius-card)] border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-4 lg:p-5">
       <div className="flex items-start gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white text-brand-700 shadow-card">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-brand-700 shadow-card">
           <Notification size={22} variant="bulk" />
         </span>
         <div>
           <h2 id="checkin-title" className="text-lg font-semibold text-ink-900">
             Heard back yet?
           </h2>
-          <p className="text-sm text-ink-600">Tap one answer for each. After 30 days with no reply, we mark it for you.</p>
+          <p className="text-sm text-ink-600">Tap one answer for each. Applications sent in the last 30 days show here.</p>
         </div>
       </div>
-      <ul className="stagger mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <ul className="stagger mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {items.map((a, i) => (
-          <li key={a.id} style={{ ["--i" as string]: i }} className="rounded-2xl border border-ink-150 bg-white p-4 shadow-card">
+          <li key={a.id} style={{ ["--i" as string]: i }} className="rounded-xl border border-ink-150 bg-white p-3.5 shadow-card">
             <p className="text-[0.9375rem] leading-6 text-ink-700">
               Any reply from <span className="font-semibold text-ink-900">{a.employer}</span> about <span className="font-semibold text-ink-900">{a.title}</span>?
             </p>

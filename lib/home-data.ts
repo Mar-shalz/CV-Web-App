@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 import { LIMITS } from "@/lib/config";
+import { closeSilent } from "@/lib/applications/status";
 
 export type HomeApplication = {
   id: string;
@@ -68,6 +69,7 @@ function toHome(r: Row): HomeApplication {
 export async function getHomeData(viewer: Viewer, opts: { previewEmpty?: boolean } = {}): Promise<HomeData> {
   if (viewer.preview) return opts.previewEmpty ? EMPTY : SAMPLE;
 
+  await closeSilent(viewer);
   const supabase = await createClient();
   const [{ data: apps }, { count: vaultConfirmed }] = await Promise.all([
     supabase
@@ -81,6 +83,7 @@ export async function getHomeData(viewer: Viewer, opts: { previewEmpty?: boolean
 
   const rows = (apps ?? []) as unknown as Row[];
   const now = Date.now();
+  const windowStart = now - LIMITS.checkins.no_response_after_days * 86400000;
   const sentRows = rows.filter((r) => r.sent_at);
   return {
     stats: {
@@ -90,7 +93,8 @@ export async function getHomeData(viewer: Viewer, opts: { previewEmpty?: boolean
       vaultConfirmed: vaultConfirmed ?? 0,
     },
     checkIns: rows
-      .filter((r) => r.status === "sent" && r.next_check_in_at && new Date(r.next_check_in_at).getTime() <= now)
+      // Only applications sent in the last 30 days that are due a check in.
+      .filter((r) => r.status === "sent" && r.sent_at && new Date(r.sent_at).getTime() >= windowStart && r.next_check_in_at && new Date(r.next_check_in_at).getTime() <= now)
       .slice(0, LIMITS.checkins.max_per_card)
       .map(toHome),
     recent: rows.slice(0, 5).map(toHome),
@@ -106,6 +110,15 @@ export async function getCheckInCount(viewer: Viewer): Promise<number> {
     .select("id", { count: "exact", head: true })
     .eq("user_id", viewer.id)
     .eq("status", "sent")
+    .gte("sent_at", new Date(Date.now() - LIMITS.checkins.no_response_after_days * 86400000).toISOString())
     .lte("next_check_in_at", new Date().toISOString());
   return Math.min(count ?? 0, LIMITS.checkins.max_per_card);
+}
+
+/** Confirmed vault items: how ready the person is to tailor a CV. */
+export async function countConfirmedItems(viewer: Viewer): Promise<number> {
+  if (viewer.preview) return SAMPLE.stats.vaultConfirmed;
+  const supabase = await createClient();
+  const { count } = await supabase.from("vault_items").select("id", { count: "exact", head: true }).eq("user_id", viewer.id).not("confirmed_at", "is", null);
+  return count ?? 0;
 }

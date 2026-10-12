@@ -4,6 +4,7 @@ import type { Viewer } from "@/lib/auth/viewer";
 import { canTransition, type ApplicationStatus } from "@/lib/rules/status-flow";
 import { nextCheckIn, type ScheduleKind } from "./schedule";
 import { track } from "@/lib/analytics/server";
+import { LIMITS } from "@/lib/config";
 
 export type { OutcomeSource } from "./outcome-rules";
 import type { OutcomeSource } from "./outcome-rules";
@@ -51,4 +52,18 @@ export async function snoozeCheckIn(viewer: Viewer, applicationId: string): Prom
   const floor = Date.now() + 7 * DAY;
   const at = next ? new Date(Math.max(next.getTime(), floor)) : null;
   await supabase.from("applications").update({ check_ins_done: done, next_check_in_at: at?.toISOString() ?? null }).eq("id", applicationId).eq("user_id", viewer.id);
+}
+
+/**
+ * No reply after 30 days, done on read as well as by the daily job, so the home card
+ * never shows an application older than the window even if the job hasn't run.
+ * The person can still move it on later (a late invite reopens it).
+ */
+export async function closeSilent(viewer: Viewer): Promise<number> {
+  if (viewer.preview) return 0;
+  const supabase = await createClient();
+  const cutoff = new Date(Date.now() - LIMITS.checkins.no_response_after_days * DAY).toISOString();
+  const { data } = await supabase.from("applications").select("id").eq("user_id", viewer.id).eq("status", "sent").lt("sent_at", cutoff).limit(20);
+  for (const a of data ?? []) await changeStatus(viewer, a.id, "no_response", { source: "auto_30d" });
+  return data?.length ?? 0;
 }

@@ -18,8 +18,8 @@ With no Supabase keys the app runs in preview mode: sample data and a click thro
 ## Connect Supabase
 
 1. Create a project in the region nearest Lagos the provider offers.
-2. Copy `.env.example` to `.env.local` and fill it in.
-3. Apply every file in `supabase/migrations/` in order, 0001 to 0008 (`supabase db push`, or paste each into the SQL editor).
+2. Run `npm run setup:env` (creates `.env.local` with generated secrets), then fill in the rest.
+3. Apply every file in `supabase/migrations/` in order, 0001 to 0008 (`supabase db push`, or paste each into the SQL editor). Run `supabase/verify_setup.sql` first to see which are already applied: an "already exists" error means that file ran before.
 4. Auth > Providers: enable Email and Google. Redirect URL: `https://<your-domain>/auth/callback`.
 5. Auth > Email templates > Magic link: include `{{ .Token }}` so users get a 6 digit code, not a link.
 6. Run `npm run test:db` to prove one user can't read another user's rows, payments unlock only through the service role, and account deletion removes everything.

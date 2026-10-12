@@ -10,14 +10,14 @@ const tints = {
 
 export function StatCard({ label, value, icon, tint, hint, i = 0 }: { label: string; value: number; icon: ReactNode; tint: keyof typeof tints; hint?: string; i?: number }) {
   return (
-    <div style={{ "--i": i } as CSSProperties} className="flex h-full items-center gap-4 rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card lg:p-5">
-      <span className={`grid size-12 shrink-0 place-items-center rounded-2xl lg:size-14 ${tints[tint]}`}>{icon}</span>
+    <div style={{ "--i": i } as CSSProperties} className="flex h-full flex-col items-start gap-2.5 rounded-xl border border-ink-150 bg-white p-3.5 shadow-card sm:flex-row sm:items-center sm:gap-3 lg:gap-3.5 lg:p-4">
+      <span className={`grid size-9 shrink-0 place-items-center rounded-lg sm:size-10 lg:size-11 ${tints[tint]}`}>{icon}</span>
       <div className="min-w-0">
-        <p className="text-[0.8125rem] leading-5 text-ink-500">{label}</p>
-        <p className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.02em] text-ink-900">
+        <p className="text-[0.8125rem] leading-5 text-ink-500 sm:truncate">{label}</p>
+        <p className="font-display text-[1.5rem] font-semibold leading-8 tracking-[-0.02em] text-ink-900">
           <CountUp value={value} />
         </p>
-        {hint ? <p className="truncate text-xs text-ink-500">{hint}</p> : null}
+        {hint ? <p className="hidden truncate text-xs text-ink-500 sm:block">{hint}</p> : null}
       </div>
     </div>
   );

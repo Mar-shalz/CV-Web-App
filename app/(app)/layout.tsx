@@ -11,7 +11,7 @@ import { accessState } from "@/lib/entitlements";
 import { getCheckInCount } from "@/lib/home-data";
 import { APP_NAME, MARKETS } from "@/lib/config";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const viewer = await requireReadyViewer();
   const [jar, checkIns] = await Promise.all([cookies(), getCheckInCount(viewer)]);
   const access = accessState({
@@ -90,6 +90,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </div>
 
       <BottomNav />
+      {modal}
     </div>
   );
 }

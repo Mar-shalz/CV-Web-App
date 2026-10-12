@@ -69,7 +69,7 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
       ) : null}
 
       <nav aria-label="Main" className="mt-6 flex-1">
-        <ul className="space-y-1.5 pr-4">
+        <ul className={`space-y-1 ${collapsed ? "px-3" : "pl-3 pr-5"}`}>
           {NAV_ITEMS.map((item) => (
             <SideLink key={item.href} item={item} active={isActive(path, item.href)} collapsed={collapsed} />
           ))}
@@ -101,15 +101,16 @@ function SideLink({ item, active, collapsed }: { item: NavItem; active: boolean;
         href={item.href}
         aria-current={active ? "page" : undefined}
         title={collapsed ? item.label : undefined}
-        className={`group relative flex min-h-12 items-center gap-3.5 rounded-r-2xl text-[0.9375rem] transition-colors duration-200 ${
-          collapsed ? "justify-center pl-4" : "pl-7"
-        } ${active ? "nav-active font-semibold text-brand-900" : "font-medium text-ink-500 hover:bg-ink-75/70 hover:text-ink-900"}`}
+        className={`group relative flex min-h-[52px] items-center gap-3.5 overflow-hidden rounded-xl text-[0.9375rem] transition-colors duration-200 ${
+          collapsed ? "justify-center" : "pl-5 pr-3"
+        } ${active ? "nav-active font-semibold text-brand-900" : "font-medium text-ink-500 hover:bg-ink-75 hover:text-ink-900"}`}
       >
+        {/* The bar is the pill's left edge: the rounded, clipped corners give it the curve. */}
         <span
-          className={`absolute inset-y-0 left-0 w-[5px] rounded-r-full bg-brand-800 transition-transform duration-300 ${active ? "scale-y-100" : "scale-y-0"}`}
+          className={`absolute inset-y-0 left-0 w-[6px] origin-center bg-brand-900 transition-transform duration-300 ${active ? "scale-y-100" : "scale-y-0"}`}
           aria-hidden="true"
         />
-        <Icon size={22} variant={active ? "bulk" : "linear"} className="shrink-0 transition-transform duration-200 group-hover:scale-105" />
+        <Icon size={22} variant="linear" className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${active ? "text-brand-900" : ""}`} />
         <span className={collapsed ? "sr-only" : ""}>{item.label}</span>
       </Link>
     </li>

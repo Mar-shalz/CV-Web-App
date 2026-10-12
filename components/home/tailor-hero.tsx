@@ -9,7 +9,7 @@ const STEPS = ["Add the job description", "See if you qualify", "Get your tailor
  */
 export function TailorHero({ trialReady }: { trialReady: boolean }) {
   return (
-    <section aria-labelledby="tailor-title" className="aurora aurora-soft relative overflow-hidden rounded-[var(--radius-panel)] p-5 text-white sm:p-7 lg:p-9">
+    <section aria-labelledby="tailor-title" className="aurora aurora-soft relative overflow-hidden rounded-[var(--radius-panel)] p-5 text-white sm:p-6 lg:p-7">
       <div className="aurora-floor" aria-hidden="true" />
       <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div>
@@ -27,7 +27,7 @@ export function TailorHero({ trialReady }: { trialReady: boolean }) {
 
           <Link
             href="/jobs/new"
-            className="group mt-6 flex items-center gap-4 rounded-[22px] border-2 border-dashed border-white/45 bg-white/10 p-4 transition-all duration-300 hover:border-white hover:bg-white/15 sm:p-5"
+            className="group mt-6 flex items-center gap-4 rounded-2xl border-2 border-dashed border-white/45 bg-white/10 p-4 transition-all duration-300 hover:border-white hover:bg-white/15 sm:p-5"
           >
             <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white text-brand-700 shadow-raised transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-[-4deg]">
               <DocumentUpload size={28} variant="bulk" />
