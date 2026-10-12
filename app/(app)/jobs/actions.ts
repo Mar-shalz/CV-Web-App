@@ -1,56 +1,105 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth/viewer";
+import { jobSchema } from "@/lib/jobs/schema";
+import { detectDestination } from "@/lib/rules/destination";
+import { track } from "@/lib/analytics/server";
+import markets from "@/config/markets.json";
 
-export type CaptureState = { error?: string; fieldErrors?: Record<string, string> } | undefined;
+export type ReviewState = { error?: string } | undefined;
 
-const schema = z.discriminatedUnion("source_type", [
-  z.object({ source_type: z.literal("paste"), text: z.string().trim().min(80, "Paste the full job description. It looks a bit short.").max(30000) }),
-  z.object({ source_type: z.literal("link"), url: z.url("Enter a full link, starting with https://") }),
-  z.object({ source_type: z.literal("file") }),
-  z.object({ source_type: z.literal("screenshot") }),
-]);
+const countryCodes = markets.countries.map((c) => c.code) as [string, ...string[]];
+const opt = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => v || null);
 
-/** Saves a captured job. Job text is untrusted input: stored as data, never acted on. */
-export async function captureJob(_prev: CaptureState, formData: FormData): Promise<CaptureState> {
-  const parsed = schema.safeParse({
-    source_type: formData.get("source_type"),
-    text: formData.get("text") ?? undefined,
-    url: formData.get("url") ?? undefined,
-  });
-  if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    return { fieldErrors: { [String(issue?.path[0] ?? "form")]: issue?.message ?? "Check this and try again." } };
-  }
+const reviewSchema = z.object({
+  job_id: z.string().min(1),
+  title: opt(160),
+  employer_name: opt(160),
+  city: opt(80),
+  state: opt(80),
+  deadline: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .or(z.literal(""))
+    .transform((v) => v || null),
+  channel: z.enum(["email", "form", "portal", "whatsapp", "in_person", "unknown"]),
+  email: opt(160),
+  subject_format: opt(200),
+  url: opt(400),
+  destination: z.enum(countryCodes),
+  removed_filters: z.array(z.coerce.number().int().min(0)).max(20),
+});
 
+/**
+ * Saves the user's corrections to the parsed job (screen 11) and moves on to the
+ * check. A country the user picks is kept for this job and never overwritten.
+ */
+export async function saveJobReview(_prev: ReviewState, formData: FormData): Promise<ReviewState> {
   const viewer = await getViewer();
   if (!viewer) redirect("/sign-in");
-  // Design preview: continue to the sample job check.
-  if (viewer.preview) redirect("/jobs/demo/check");
+  const parsed = reviewSchema.safeParse({
+    job_id: formData.get("job_id"),
+    title: formData.get("title") ?? "",
+    employer_name: formData.get("employer_name") ?? "",
+    city: formData.get("city") ?? "",
+    state: formData.get("state") ?? "",
+    deadline: formData.get("deadline") ?? "",
+    channel: formData.get("channel"),
+    email: formData.get("email") ?? "",
+    subject_format: formData.get("subject_format") ?? "",
+    url: formData.get("url") ?? "",
+    destination: formData.get("destination"),
+    removed_filters: formData.getAll("removed_filter"),
+  });
+  if (!parsed.success) return { error: "Check the highlighted fields and try again." };
+  const r = parsed.data;
+  if (!r.title) return { error: "Add the job title so we know what you're applying for." };
+  if (r.channel === "email" && r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) return { error: "That email address doesn't look complete. Check it against the post." };
+  if (viewer.preview) redirect(`/jobs/${r.job_id}/check`);
 
-  const input = parsed.data;
-  if (input.source_type === "file" || input.source_type === "screenshot") {
-    return { error: "Uploads are still being built. For now, paste the job text or a link." };
-  }
-
-  const raw = input.source_type === "paste" ? input.text : input.url;
-  const post_hash = createHash("sha256").update(raw.toLowerCase().replace(/\s+/g, " ").trim()).digest("hex");
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data: job } = await supabase.from("jobs").select("parsed, destination_country").eq("id", r.job_id).eq("user_id", viewer.id).maybeSingle();
+  const current = jobSchema.safeParse(job?.parsed);
+  if (!job || !current.success) return { error: "We couldn't find this job. Add it again." };
+
+  const next = {
+    ...current.data,
+    title: r.title,
+    employer_name: r.employer_name,
+    location: { ...current.data.location, city: r.city, state: r.state },
+    deadline: r.deadline,
+    how_to_apply: { ...current.data.how_to_apply, channel: r.channel, email: r.email, subject_format: r.subject_format, url: r.url },
+    hard_filters: current.data.hard_filters.filter((_, i) => !r.removed_filters.includes(i)),
+  };
+  const changedByUser = r.destination !== job.destination_country;
+  const dest = detectDestination({ ...next, location: { ...next.location, country_code: r.destination } }, viewer.targetMarkets);
+  const { error } = await supabase
     .from("jobs")
-    .insert({
-      user_id: viewer.id,
-      source_type: input.source_type,
-      raw_text: input.source_type === "paste" ? input.text : null,
-      source_url: input.source_type === "link" ? input.url : null,
-      post_hash,
+    .update({
+      parsed: next,
+      deadline: r.deadline,
+      destination_country: r.destination,
+      ...(changedByUser ? { destination_set_by_user: true, destination_confidence: 1 } : {}),
+      reviewed_at: new Date().toISOString(),
+      state: "reviewed",
     })
-    .select("id")
-    .single();
-  if (error || !data) return { error: "We couldn't save this job. Check your connection and try again. Your text is still here." };
-  redirect(`/jobs/${data.id}`);
+    .eq("id", r.job_id)
+    .eq("user_id", viewer.id);
+  if (error) return { error: "We couldn't save your changes. Try again." };
+
+  await track(
+    "destination_detected",
+    { country: r.destination, confidence_band: dest.confidence >= 0.8 ? "high" : dest.confidence >= 0.5 ? "ask" : "low", changed_by_user: changedByUser },
+    viewer.id,
+  );
+  if (dest.fallbackNote) await track("country_requested", { country: r.destination }, viewer.id);
+  redirect(`/jobs/${r.job_id}/check`);
 }

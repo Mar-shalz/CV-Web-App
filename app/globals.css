@@ -272,3 +272,9 @@ body {
 .aurora-soft::before { opacity: 0.55; }
 .aurora-soft::after { opacity: 0.45; }
 .aurora-soft .aurora-floor { height: 100%; background: linear-gradient(to top right, rgb(11 24 56 / 0.7), rgb(20 39 95 / 0.35) 60%, transparent); }
+
+/* A light bar sweeping down a page: "we're reading your document" */
+@keyframes scan {
+  0% { transform: translateY(-40px); }
+  100% { transform: translateY(150px); }
+}

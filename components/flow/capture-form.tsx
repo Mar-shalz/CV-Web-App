@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type DragEvent } from "react";
-import { captureJob, type CaptureState } from "@/app/(app)/jobs/actions";
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { compressImage } from "@/lib/client/compress-image";
 import { DocumentText, DocumentUpload, Link21, Gallery, ArrowRight, CloseCircle, TickCircle } from "@/components/icons";
 import { Field, FieldError, inputClass } from "@/components/ui/field";
-import { SubmitButton } from "@/components/auth/submit-button";
+import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/auth/form-error";
 
 type Mode = "paste" | "file" | "link" | "screenshot";
@@ -19,9 +20,14 @@ const MODES: { id: Mode; label: string; icon: typeof DocumentText }[] = [
 const MIN_TEXT = 80;
 const DRAFT_KEY = "capture-draft-v1";
 
-export function CaptureForm({ initialMode = "paste" }: { initialMode?: Mode }) {
-  const [state, action] = useActionState<CaptureState, FormData>(captureJob, undefined);
+const STEPS = ["Reading the job", "Finding the requirements", "Checking how to apply"];
+
+export function CaptureForm({ initialMode = "paste", initialError }: { initialMode?: Mode; initialError?: string }) {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
+  const [error, setError] = useState<string | undefined>(initialError);
+  const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState(0);
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -58,7 +64,43 @@ export function CaptureForm({ initialMode = "paste" }: { initialMode?: Mode }) {
           ? "Enter a full link, starting with https://"
           : "Choose a file first."
       : undefined;
-  const fieldError = local ?? state?.fieldErrors?.text ?? state?.fieldErrors?.url;
+  const fieldError = local;
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!ready) {
+      setTried(true);
+      return;
+    }
+    setError(undefined);
+    setBusy(true);
+    setStep(0);
+    const timer = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 3500);
+    const body = new FormData();
+    body.append("mode", mode);
+    if (mode === "paste") body.append("text", text);
+    if (mode === "link") body.append("url", url);
+    if ((mode === "file" || mode === "screenshot") && file) body.append("file", mode === "screenshot" ? await compressImage(file) : file);
+    try {
+      const res = await fetch("/api/jobs/capture", { method: "POST", body });
+      const data = (await res.json()) as { ok: boolean; jobId?: string; error?: string; fallback?: Mode };
+      if (!data.ok || !data.jobId) {
+        setError(data.error ?? "Something went wrong. Try again.");
+        // A link behind a login: move to paste or screenshot without losing anything.
+        if (data.fallback && mode === "link") setMode(data.fallback);
+        return;
+      }
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
+      router.push(`/jobs/${data.jobId}`);
+    } catch {
+      setError("You seem to be offline. Your text is saved on this phone; try again when you're connected.");
+    } finally {
+      clearInterval(timer);
+      setBusy(false);
+    }
+  }
 
   const accept = mode === "file" ? ".pdf,.doc,.docx,.txt" : "image/*";
   function pick(f: File | undefined | null) {
@@ -78,9 +120,8 @@ export function CaptureForm({ initialMode = "paste" }: { initialMode?: Mode }) {
   }
 
   return (
-    <form action={action} className="space-y-6" noValidate>
-      <FormError message={state?.error} />
-      <input type="hidden" name="source_type" value={mode} />
+    <form onSubmit={submit} className="space-y-6" noValidate>
+      <FormError message={error} />
 
       <fieldset>
         <legend className="text-sm font-semibold text-ink-900">How do you want to add it?</legend>
@@ -222,10 +263,19 @@ export function CaptureForm({ initialMode = "paste" }: { initialMode?: Mode }) {
         <p className="text-[0.8125rem] leading-5 text-ink-600">
           Next, we check if you qualify and if the job looks genuine. <span className="font-semibold text-ink-900">Free, even after your trial.</span>
         </p>
-        <SubmitButton size="lg" className="mt-3 w-full shrink-0 sm:mt-0 sm:w-auto" pendingLabel="Reading the job" inactive={!ready} onInactiveClick={() => setTried(true)}>
-          Check this job
-          <ArrowRight size={20} />
-        </SubmitButton>
+        <Button type="submit" size="lg" className="mt-3 w-full shrink-0 sm:mt-0 sm:w-auto" aria-disabled={!ready || busy || undefined} aria-busy={busy || undefined}>
+          {busy ? (
+            <>
+              <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />
+              <span aria-live="polite">{STEPS[step]}</span>
+            </>
+          ) : (
+            <>
+              Check this job
+              <ArrowRight size={20} />
+            </>
+          )}
+        </Button>
       </div>
     </form>
   );

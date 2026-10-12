@@ -1,4 +1,7 @@
 import { smokeTest } from "./smoke-test";
+import { parseCv } from "./parse-cv";
+import { extractItems, interviewNextQuestion } from "./interview";
+import { parseJob } from "./parse-job";
 
 /**
  * Task registry (Build pack section 6). One entry per task: model, prompt version,
@@ -9,6 +12,10 @@ import { smokeTest } from "./smoke-test";
  */
 export const TASKS = {
   smoke_test: smokeTest,
+  parse_cv: parseCv,
+  interview_next_question: interviewNextQuestion,
+  extract_items: extractItems,
+  parse_job: parseJob,
 } as const;
 
 export type TaskName = keyof typeof TASKS;

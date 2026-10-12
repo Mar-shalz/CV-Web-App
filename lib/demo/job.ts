@@ -1,3 +1,5 @@
+import type { ParsedJob } from "@/lib/jobs/schema";
+
 // Sample job for the design preview of the core flow (preview mode only, never
 // production). The employer is fictional on purpose (D-012).
 
@@ -100,4 +102,41 @@ Tolu Adebayo
     { item: "Use the exact subject line above", done: true },
     { item: "NYSC discharge certificate (they asked for it)", done: false },
   ],
+};
+
+
+/** The sample job as the parser would return it (preview only). */
+export const DEMO_PARSED: ParsedJob = {
+  is_job_post: true,
+  title: DEMO_JOB.title,
+  employer_name: DEMO_JOB.employer,
+  employer_domain_claimed: "northbridgebank.example",
+  employer_is_agency_client: false,
+  location: { city: "Victoria Island", state: "Lagos", country: "Nigeria", country_code: "NG", remote: false },
+  salary: { min: null, max: null, currency: null, period: null },
+  deadline: DEMO_JOB.deadline,
+  how_to_apply: {
+    channel: "email",
+    email: DEMO_JOB.apply.to,
+    subject_format: DEMO_JOB.apply.subjectFormat,
+    url: null,
+    required_documents: ["CV", "NYSC discharge certificate"],
+  },
+  hard_filters: [
+    { type: "min_degree_class", quote: "Minimum of Second Class Upper", number: null, number2: null, values: ["Second Class Upper"], date: null, flag: false },
+    { type: "nysc", quote: "Must have completed NYSC by the closing date", number: null, number2: null, values: ["completed"], date: null, flag: true },
+    { type: "max_age", quote: "Not more than 26 years as at 31 December 2026", number: 26, number2: null, values: [], date: "2026-12-31", flag: null },
+    { type: "location", quote: "Candidates must be willing to work in Lagos", number: null, number2: null, values: ["Lagos"], date: null, flag: true },
+  ],
+  requirements: [
+    { text: "Degree in Accounting, Finance or Economics", importance: "must" },
+    { text: "Strong Excel skills", importance: "must" },
+    { text: "Experience with financial reporting", importance: "must" },
+    { text: "Customer service experience", importance: "must" },
+    { text: "ICAN or ACCA", importance: "nice" },
+  ],
+  contacts: { emails: [DEMO_JOB.apply.to], phones: [] },
+  payment_mentioned: { mentioned: false, quote: null },
+  visa_sponsorship: "not_mentioned",
+  experience_level: "graduate_programme",
 };

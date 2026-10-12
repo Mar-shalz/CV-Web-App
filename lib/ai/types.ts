@@ -10,10 +10,22 @@ export type AiEffort = "low" | "medium" | "high";
  * outside our control (job posts, CVs, transcripts, pasted messages) and is always
  * wrapped in delimiters the model is told never to take instructions from.
  */
-export type PromptPart = { kind: "trusted"; text: string } | { kind: "untrusted"; label: string; text: string };
+export type AttachmentMediaType = "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
+
+export type PromptPart =
+  | { kind: "trusted"; text: string }
+  | { kind: "untrusted"; label: string; text: string }
+  /** A user supplied file (a CV PDF, a photo of a printed CV, a job flyer). Always untrusted. */
+  | { kind: "file"; label: string; mediaType: AttachmentMediaType; base64: string };
 
 export const trusted = (text: string): PromptPart => ({ kind: "trusted", text });
 export const untrusted = (label: string, text: string): PromptPart => ({ kind: "untrusted", label, text });
+export const untrustedFile = (label: string, mediaType: AttachmentMediaType, base64: string): PromptPart => ({
+  kind: "file",
+  label,
+  mediaType,
+  base64,
+});
 
 export type AiTask<I extends z.ZodType = z.ZodType, O extends z.ZodType = z.ZodType> = {
   name: string;

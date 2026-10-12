@@ -15,9 +15,11 @@ const NEXT = [
   { icon: Send2, title: "You send it", body: "We give you the exact email subject and message. You send it from your phone." },
 ];
 
-export default async function CaptureJobPage({ searchParams }: { searchParams: Promise<{ via?: string }> }) {
+export default async function CaptureJobPage({ searchParams }: { searchParams: Promise<{ via?: string; error?: string }> }) {
   const viewer = await requireReadyViewer();
-  const { via } = await searchParams;
+  const { via, error } = await searchParams;
+  const initialError =
+    error === "share" ? "We couldn't read what you shared. Paste the job text or add a screenshot instead." : error === "busy" ? "You've added a lot of jobs in the last hour. Try again soon." : undefined;
   const data = await getHomeData(viewer);
   const target = LIMITS.onboarding.vault_ready_items;
   const short = data.stats.vaultConfirmed < target;
@@ -33,7 +35,7 @@ export default async function CaptureJobPage({ searchParams }: { searchParams: P
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-7">
-          <CaptureForm initialMode={initial} />
+          <CaptureForm initialMode={initial} initialError={initialError} />
         </section>
 
         <aside className="space-y-5">

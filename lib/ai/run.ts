@@ -168,6 +168,7 @@ export async function runAiTask<I extends z.ZodType, O extends z.ZodType>(
   promptHash = system.hash;
   const jsonSchema = jsonSchemaFor(task.output);
   const parts = task.render(input.data);
+  const attachments = parts.flatMap((p) => (p.kind === "file" ? [{ mediaType: p.mediaType, base64: p.base64 }] : []));
 
   const key = task.cache && deps.cache ? cacheKey(task, system.hash, task.cache.key(input.data)) : null;
   if (key && deps.cache) {
@@ -202,6 +203,7 @@ export async function runAiTask<I extends z.ZodType, O extends z.ZodType>(
         timeoutMs: task.timeoutMs,
         effort: task.effort,
         jsonSchema,
+        ...(attachments.length ? { attachments } : {}),
       });
     } catch (error) {
       const providerError = error instanceof ProviderError ? error : new ProviderError("fatal");

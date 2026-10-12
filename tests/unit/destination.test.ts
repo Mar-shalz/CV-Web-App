@@ -1,0 +1,39 @@
+import { describe, expect, it } from "vitest";
+import { detectDestination } from "@/lib/rules/destination";
+import { EMPTY_JOB, type ParsedJob } from "@/lib/jobs/schema";
+
+const job = (patch: Partial<ParsedJob>): ParsedJob => ({ ...EMPTY_JOB, ...patch });
+
+describe("destination detection (Build pack section 8)", () => {
+  it("a stated location wins with high confidence and no question", () => {
+    const d = detectDestination(job({ location: { ...EMPTY_JOB.location, country: "United Kingdom", country_code: "GB" } }), ["NG"]);
+    expect(d).toMatchObject({ country: "GB", profile: "uk", ask: false });
+    expect(d.confidence).toBeGreaterThanOrEqual(0.8);
+  });
+  it("graduate programmes in Nigeria get the graduate format", () => {
+    const d = detectDestination(job({ location: { ...EMPTY_JOB.location, country_code: "NG" }, experience_level: "graduate_programme" }), ["NG"]);
+    expect(d.profile).toBe("ng_graduate");
+  });
+  it("salary currency alone asks once", () => {
+    const d = detectDestination(job({ salary: { min: 2000, max: 2500, currency: "£", period: "month" } }), ["NG", "GB"]);
+    expect(d).toMatchObject({ country: "GB", ask: true });
+  });
+  it("a .ng email and a +234 number agree on Nigeria", () => {
+    const d = detectDestination(job({ how_to_apply: { ...EMPTY_JOB.how_to_apply, email: "hr@acme.com.ng" }, contacts: { emails: [], phones: ["+234 803 000 0000"] } }), ["GB"]);
+    expect(d.country).toBe("NG");
+    expect(d.confidence).toBeGreaterThan(0.6);
+  });
+  it("no signal falls back to the first target market without asking", () => {
+    const d = detectDestination(EMPTY_JOB, ["GB", "NG"]);
+    expect(d).toMatchObject({ country: "GB", ask: false, confidence: 0.3 });
+  });
+  it("a country with no MVP profile uses the UK format and says so", () => {
+    const d = detectDestination(job({ location: { ...EMPTY_JOB.location, country: "Canada", country_code: "CA" } }), ["NG"]);
+    expect(d.profile).toBe("uk");
+    expect(d.fallbackNote).toContain("Canada");
+  });
+  it("remote roles default to the employer's home country", () => {
+    const d = detectDestination(job({ location: { ...EMPTY_JOB.location, remote: true }, employer_domain_claimed: "acme.co.uk" }), ["NG"]);
+    expect(d.country).toBe("GB");
+  });
+});

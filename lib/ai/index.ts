@@ -36,7 +36,8 @@ export function runTask<K extends TaskName>(
 ): Promise<AiResult<z.output<Output<K>>>> {
   // TASKS[name] widens to a union of tasks; the key pins it back to one.
   const task = TASKS[name] as unknown as AiTask<Input<K>, Output<K>>;
+  // With more than one task the generic widens; the key above already pins the types.
   return runAiTask(task, input, deps, {
     userRef: options.userId ? pseudonymousId(options.userId) : null,
-  });
+  }) as Promise<AiResult<z.output<Output<K>>>>;
 }
