@@ -1,132 +1,278 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import type { CvBullet, DEMO_CV } from "@/lib/demo/job";
-import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, InfoCircle, CloseCircle, Magicpen, Warning2 } from "@/components/icons";
+import { editCv, type CvOp } from "@/app/(app)/jobs/[id]/cv/actions";
+import { answerSurvey } from "@/app/(app)/jobs/[id]/check/actions";
+import type { CvBullet, CvDoc } from "@/lib/cv/types";
+import { openFlags } from "@/lib/cv/types";
+import { findBullet, updateBullet } from "@/lib/cv/ops";
+import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, InfoCircle, CloseCircle, Magicpen, Warning2, Lock1 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-
-type Cv = typeof DEMO_CV;
-type Resolution = "open" | "fixed" | "removed" | "kept";
+import { inputClass } from "@/components/ui/field";
 
 /**
- * The tailored CV, shown as a page. Changed lines are highlighted and open to show
- * the user's own words. Lines the fact lock can't trace carry a warning with three
+ * The tailored CV as a page. Changed lines are highlighted and open to show the
+ * person's own words. Lines the fact lock couldn't trace carry a warning with three
  * choices. Warnings never block the download.
  */
-export function CvEditor({ cv, nextHref }: { cv: Cv; nextHref: string }) {
-  const all = cv.roles.flatMap((r) => r.bullets);
-  const [res, setRes] = useState<Record<string, Resolution>>(() => Object.fromEntries(all.filter((b) => b.flag).map((b) => [b.id, "open"])));
+export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobToggle }: { cvId: string; doc: CvDoc; jobId: string; preview: boolean; dobToggle: boolean }) {
+  const [doc, setDoc] = useState(initial);
+  const [cvId, setCvId] = useState(initialId);
   const [open, setOpen] = useState<string | null>(null);
-  const [original, setOriginal] = useState<Record<string, boolean>>({});
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [askVault, setAskVault] = useState<{ bulletId: string; facts: string[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState(false);
+  const [survey, setSurvey] = useState<string | null>(null);
+  const [busy, start] = useTransition();
   const sheet = useRef<HTMLDialogElement>(null);
+  const pendingType = useRef<"pdf" | "docx">("pdf");
 
-  const flagged = all.filter((b) => b.flag);
-  const openFlags = flagged.filter((b) => res[b.id] === "open");
-  const changed = all.filter((b) => b.change !== "kept").length;
+  const bullets = doc.sections.flatMap((s) => (s.kind === "roles" ? s.roles.flatMap((r) => r.bullets) : []));
+  const flagged = bullets.filter((b) => b.flags.some((f) => f.status === "open"));
+  const changed = bullets.filter((b) => b.rewriteType !== "kept").length;
+  const openCount = openFlags(doc);
 
-  function resolve(id: string, r: Resolution) {
-    setRes((cur) => ({ ...cur, [id]: r }));
+  function run(op: CvOp, local: (d: CvDoc) => CvDoc) {
+    setError(null);
+    start(async () => {
+      const res = await editCv(cvId, op);
+      if (res.ok) {
+        setDoc(res.doc);
+        setCvId(res.cvId);
+        if (op.kind === "edit" && res.newFacts.length) setAskVault({ bulletId: op.bulletId, facts: res.newFacts });
+      } else if (res.error === "preview" || preview) {
+        setDoc(local);
+      } else setError(res.error);
+    });
   }
-  function download() {
-    if (openFlags.length) sheet.current?.showModal();
-    else setDownloaded(true);
+
+  const resolve = (b: CvBullet, action: "removed" | "kept") =>
+    run({ kind: "resolve", bulletId: b.id, action }, (d) => (action === "removed" ? updateBullet(d, b.id, () => null) : updateBullet(d, b.id, (x) => ({ ...x, flags: x.flags.map((f) => ({ ...f, status: "kept" as const })) }))));
+  const revertToOriginal = (b: CvBullet) => run({ kind: "original", bulletId: b.id }, (d) => updateBullet(d, b.id, (x) => ({ ...x, text: x.original, rewriteType: "kept", flags: [] })));
+  const saveEdit = (b: CvBullet) => {
+    run({ kind: "edit", bulletId: b.id, text: draft }, (d) => updateBullet(d, b.id, (x) => ({ ...x, text: draft, rewriteType: "reworded", flags: [] })));
+    setEditing(null);
+  };
+
+  function download(type: "pdf" | "docx", force = false) {
+    if (openCount && !force) {
+      pendingType.current = type;
+      sheet.current?.showModal();
+      return;
+    }
+    // A file download from our own route; an anchor keeps the CV screen open.
+    const a = document.createElement("a");
+    a.href = `/api/cv/${cvId}/export?type=${type}`;
+    a.rel = "noopener";
+    a.click();
+    setDownloaded(true);
   }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      {/* The page */}
-      <article
-        aria-label="Your tailored CV"
-        className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10"
-        style={{ fontFamily: "Helvetica, Arial, sans-serif" }}
-      >
+      <article aria-label="Your tailored CV" className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
         <header className="border-b border-paper-edge pb-4 text-center">
-          <h2 className="text-[1.5rem] font-bold tracking-tight text-ink-900">{cv.name}</h2>
-          <p className="mt-1 text-[0.8125rem] text-ink-600">{cv.contact}</p>
-          <p className="mt-2 text-sm font-semibold text-brand-800">{cv.title}</p>
+          <h2 className="text-[1.5rem] font-bold tracking-tight text-ink-900">{doc.name}</h2>
+          <p className="mt-1 text-[0.8125rem] text-ink-600">{doc.contactLine}</p>
+          {doc.include.date_of_birth ? <p className="text-[0.8125rem] text-ink-600">Date of birth: added at download</p> : null}
+          <p className={`mt-2 inline-block rounded px-1 text-sm font-semibold text-brand-800 ${doc.titleFlags.some((f) => f.status === "open") ? "bg-care-100" : ""}`}>{doc.titleLine}</p>
         </header>
-        <CvSection title="Profile">
-          <p className="text-sm leading-6 text-ink-800">{cv.summary}</p>
-        </CvSection>
-        {cv.sections.map((s) => (
-          <CvSection key={s.heading} title={s.heading}>
-            {s.lines.map((l) => (
-              <p key={l} className="text-sm leading-6 text-ink-800">
-                {l}
+        {doc.summary.text ? (
+          <CvSectionBlock title="Profile">
+            <p className={`rounded px-1 text-sm leading-6 text-ink-800 ${doc.summary.flags.some((f) => f.status === "open") ? "bg-care-100/70" : ""}`}>{doc.summary.text}</p>
+            {doc.summary.flags.filter((f) => f.status === "open").map((f) => (
+              <p key={f.token} className="mt-1 px-1 font-[family-name:var(--font-sans)] text-xs text-care-700">
+                {f.message} (&ldquo;{f.token}&rdquo;)
               </p>
             ))}
-          </CvSection>
-        ))}
-        <CvSection title="Experience">
-          <div className="space-y-5">
-            {cv.roles.map((r) => (
-              <div key={r.title}>
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-                  <p className="text-sm font-bold text-ink-900">
-                    {r.title}, {r.org}
-                  </p>
-                  <p className="text-[0.8125rem] text-ink-600">{r.dates}</p>
-                </div>
-                <ul className="mt-2 space-y-1.5">
-                  {r.bullets
-                    .filter((b) => res[b.id] !== "removed")
-                    .map((b) => (
-                      <Bullet
-                        key={b.id}
-                        b={b}
-                        state={res[b.id]}
-                        original={Boolean(original[b.id])}
-                        open={open === b.id}
-                        onToggle={() => setOpen(open === b.id ? null : b.id)}
-                        onResolve={(r) => resolve(b.id, r)}
-                        onOriginal={() => setOriginal((o) => ({ ...o, [b.id]: !o[b.id] }))}
-                      />
-                    ))}
-                </ul>
+          </CvSectionBlock>
+        ) : null}
+        {doc.sections.map((s) => (
+          <CvSectionBlock key={s.key} title={s.heading}>
+            {s.kind === "lines" ? (
+              s.lines.map((l) => (
+                <p key={l} className="text-sm leading-6 text-ink-800">
+                  {l}
+                </p>
+              ))
+            ) : (
+              <div className="space-y-5">
+                {s.roles.map((r) => (
+                  <div key={r.roleId}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+                      <p className="text-sm font-bold text-ink-900">{[r.title, r.organisation].filter(Boolean).join(", ")}</p>
+                      <p className="text-[0.8125rem] text-ink-600">{r.dates}</p>
+                    </div>
+                    <ul className="mt-2 space-y-1.5">
+                      {r.bullets.map((b) => {
+                        const isOpen = open === b.id;
+                        const flags = b.flags.filter((f) => f.status === "open");
+                        const flaggedLine = flags.length > 0;
+                        return (
+                          <li key={b.id} className="text-sm leading-6 text-ink-800">
+                            <button
+                              type="button"
+                              onClick={() => setOpen(isOpen ? null : b.id)}
+                              aria-expanded={isOpen}
+                              className={`flex w-full items-start gap-2 rounded-lg px-1.5 py-0.5 text-left transition-colors ${flaggedLine ? "bg-care-100/70 hover:bg-care-100" : b.rewriteType !== "kept" ? "bg-brand-50 hover:bg-brand-100" : "hover:bg-ink-75"}`}
+                            >
+                              <span className="mt-[9px] size-1.5 shrink-0 rounded-full bg-ink-700" aria-hidden="true" />
+                              <span className="flex-1">
+                                {b.text}
+                                {flaggedLine ? (
+                                  <span className="ml-1.5 inline-flex translate-y-0.5 text-care-700">
+                                    <Danger size={16} variant="bulk" />
+                                    <span className="sr-only"> Needs your check.</span>
+                                  </span>
+                                ) : null}
+                              </span>
+                            </button>
+                            {isOpen ? (
+                              <div className="my-2 ml-4 animate-rise rounded-2xl border border-ink-150 bg-white p-3.5 font-[family-name:var(--font-sans)] shadow-card">
+                                {flags.map((f) => (
+                                  <p key={f.type + f.token} className="mb-1.5 text-[0.8125rem] font-semibold leading-5 text-care-700">
+                                    {f.message}
+                                  </p>
+                                ))}
+                                <p className="text-xs font-medium text-ink-500">From your own words</p>
+                                <p className="mt-0.5 text-[0.8125rem] italic leading-5 text-ink-700">&ldquo;{b.sourceQuote ?? b.original}&rdquo;</p>
+                                {editing === b.id ? (
+                                  <div className="mt-3 space-y-2">
+                                    <label htmlFor={`e-${b.id}`} className="sr-only">
+                                      Edit this line
+                                    </label>
+                                    <textarea id={`e-${b.id}`} rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} className={`${inputClass} py-2.5 text-sm leading-6`} />
+                                    <div className="flex gap-2">
+                                      <Button size="sm" onClick={() => saveEdit(b)} disabled={busy || draft.trim().length < 5}>
+                                        Save line
+                                      </Button>
+                                      <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {flaggedLine ? (
+                                      <>
+                                        <Small icon={<Edit2 size={16} />} onClick={() => { setEditing(b.id); setDraft(b.text); }}>
+                                          Add the real detail
+                                        </Small>
+                                        <Small icon={<Trash size={16} />} onClick={() => resolve(b, "removed")}>
+                                          Remove it
+                                        </Small>
+                                        <Small icon={<TickCircle size={16} />} onClick={() => resolve(b, "kept")}>
+                                          Keep it
+                                        </Small>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Small icon={<Edit2 size={16} />} onClick={() => { setEditing(b.id); setDraft(b.text); }}>
+                                          Edit
+                                        </Small>
+                                        {b.rewriteType !== "kept" ? (
+                                          <Small icon={<Magicpen size={16} />} onClick={() => revertToOriginal(b)}>
+                                            Use my original wording
+                                          </Small>
+                                        ) : null}
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                                <p className="mt-2 text-xs text-ink-500">Could you explain this line in an interview, with an example?</p>
+                              </div>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </CvSection>
-        <CvSection title="Skills">
-          <p className="text-sm leading-6 text-ink-800">{cv.skills}</p>
-        </CvSection>
-        <CvSection title="Referees">
-          <p className="text-sm leading-6 text-ink-800">Available on request</p>
-        </CvSection>
+            )}
+          </CvSectionBlock>
+        ))}
       </article>
 
-      {/* Side panel */}
       <aside className="space-y-5 xl:sticky xl:top-28 xl:self-start">
+        {error ? (
+          <p role="alert" className="rounded-2xl bg-flag-50 p-3 text-sm text-flag-700">
+            {error}
+          </p>
+        ) : null}
+        {askVault ? (
+          <section className="animate-pop rounded-[var(--radius-card)] border border-brand-100 bg-brand-50 p-4" aria-live="polite">
+            <p className="text-sm font-semibold text-ink-900">Add this to your experience?</p>
+            <p className="mt-1 text-[0.8125rem] text-ink-600">Your line now has {askVault.facts.map((f) => `“${f}”`).join(", ")}, which isn&apos;t in your experience yet. If it&apos;s true, add it so it isn&apos;t flagged again.</p>
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  run({ kind: "vault", bulletId: askVault.bulletId }, (d) => updateBullet(d, askVault.bulletId, (x) => ({ ...x, flags: [] })));
+                  setAskVault(null);
+                }}
+              >
+                Yes, it&apos;s true
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setAskVault(null)}>
+                Not now
+              </Button>
+            </div>
+          </section>
+        ) : null}
+
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
           <h2 className="text-[0.9375rem] font-semibold text-ink-900">What we changed</h2>
           <ul className="mt-3 space-y-2.5 text-sm text-ink-700">
             <li className="flex items-center gap-2.5">
               <span className="h-4 w-6 rounded bg-brand-100" aria-hidden="true" />
-              {changed} lines reworded to match the job
+              {changed} {changed === 1 ? "line" : "lines"} reworded to match the job
             </li>
             <li className="flex items-center gap-2.5">
               <span className="h-4 w-6 rounded bg-care-100" aria-hidden="true" />
-              {flagged.length} lines need your check
+              {flagged.length} {flagged.length === 1 ? "line needs" : "lines need"} your check
             </li>
             <li className="flex items-center gap-2.5">
               <TickCircle size={20} variant="bulk" className="text-proof-600" />
-              No employer, title, date or grade changed
+              Employers, titles, dates and grades come straight from your records
             </li>
           </ul>
           <p className="mt-4 flex gap-2 rounded-2xl bg-ink-50 p-3 text-[0.8125rem] leading-5 text-ink-600">
             <InfoCircle size={18} className="mt-px shrink-0" />
-            Tap any highlighted line to see the words it came from.
+            Tap any line to see the words it came from.
           </p>
         </section>
 
+        {dobToggle ? (
+          <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
+            <label className="flex cursor-pointer items-start justify-between gap-3">
+              <span>
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-ink-900">
+                  <Lock1 size={16} />
+                  Add my date of birth to this CV
+                </span>
+                <span className="mt-0.5 block text-[0.8125rem] leading-5 text-ink-600">This job asks for it. It goes on this CV only, and only if you switch it on.</span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={doc.include.date_of_birth}
+                onChange={(e) => run({ kind: "include", field: "date_of_birth", on: e.target.checked }, (d) => ({ ...d, include: { ...d.include, date_of_birth: e.target.checked } }))}
+                className="mt-1 size-5 accent-brand-600"
+              />
+            </label>
+          </section>
+        ) : null}
+
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
           <h2 className="text-[0.9375rem] font-semibold text-ink-900">Before you download</h2>
-          {openFlags.length ? (
+          {openCount ? (
             <p className="mt-2 flex items-start gap-2 text-[0.8125rem] leading-5 text-care-700">
               <Warning2 size={18} variant="bulk" className="mt-px shrink-0" />
-              {openFlags.length} {openFlags.length === 1 ? "line needs" : "lines need"} a look. You can still download.
+              {openCount} {openCount === 1 ? "line needs" : "lines need"} a look. You can still download.
             </p>
           ) : (
             <p className="mt-2 flex items-start gap-2 text-[0.8125rem] leading-5 text-proof-700">
@@ -135,58 +281,81 @@ export function CvEditor({ cv, nextHref }: { cv: Cv; nextHref: string }) {
             </p>
           )}
           <div className="mt-4 grid gap-2">
-            <Button size="lg" onClick={download}>
+            <Button size="lg" onClick={() => download("pdf")} disabled={busy}>
               <DocumentDownload size={20} variant="bulk" />
               Download PDF
             </Button>
-            <Button variant="secondary" onClick={download}>
+            <Button variant="secondary" onClick={() => download("docx")} disabled={busy}>
               Download Word file
             </Button>
           </div>
-          {downloaded ? (
-            <div className="mt-4 animate-pop rounded-2xl bg-proof-50 p-3 text-[0.8125rem] text-proof-700" role="status">
-              CV ready: Tolu_Adebayo_CV_Graduate_Trainee.pdf
+          {downloaded && !survey ? (
+            <div className="mt-4 animate-pop rounded-2xl bg-ink-50 p-3.5" aria-live="polite">
+              <p className="text-sm font-semibold text-ink-900">Would you send this as it is?</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[
+                  ["yes", "Yes"],
+                  ["small_edits", "With small edits"],
+                  ["no", "No"],
+                ].map(([v, l]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => {
+                      setSurvey(v!);
+                      void answerSurvey({ survey: "send_as_is", answer: v as "yes" | "no" | "small_edits", job_id: jobId });
+                    }}
+                    className="min-h-11 rounded-xl bg-white px-3 text-sm font-semibold text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
+          ) : survey ? (
+            <p className="mt-4 text-[0.8125rem] text-proof-700">Thanks for telling us.</p>
           ) : null}
-          <Link href={nextHref} className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-brand-700 hover:bg-brand-50">
+          <Link href={`/jobs/${jobId}/pack`} className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-brand-700 hover:bg-brand-50">
             Next: prepare your email
             <ArrowRight size={18} />
           </Link>
         </section>
       </aside>
 
-      {/* Pre download check. Lists open flags; never blocks the download. */}
-      <dialog
-        ref={sheet}
-        aria-labelledby="sheet-title"
-        className="m-auto w-[min(92vw,480px)] rounded-[24px] p-0 shadow-raised backdrop:bg-brand-950/50 backdrop:backdrop-blur-sm open:animate-pop"
-      >
+      <dialog ref={sheet} aria-labelledby="sheet-title" className="m-auto w-[min(92vw,480px)] rounded-[24px] p-0 shadow-raised backdrop:bg-brand-950/50 backdrop:backdrop-blur-sm open:animate-pop">
         <div className="p-6">
           <div className="flex items-start justify-between gap-3">
             <h2 id="sheet-title" className="text-lg font-semibold text-ink-900">
-              Check {openFlags.length === 1 ? "this line" : "these lines"} first?
+              Check {flagged.length === 1 ? "this line" : "these lines"} first?
             </h2>
             <button type="button" onClick={() => sheet.current?.close()} className="grid size-11 place-items-center rounded-xl text-ink-500 hover:bg-ink-75" aria-label="Close">
               <CloseCircle size={22} />
             </button>
           </div>
           <p className="mt-1 text-sm text-ink-600">An interviewer could ask about any line. Make sure you can explain each one.</p>
-          <ul className="mt-4 space-y-2.5">
-            {openFlags.map((b) => (
+          <ul className="mt-4 max-h-[50vh] space-y-2.5 overflow-y-auto">
+            {flagged.map((b) => (
               <li key={b.id} className="rounded-2xl bg-care-50 p-3.5 text-[0.8125rem] leading-5 text-care-700">
                 <p className="font-semibold text-ink-900">{b.text}</p>
-                <p className="mt-1">{b.flag?.message}</p>
+                <p className="mt-1">{b.flags.find((f) => f.status === "open")?.message}</p>
               </li>
             ))}
           </ul>
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            <Button variant="secondary" onClick={() => sheet.current?.close()}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                sheet.current?.close();
+                const first = flagged[0];
+                if (first && findBullet(doc, first.id)) setOpen(first.id);
+              }}
+            >
               Fix them first
             </Button>
             <Button
               onClick={() => {
                 sheet.current?.close();
-                setDownloaded(true);
+                download(pendingType.current, true);
               }}
             >
               Download anyway
@@ -198,7 +367,7 @@ export function CvEditor({ cv, nextHref }: { cv: Cv; nextHref: string }) {
   );
 }
 
-function CvSection({ title, children }: { title: string; children: React.ReactNode }) {
+function CvSectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-5">
       <h3 className="mb-2 border-b border-paper-edge pb-1 text-xs font-bold uppercase tracking-[0.12em] text-ink-700">{title}</h3>
@@ -207,81 +376,7 @@ function CvSection({ title, children }: { title: string; children: React.ReactNo
   );
 }
 
-function Bullet({
-  b,
-  state,
-  original,
-  open,
-  onToggle,
-  onResolve,
-  onOriginal,
-}: {
-  b: CvBullet;
-  state?: Resolution;
-  original: boolean;
-  open: boolean;
-  onToggle: () => void;
-  onResolve: (r: Resolution) => void;
-  onOriginal: () => void;
-}) {
-  const flagged = b.flag && state === "open";
-  const changed = b.change !== "kept" && !original;
-  const text = original ? b.source.replace(/^"|"$/g, "") : b.text;
-  const panel = `src-${b.id}`;
-  return (
-    <li className="text-sm leading-6 text-ink-800">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        aria-controls={panel}
-        className={`group flex w-full items-start gap-2 rounded-lg px-1.5 py-0.5 text-left transition-colors ${
-          flagged ? "bg-care-100/70 hover:bg-care-100" : changed ? "bg-brand-50 hover:bg-brand-100" : "hover:bg-ink-75"
-        }`}
-      >
-        <span className="mt-[9px] size-1.5 shrink-0 rounded-full bg-ink-700" aria-hidden="true" />
-        <span className="flex-1">
-          {text}
-          {flagged ? (
-            <span className="ml-1.5 inline-flex translate-y-0.5 items-center text-care-700">
-              <Danger size={16} variant="bulk" />
-              <span className="sr-only"> Needs your check.</span>
-            </span>
-          ) : null}
-          {changed && !flagged ? <span className="sr-only"> Reworded. Show source.</span> : null}
-        </span>
-      </button>
-      {open ? (
-        <div id={panel} className="my-2 ml-4 animate-rise rounded-2xl border border-ink-150 bg-white p-3.5 font-[family-name:var(--font-sans)] shadow-card">
-          {flagged ? <p className="mb-2 flex items-start gap-2 text-[0.8125rem] font-semibold leading-5 text-care-700">{b.flag?.message}</p> : null}
-          <p className="text-xs font-medium text-ink-500">From your own words</p>
-          <p className="mt-0.5 text-[0.8125rem] italic leading-5 text-ink-700">{b.source}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {flagged ? (
-              <>
-                <SmallAction icon={<Edit2 size={16} />} onClick={() => onResolve("fixed")}>
-                  {b.flag?.type === "number" ? "Add the real figure" : "Change to helped"}
-                </SmallAction>
-                <SmallAction icon={<Trash size={16} />} onClick={() => onResolve("removed")}>
-                  Remove it
-                </SmallAction>
-                <SmallAction icon={<TickCircle size={16} />} onClick={() => onResolve("kept")}>
-                  Keep it
-                </SmallAction>
-              </>
-            ) : (
-              <SmallAction icon={<Magicpen size={16} />} onClick={onOriginal}>
-                {original ? "Use the tailored line" : "Use my original wording"}
-              </SmallAction>
-            )}
-          </div>
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-function SmallAction({ icon, children, onClick }: { icon: React.ReactNode; children: React.ReactNode; onClick: () => void }) {
+function Small({ icon, children, onClick }: { icon: React.ReactNode; children: React.ReactNode; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-ink-75 px-3 text-[0.8125rem] font-semibold text-ink-800 hover:bg-ink-100">
       {icon}

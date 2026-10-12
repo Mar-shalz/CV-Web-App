@@ -1,0 +1,200 @@
+import "server-only";
+import type { Viewer } from "@/lib/auth/viewer";
+import type { Vault, VaultRole } from "@/lib/vault/data";
+import type { JobView } from "@/lib/jobs/data";
+import { runTask } from "@/lib/ai";
+import { factLock, lockLine, type LockSource } from "@/lib/rules/fact-lock";
+import { rangeLabel, monthLabel } from "@/lib/vault/dates";
+import { PROFILES, SECTION_HEADINGS, fileBase, profileRules } from "./profiles";
+import type { CvBullet, CvDoc, CvFlag, CvRoleBlock, CvSection } from "./types";
+
+export type ContactDetails = { fullName: string | null; phone: string | null; email: string | null; city: string | null; state: string | null; linkedin: string | null };
+
+/** Phone in +234 format (CV writing standard). Leaves non Nigerian numbers as written. */
+export function formatPhone(raw: string | null): string | null {
+  if (!raw) return null;
+  const d = raw.replace(/[^\d+]/g, "");
+  const local = d.startsWith("+234") ? d.slice(4) : d.startsWith("234") ? d.slice(3) : d.startsWith("0") && d.length === 11 ? d.slice(1) : null;
+  if (!local || local.length !== 10) return raw.trim();
+  return `+234 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
+}
+
+const EXPERIENCE_KINDS = ["job", "internship_siwes", "nysc_ppa", "volunteer", "project"];
+const toFlags = (f: ReturnType<typeof lockLine>): CvFlag[] => f.map((x) => ({ ...x, status: "open" as const }));
+const sortRecent = (a: VaultRole, b: VaultRole) => (a.isCurrent !== b.isCurrent ? (a.isCurrent ? -1 : 1) : (b.end ?? b.start ?? "").localeCompare(a.end ?? a.start ?? ""));
+
+function monthsOf(r: VaultRole): number {
+  if (!r.start) return 0;
+  const [sy, sm] = r.start.split("-").map(Number) as [number, number];
+  const end = r.isCurrent || !r.end ? new Date().toISOString().slice(0, 7) : r.end;
+  const [ey, em] = end.split("-").map(Number) as [number, number];
+  return Math.max(0, (ey - sy) * 12 + em - sm + 1);
+}
+
+type TailorOut = { title_line: string; summary: { text: string; source_item_ids: string[] }; experience: { role_id: string; bullets: { text: string; source_item_ids: string[]; rewrite_type: CvBullet["rewriteType"] }[] }[]; skills: { tools: string[]; professional: string[]; languages: string[] } };
+
+/**
+ * Tailors a CV: the model writes bullets from confirmed evidence; the fact lock checks
+ * them; one regeneration fixes violations; anything still untraced is kept with a flag
+ * (warnings never block the download). Role headers come from vault records, not the model.
+ */
+export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contact: ContactDetails): Promise<{ doc: CvDoc; generated: boolean; violations: string[] }> {
+  const profile = PROFILES[job.destination.profile];
+  const roles = vault.roles.filter((r) => r.confirmed);
+  const sources = new Map<string, LockSource>();
+  for (const r of roles) {
+    for (const i of r.items.filter((x) => x.confirmed)) {
+      sources.set(i.id, {
+        id: i.id,
+        text: i.text,
+        sourceQuote: i.sourceQuote,
+        metrics: i.metrics,
+        ownership: i.ownership,
+        skills: i.skills,
+        role: { kind: r.kind, organisation: r.organisation, title: r.title, location: r.location, start: r.start, end: r.end, grade: r.grade },
+      });
+    }
+  }
+  // Title lines and skills may draw on the whole vault, including role records with no items.
+  const all: LockSource[] = [
+    ...sources.values(),
+    ...roles.map((r) => ({ id: `role:${r.id}`, text: [r.title, r.organisation, r.grade].filter(Boolean).join(" "), sourceQuote: null, metrics: [], ownership: "did" as const, skills: [], role: { kind: r.kind, organisation: r.organisation, title: r.title, location: r.location, start: r.start, end: r.end, grade: r.grade } })),
+  ];
+  const vaultSkills = [...new Set(roles.flatMap((r) => r.items.flatMap((i) => i.skills)))];
+  const workMonths = roles.filter((r) => r.kind === "job").reduce((s, r) => s + monthsOf(r), 0);
+  const underTwo = workMonths < 24;
+  const expRoles = roles.filter((r) => EXPERIENCE_KINDS.includes(r.kind));
+
+  let out: TailorOut | null = null;
+  let violations: string[] = [];
+  let generated = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await runTask(
+      "tailor_cv",
+      {
+        profile: { label: profile.label, spelling: profile.spelling, rules: profileRules(profile, underTwo) },
+        job: { title: job.parsed.title ?? "the role", employer: job.parsed.employer_name ?? "the employer", requirements: job.parsed.requirements.map((r) => r.text) },
+        experience_months: workMonths,
+        roles: expRoles.map((r) => ({
+          role_id: r.id,
+          kind: r.kind,
+          heading: [r.title, r.organisation, rangeLabel(r.start, r.end, r.isCurrent)].filter(Boolean).join(", "),
+          items: r.items.filter((i) => i.confirmed).map((i) => ({ id: i.id, text: i.text, source_quote: i.sourceQuote, ownership: i.ownership, rough_numbers: i.metrics.filter((m) => m.approximate).map((m) => m.value) })),
+        })),
+        education: roles.filter((r) => r.kind === "education").map((r) => [r.title, r.organisation, r.grade, rangeLabel(r.start, r.end, r.isCurrent)].filter(Boolean).join(", ")),
+        certifications: roles.filter((r) => r.kind === "certification" || r.kind === "licence").map((r) => [r.title, r.organisation, r.grade].filter(Boolean).join(", ")),
+        vault_skills: vaultSkills.slice(0, 60),
+        previous_violations: violations,
+        cacheKey: `${job.id}:${attempt}`,
+      },
+      { userId: viewer.preview ? undefined : viewer.id },
+    );
+    if (!res.ok) break;
+    out = res.data;
+    generated = true;
+    // Check the draft. Violations go back once; after that, flags.
+    const bullets = out.experience.flatMap((e) => e.bullets.map((b, n) => ({ id: `${e.role_id}:${n}`, text: b.text, source_item_ids: b.source_item_ids })));
+    const lock = factLock(bullets, sources);
+    const next: string[] = [];
+    for (const k of lock.kept) for (const f of k.flags) next.push(`Bullet "${k.text}": ${f.type} "${f.token}" is not in its cited items.`);
+    for (const id of lock.dropped) next.push(`Bullet "${bullets.find((b) => b.id === id)?.text}" cites no valid item id.`);
+    const sumSources = out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s));
+    for (const f of lockLine(out.summary.text, sumSources.length ? sumSources : all)) next.push(`Summary: ${f.type} "${f.token}" is not supported.`);
+    for (const f of lockLine(out.title_line, all)) next.push(`Title line: ${f.type} "${f.token}" is not supported.`);
+    if (!next.length || attempt === 1) {
+      violations = next;
+      break;
+    }
+    violations = next;
+  }
+
+  // Manual path: the model step failed, so the CV uses the person's confirmed items as they are.
+  if (!out) {
+    out = {
+      title_line: roles.find((r) => r.kind === "education")?.title ?? job.parsed.title ?? "",
+      summary: { text: "", source_item_ids: [] },
+      experience: expRoles.map((r) => ({ role_id: r.id, bullets: r.items.filter((i) => i.confirmed).slice(0, 5).map((i) => ({ text: i.text, source_item_ids: [i.id], rewrite_type: "kept" as const })) })),
+      skills: { tools: vaultSkills.slice(0, 8), professional: [], languages: [] },
+    };
+  }
+
+  // Assemble, with flags attached to every untraced line.
+  const lockedBullets = factLock(
+    out.experience.flatMap((e) => e.bullets.map((b, n) => ({ id: `${e.role_id}:${n}`, text: b.text, source_item_ids: b.source_item_ids }))),
+    sources,
+  );
+  const kept = new Map(lockedBullets.kept.map((k) => [k.id, k]));
+  const blockFor = (r: VaultRole): CvRoleBlock | null => {
+    const e = out!.experience.find((x) => x.role_id === r.id);
+    if (!e) return null;
+    const bullets: CvBullet[] = e.bullets.flatMap((b, n) => {
+      const k = kept.get(`${r.id}:${n}`);
+      if (!k) return [];
+      const first = sources.get(k.source_item_ids[0] ?? "");
+      return [{ id: `${r.id.slice(0, 8)}-${n}`, text: k.text, sourceItemIds: k.source_item_ids.filter((id) => sources.has(id)), rewriteType: b.rewrite_type, flags: toFlags(k.flags), original: first?.text ?? k.text, sourceQuote: first?.sourceQuote ?? null }];
+    });
+    return { roleId: r.id, title: r.title ?? "", organisation: r.organisation, location: r.location, dates: rangeLabel(r.start, r.end, r.isCurrent), grade: null, bullets };
+  };
+
+  const sumSources = out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s));
+  const skillsOk = (s: string) => vaultSkills.some((v) => v.toLowerCase() === s.toLowerCase()) || [...sources.values()].some((src) => `${src.text} ${src.sourceQuote ?? ""}`.toLowerCase().includes(s.toLowerCase()));
+  const skills = {
+    tools: out.skills.tools.filter(skillsOk),
+    professional: out.skills.professional.filter(skillsOk),
+    languages: out.skills.languages.filter((l) => l.toLowerCase() === "english" || skillsOk(l)),
+  };
+
+  const order = underTwo ? profile.section_order_under_2_years : profile.section_order;
+  const hasLeadership = order.includes("leadership");
+  const sections: CvSection[] = [];
+  for (const key of order) {
+    const heading = SECTION_HEADINGS[key] ?? key;
+    if (key === "profile") continue; // rendered from doc.summary
+    if (key === "experience" || key === "leadership") {
+      const kinds = key === "leadership" ? ["volunteer"] : hasLeadership ? ["job", "internship_siwes", "nysc_ppa", "project"] : EXPERIENCE_KINDS;
+      const blocks = expRoles.filter((r) => kinds.includes(r.kind)).sort(sortRecent).map(blockFor).filter((b): b is CvRoleBlock => Boolean(b && b.bullets.length));
+      if (blocks.length) sections.push({ key, heading, kind: "roles", roles: blocks });
+    } else if (key === "education") {
+      const lines = roles
+        .filter((r) => r.kind === "education")
+        .sort(sortRecent)
+        .map((r) => [r.title, r.organisation, r.grade, rangeLabel(r.start, r.end, r.isCurrent)].filter(Boolean).join(" · "))
+        .map((l) => (profile.id === "uk" && /\bhnd\b/i.test(l) && "hnd_explainer" in profile ? `${l} (${profile.hnd_explainer})` : l));
+      if (lines.length) sections.push({ key, heading, kind: "lines", lines });
+    } else if (key === "nysc") {
+      const n = roles.find((r) => r.kind === "nysc_ppa");
+      if (n) {
+        const status = n.isCurrent ? `Serving, ends ${monthLabel(n.end) ?? "this year"}` : `Completed, ${monthLabel(n.end) ?? ""}`.trim();
+        const line =
+          profile.id === "uk" && "nysc_explainer" in profile
+            ? `National Youth Service Corps (${profile.nysc_explainer}). ${status}, ${n.organisation ?? ""}`.replace(/, $/, "")
+            : `${status} · ${n.organisation ?? "Place of primary assignment"}`;
+        sections.push({ key, heading, kind: "lines", lines: [line] });
+      }
+    } else if (key === "skills") {
+      const lines = [skills.tools.length ? `Tools: ${skills.tools.join(", ")}` : null, skills.professional.length ? `Professional: ${skills.professional.join(", ")}` : null, skills.languages.length ? `Languages: ${skills.languages.join(", ")}` : null].filter((l): l is string => Boolean(l));
+      if (lines.length) sections.push({ key, heading, kind: "lines", lines });
+    } else if (key === "certifications") {
+      const lines = roles.filter((r) => r.kind === "certification" || r.kind === "licence").map((r) => [r.title, r.organisation, r.grade].filter(Boolean).join(", "));
+      if (lines.length) sections.push({ key, heading, kind: "lines", lines });
+    } else if (key === "referees") {
+      if (profile.referees !== "left_out") sections.push({ key, heading, kind: "lines", lines: ["Available on request"] });
+    }
+  }
+
+  const place = profile.id === "uk" ? [contact.city, "Nigeria"].filter(Boolean).join(", ") : [contact.city, contact.state].filter(Boolean).join(", ");
+  const doc: CvDoc = {
+    format: job.destination.profile,
+    profileVersion: profile.version,
+    name: contact.fullName ?? "Your Name",
+    contactLine: [formatPhone(contact.phone), contact.email, place, contact.linkedin].filter(Boolean).join(" · "),
+    titleLine: out.title_line,
+    titleFlags: toFlags(lockLine(out.title_line, all)),
+    summary: { text: out.summary.text, sourceItemIds: sumSources.map((s) => s.id), flags: toFlags(out.summary.text ? lockLine(out.summary.text, sumSources.length ? sumSources : all) : []) },
+    sections,
+    include: { date_of_birth: false, gender: false, state_of_origin: false },
+    fileBase: fileBase(contact.fullName, job.parsed.title ?? "Role"),
+    jobTitle: job.parsed.title ?? "",
+  };
+  return { doc, generated, violations };
+}

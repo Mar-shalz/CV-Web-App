@@ -4,6 +4,7 @@ import { extractItems, interviewNextQuestion } from "./interview";
 import { parseJob } from "./parse-job";
 import { legitimacyLookup } from "./legitimacy";
 import { fitVerdict } from "./fit-verdict";
+import { tailorCv } from "./tailor-cv";
 
 /**
  * Task registry (Build pack section 6). One entry per task: model, prompt version,
@@ -20,6 +21,7 @@ export const TASKS = {
   parse_job: parseJob,
   legitimacy_lookup: legitimacyLookup,
   fit_verdict: fitVerdict,
+  tailor_cv: tailorCv,
 } as const;
 
 export type TaskName = keyof typeof TASKS;

@@ -1,0 +1,23 @@
+{
+  "id": "ng_private",
+  "version": "ng_private_v1",
+  "reviewed_by": null,
+  "label": "CV",
+  "paper": "A4",
+  "spelling": "British English",
+  "date_style": "Mon YYYY",
+  "max_pages": { "default": 2, "over_10_years": 3 },
+  "section_order": ["profile", "experience", "education", "nysc", "skills", "certifications", "referees"],
+  "section_order_under_2_years": ["profile", "education", "nysc", "experience", "skills", "certifications", "referees"],
+  "personal_fields": { "photo": "if_job_asks", "date_of_birth": "if_job_asks_or_age_limit", "gender": "if_job_asks", "marital_status": "if_job_asks", "state_of_origin": "if_job_asks", "religion": "never" },
+  "nysc": "own_line_with_status_and_year",
+  "class_of_degree": "shown",
+  "cgpa": "if_job_asks",
+  "olevel": "if_job_asks",
+  "referees": "available_on_request",
+  "right_to_work": "not_shown",
+  "address": "city_state",
+  "phone": "+234",
+  "file_name": "{first}_{last}_CV_{role}",
+  "email_subject_default": "Application: {role}, {full_name}"
+}
