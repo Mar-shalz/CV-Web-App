@@ -218,5 +218,6 @@ export async function signOut(): Promise<void> {
     const supabase = await createClient();
     await supabase.auth.signOut();
   }
-  redirect("/sign-in");
+  // The service worker sees this and deletes the applications it kept for offline use.
+  redirect("/sign-in?signed_out=1");
 }

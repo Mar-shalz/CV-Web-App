@@ -16,6 +16,10 @@
     "sensitive_details": {
       "version": "sensitive-v0.1",
       "required": false
+    },
+    "question_bank": {
+      "version": "question-bank-v0.1",
+      "required": false
     }
   },
   "processors": [

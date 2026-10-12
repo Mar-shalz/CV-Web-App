@@ -48,7 +48,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     supabase.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
     supabase.from("consents").select("type, version, granted_at, withdrawn_at").eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("usage_counters").select("trial_started_at, trial_ends_at, trial_cvs_used").eq("user_id", user.id).maybeSingle(),
-    supabase.from("passes").select("type, ends_at").eq("user_id", user.id).eq("status", "active").gt("ends_at", new Date().toISOString()).order("ends_at", { ascending: false }).limit(1),
+    supabase.from("passes").select("type, ends_at").eq("user_id", user.id).eq("status", "active").neq("type", "interview_boost").gt("ends_at", new Date().toISOString()).order("ends_at", { ascending: false }).limit(1),
   ]);
 
   // Latest record per type decides. Required consents must be granted at the current version.

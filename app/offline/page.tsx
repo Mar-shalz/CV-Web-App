@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Mark } from "@/components/brand/logo";
 import { CloudCross } from "@/components/icons";
 
@@ -12,10 +13,13 @@ export default function OfflinePage() {
         <span className="mx-auto mt-8 grid size-14 place-items-center rounded-2xl bg-white text-ink-700 shadow-card">
           <CloudCross size={28} variant="bulk" />
         </span>
-        <h1 className="mt-5 font-display text-2xl font-bold tracking-[-0.02em]">You are offline</h1>
+        <h1 className="mt-5 font-display text-2xl font-bold tracking-[-0.02em]">You&apos;re offline</h1>
         <p className="mt-2 text-[0.9375rem] leading-6 text-ink-600">
-          Your work is saved on this phone and will sync when you are back. Saved applications and job snapshots still open.
+          Applications you&apos;ve opened on this phone still work offline, with the job post and the CV you sent.
         </p>
+        <Link href="/applications" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-2xl bg-brand-600 px-5 font-semibold text-white hover:bg-brand-700">
+          Open my applications
+        </Link>
       </div>
     </main>
   );

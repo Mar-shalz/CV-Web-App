@@ -48,15 +48,17 @@ type Row = {
   status: ApplicationStatus;
   sent_at: string | null;
   next_check_in_at: string | null;
-  job_snapshot: { title?: string; employer_name?: string } | null;
+  job_snapshot: { parsed?: { title?: string | null; employer_name?: string | null } } | null;
+  jobs: { parsed: { title?: string | null; employer_name?: string | null } | null } | null;
   application_packs: { channel: "email" | "form" | "portal" } | null;
 };
 
 function toHome(r: Row): HomeApplication {
+  const parsed = r.job_snapshot?.parsed ?? r.jobs?.parsed ?? null;
   return {
     id: r.id,
-    title: r.job_snapshot?.title ?? "Untitled role",
-    employer: r.job_snapshot?.employer_name ?? "Employer not named",
+    title: parsed?.title ?? "Untitled role",
+    employer: parsed?.employer_name ?? "Employer not named",
     status: r.status,
     sentAt: r.sent_at,
     channel: r.application_packs?.channel ?? null,
@@ -70,7 +72,7 @@ export async function getHomeData(viewer: Viewer, opts: { previewEmpty?: boolean
   const [{ data: apps }, { count: vaultConfirmed }] = await Promise.all([
     supabase
       .from("applications")
-      .select("id, status, sent_at, next_check_in_at, job_snapshot, application_packs(channel)")
+      .select("id, status, sent_at, next_check_in_at, job_snapshot, jobs(parsed), application_packs(channel)")
       .eq("user_id", viewer.id)
       .order("created_at", { ascending: false })
       .limit(50),

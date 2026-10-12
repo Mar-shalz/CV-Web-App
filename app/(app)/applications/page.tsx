@@ -1,90 +1,112 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireReadyViewer } from "@/lib/auth/viewer";
-import { getHomeData } from "@/lib/home-data";
-import { ComingNext } from "@/components/shell/coming-next";
+import { listApplications } from "@/lib/applications/data";
+import type { HomeApplication } from "@/lib/home-data";
 import { RecentApplications } from "@/components/home/recent-applications";
 import { ButtonLink } from "@/components/ui/button";
-import { Send2, Magicpen } from "@/components/icons";
+import { Magicpen, SearchNormal1, Receipt21 } from "@/components/icons";
+import type { ApplicationStatus } from "@/lib/rules/status-flow";
 
 export const metadata: Metadata = { title: "Applications" };
 
+const INVITED: ApplicationStatus[] = ["assessment", "interview", "second_interview", "offer", "accepted"];
 const FILTERS = [
   { id: "all", label: "All", match: () => true },
-  { id: "waiting", label: "Waiting to hear", match: (s: string) => s === "sent" },
-  { id: "invited", label: "Invited", match: (s: string) => ["interview", "second_interview", "offer", "accepted"].includes(s) },
-  { id: "not_selected", label: "Not selected", match: (s: string) => s === "rejected" || s === "no_response" },
-  { id: "not_sent", label: "Not sent yet", match: (s: string) => s === "draft" || s === "packed" },
+  { id: "waiting", label: "Waiting to hear", match: (s: ApplicationStatus) => s === "sent" },
+  { id: "invited", label: "Invited", match: (s: ApplicationStatus) => INVITED.includes(s) },
+  { id: "closed", label: "Closed", match: (s: ApplicationStatus) => s === "rejected" || s === "no_response" || s === "withdrawn" },
+  { id: "not_sent", label: "Not sent yet", match: (s: ApplicationStatus) => s === "draft" || s === "packed" },
 ] as const;
 
 export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
   const viewer = await requireReadyViewer();
   const { q, status } = await searchParams;
+  const all = await listApplications(viewer);
+  const rows: HomeApplication[] = all.map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt, channel: a.pack?.channel ?? null }));
 
-  if (!viewer.preview) {
-    return (
-      <ComingNext
-        title="Applications"
-        intro="Every application you send, with the exact CV and a copy of the job post, even after the advert is taken down."
-        slice="Slice 6"
-        icon={<Send2 size={22} variant="bulk" />}
-        points={[
-          "See where each application stands, updated with one tap or by pasting the employer's reply.",
-          "Open the CV you sent and the job post, even offline.",
-          "An interview invite opens interview prep, built from what you actually sent.",
-        ]}
-      />
-    );
-  }
-
-  const data = await getHomeData(viewer);
   const query = q?.trim().toLowerCase();
   const active = FILTERS.find((f) => f.id === status) ?? FILTERS[0];
-  const items = data.recent
-    .filter((a) => active.match(a.status))
-    .filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query));
+  const items = rows.filter((a) => active.match(a.status)).filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query));
 
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3 animate-rise">
         <div>
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Applications</h1>
-          <p className="mt-1 text-[0.9375rem] text-ink-600">Every job you applied to, with the exact CV you sent.</p>
+          <p className="mt-1 text-[0.9375rem] text-ink-600">Every job you applied to, with the exact CV you sent and a copy of the post.</p>
         </div>
         <ButtonLink href="/jobs/new">
           <Magicpen size={20} variant="bulk" />
           Tailor my CV
         </ButtonLink>
       </header>
-      <nav aria-label="Filter by status" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
-        {FILTERS.map((f) => {
-          const on = f.id === active.id;
-          return (
-            <Link
-              key={f.id}
-              href={f.id === "all" ? "/applications" : `/applications?status=${f.id}`}
-              aria-current={on ? "page" : undefined}
-              className={`inline-flex min-h-12 shrink-0 items-center rounded-full px-4 text-sm font-medium transition-colors ${
-                on ? "bg-brand-900 text-white" : "bg-white text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"
-              }`}
-            >
-              {f.label}
-            </Link>
-          );
-        })}
-      </nav>
-      {query ? (
-        <p className="text-sm text-ink-600">
-          {items.length} {items.length === 1 ? "result" : "results"} for &ldquo;{q}&rdquo;.{" "}
-          <Link href="/applications" className="font-semibold text-brand-700 hover:underline">
-            Clear search
-          </Link>
-        </p>
-      ) : null}
-      {items.length ? (
-        <RecentApplications items={items} title={`${active.label} (${items.length})`} showAll={false} />
+
+      {rows.length ? (
+        <>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <nav aria-label="Filter by status" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
+              {FILTERS.map((f) => {
+                const on = f.id === active.id;
+                const count = rows.filter((r) => f.match(r.status)).length;
+                return (
+                  <Link
+                    key={f.id}
+                    href={f.id === "all" ? "/applications" : `/applications?status=${f.id}`}
+                    aria-current={on ? "page" : undefined}
+                    className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
+                      on ? "bg-brand-900 text-white" : "bg-white text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"
+                    }`}
+                  >
+                    {f.label}
+                    <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${on ? "bg-white/15" : "bg-ink-75 text-ink-600"}`}>{count}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+            <form role="search" action="/applications" className="relative lg:w-72">
+              {active.id !== "all" ? <input type="hidden" name="status" value={active.id} /> : null}
+              <label htmlFor="app-search" className="sr-only">
+                Search applications
+              </label>
+              <SearchNormal1 size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-400" />
+              <input
+                id="app-search"
+                name="q"
+                defaultValue={q ?? ""}
+                placeholder="Search by job or employer"
+                className="min-h-12 w-full rounded-2xl border border-ink-200 bg-white pl-11 pr-4 text-[0.9375rem] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
+              />
+            </form>
+          </div>
+          {query ? (
+            <p className="text-sm text-ink-600" role="status">
+              {items.length} {items.length === 1 ? "result" : "results"} for &ldquo;{q}&rdquo;.{" "}
+              <Link href={active.id === "all" ? "/applications" : `/applications?status=${active.id}`} className="font-semibold text-brand-700 hover:underline">
+                Clear search
+              </Link>
+            </p>
+          ) : null}
+          {items.length ? (
+            <RecentApplications items={items} title={active.label === "All" ? "All applications" : active.label} showAll={false} />
+          ) : (
+            <p className="rounded-[var(--radius-card)] border border-dashed border-ink-300 bg-white p-8 text-center text-ink-600">Nothing here right now.</p>
+          )}
+        </>
       ) : (
-        <p className="rounded-[var(--radius-card)] border border-dashed border-ink-300 p-8 text-center text-ink-600">Nothing here yet.</p>
+        <section className="torn-edge mx-auto max-w-xl rounded-t-[var(--radius-card)] bg-paper p-8 text-center shadow-card">
+          <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-brand-50 text-brand-700">
+            <Receipt21 size={30} variant="bulk" />
+          </span>
+          <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">Your applications will live here</h2>
+          <p className="mx-auto mt-2 max-w-sm text-[0.9375rem] leading-6 text-ink-600">
+            Each one keeps the job post and the exact CV you sent, so when they call you weeks later you know what they&apos;re looking at.
+          </p>
+          <ButtonLink href="/jobs/new" className="mt-6">
+            <Magicpen size={20} variant="bulk" />
+            Tailor my CV for a job
+          </ButtonLink>
+        </section>
       )}
     </div>
   );

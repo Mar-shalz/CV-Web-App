@@ -37,7 +37,7 @@ export function RecentApplications({ items, title = "Recent applications", showA
           return (
             <li key={a.id}>
               <Link
-                href="/applications"
+                href={`/applications/${a.id}`}
                 className="grid min-h-[76px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors hover:bg-ink-50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-4 lg:rounded-none lg:px-5"
               >
                 <span className="flex min-w-0 items-center gap-3.5 max-lg:contents">

@@ -47,8 +47,10 @@
   /* Verdict and status colours. Always paired with an icon and a word. */
   --color-proof-50: #e7f6ee;
   --color-proof-100: #c9ecd9;
+  --color-proof-500: #12996a;
   --color-proof-600: #0b7a53;
   --color-proof-700: #08603f;
+  --color-proof-800: #064a31;
   --color-care-50: #fff4e2;
   --color-care-100: #fde3b8;
   --color-care-600: #a15c07;
