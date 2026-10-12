@@ -5,11 +5,11 @@ import { signOut } from "@/app/(auth)/actions";
 import { MARKETS } from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/shell/user-chip";
-import { ArrowRight2, Lock1, Logout, ShieldTick, DocumentDownload, Mobile, Global, Profile } from "@/components/icons";
+import { ArrowRight2, Lock1, Logout, ShieldTick, DocumentDownload, Mobile, Global, Profile, Crown1 } from "@/components/icons";
+import { DataSaverSwitch } from "@/components/settings/settings-forms";
 
 export const metadata: Metadata = { title: "Settings" };
 
-// Rows without an href belong to a later slice and say so instead of linking nowhere.
 function Row({ href, icon, title, body }: { href?: string; icon: React.ReactNode; title: string; body: string }) {
   const inner = (
     <>
@@ -55,9 +55,16 @@ export default async function SettingsPage() {
           Account
         </h2>
         <ul>
-          <Row icon={<Profile size={20} />} title="Personal details" body="Your name, phone number and city, as they appear on your CV." />
-          <Row icon={<Global size={20} />} title="Where you're applying" body={markets || "Not set"} />
-          <Row icon={<Mobile size={20} />} title="Data saver" body={viewer.lowDataMode ? "On. Lighter pages and smaller files." : "Off"} />
+          <Row href="/settings/profile" icon={<Profile size={20} />} title="Personal details" body="Your name, phone number and city, as they appear on your CV." />
+          <Row href="/onboarding/setup" icon={<Global size={20} />} title="Where you're applying" body={markets || "Not set"} />
+          <li className="flex items-center gap-0">
+            <span className="ml-3 grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">
+              <Mobile size={20} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <DataSaverSwitch initial={viewer.lowDataMode} />
+            </span>
+          </li>
         </ul>
       </section>
 
@@ -66,9 +73,10 @@ export default async function SettingsPage() {
           Privacy and your data
         </h2>
         <ul>
-          <Row icon={<Lock1 size={20} />} title="Sensitive details" body="Date of birth, gender and state of origin. Encrypted, and only asked for when a job needs them." />
-          <Row icon={<ShieldTick size={20} />} title="Your consents" body="See and change what you agreed to." />
-          <Row icon={<DocumentDownload size={20} />} title="Download or delete my data" body="Get a copy of everything, or close your account for good." />
+          <Row href="/settings/sensitive" icon={<Lock1 size={20} />} title="Sensitive details" body="Date of birth, gender and state of origin. Encrypted, and only asked for when a job needs them." />
+          <Row href="/settings/consents" icon={<ShieldTick size={20} />} title="Your consents" body="See and change what you agreed to." />
+          <Row href="/settings/data" icon={<DocumentDownload size={20} />} title="Download or delete my data" body="Get a copy of everything, or close your account for good." />
+          <Row href="/pass" icon={<Crown1 size={20} />} title="Pass and payments" body="Your pass, receipts and the refund rule." />
         </ul>
       </section>
 

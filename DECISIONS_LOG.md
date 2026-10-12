@@ -72,3 +72,37 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 - Refunds are made in the Paystack dashboard and recorded here (the pack says refunds are by hand in the MVP).
 - New migration `0002_back_office.sql`: admin_members, truth_reports, ai_call_logs (mirrors `lib/ai/log.ts`), audit and rule review columns. Needs `SUPABASE_SECRET_KEY` on the server.
 - Admin layout has no Figma frame: built from the design tokens with a Night sidebar.
+
+## Slices 1 to 10 (12 Oct 2026)
+
+**D-024 CV import keeps nothing.** An imported CV file is read in memory and never stored. Sensitive fields found in it (date of birth, gender, state of origin) are not saved from the import; the review screen only notes that they were seen. They are asked for later, at the point of use, with consent.
+
+**D-025 CGPA scale.** When a CGPA is given without a scale, the eligibility engine assumes the 5 point scale used by most Nigerian universities and says so on the result; 4 point scales are recognised when stated.
+
+**D-026 Shared caches.** The job parse cache and the legitimacy cache are shared across users by post hash (same post, same result), stored with the service role. They hold no personal data: only the parsed post and public lookups.
+
+**D-027 Legitimacy search.** Structured outputs can't be combined with web search citations, so the lookup runs in two steps: a free text research step with the web search tool (Sonnet, up to 4 searches, config), then a Haiku step that structures it and may cite sources only by index into the real search results. Forums count as warnings, never proof.
+
+**D-028 Link fetch.** Job links are fetched server side behind an SSRF guard: http(s) only, public IPs only (DNS checked, redirects re-checked), 5 redirects, 1.5MB, 10 seconds. A login wall falls back to paste or screenshot.
+
+**D-029 Sharing the CV into Gmail.** A mailto link can't carry an attachment, so the email pack offers two routes: the Android share sheet with the CV PDF as a file (subject and message copied to the clipboard first, since not every app reads them from a share) and the mail app with subject and body filled, plus a download. Both routes still need the real phone test from the Slice 6 "done when".
+
+**D-030 One application per job.** Opening the pack again after "I've sent it" shows the sent application instead of starting a second one. The send pack checks the employer address and link from the post: a plain address only (no smuggled ?bcc=) and web links only.
+
+**D-031 Paste to classify.** classify_outcome suggests; code checks the quoted line is really in the message; the person confirms before anything changes. A status set this way is marked verified only when the quote was found. Messages that ask for payment get a warning. We store the quote, not the whole message.
+
+**D-032 Check ins.** In app only (home card and header bell). The pack mentions push or WhatsApp reminders at most once a week; no provider is chosen, so none are sent yet. "No reply yet" schedules the next check in with a 7 day floor. A daily cron (`/api/cron/outcomes`, `CRON_SECRET`) marks No reply after 30 days through a service role only database function.
+
+**D-033 Shortlist mode access.** Shortlist mode is part of the trial and the pass. Without either, the Interview boost (config price) unlocks it for one application: the boost pass row points at the application. Questions that don't link to a line in the CV sent are dropped; if fewer than 3 remain we fall back to "walk me through this line" questions. The drill checks numbers and years in the answer against the CV line in code before the model's feedback is added. Stronger answers are points, never a script.
+
+**D-034 Debrief question bank.** Debrief questions are kept on the person's record. They are only marked shareable with the question bank consent, which can be withdrawn in Settings (that also unmarks past debriefs). No shared bank screen exists yet.
+
+**D-035 Payments.** Start: a pending pass with an unguessable reference (created with the service role, since users can't write passes), then Paystack. Only the webhook unlocks: signature over the raw body, one row per (reference, event) in `payment_events`, a direct verify call, then `activate_pass`, which activates a pending pass with the exact amount at most once. A new 30 day pass bought before the old one ends starts when it ends. The callback page only shows the state and refreshes while pending. `APP_URL` fixes the callback address in production.
+
+**D-036 CSP nonce.** Closes D-007. `proxy.ts` sets a fresh nonce per request with `'strict-dynamic'`; every page renders per request (`connection()` in the root layout) so it can carry the nonce. Inline style attributes stay allowed for animation delays and CSS variables. Webhook and cron routes skip the proxy.
+
+**D-037 Data rights.** Settings has personal details, data saver (system fonts, no motion), sensitive details (see which are saved, delete one or all), consents (withdrawing sensitive details deletes them), a JSON export of every row we hold (sensitive details decrypted only when ticked for that export) and account deletion (storage files first, then the sign in record; the cascade removes every row). Migration 0008 changes three RESTRICT keys to NO ACTION so the cascade can complete. Payment rows go with the account; Paystack keeps its own records.
+
+**D-038 Offline records.** The service worker keeps the applications list and each application page (job snapshot and the CV sent) for offline reading, up to 40 pages, on this phone only. Signing out deletes them. Pages are network first, so they're never stale while online.
+
+**Unstyled screens (no Figma frames yet):** applications list and detail, send pack, debrief, Shortlist mode and drill, paywall, payment result, all Settings sub screens. Built from the design tokens.

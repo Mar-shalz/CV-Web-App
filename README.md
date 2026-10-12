@@ -4,7 +4,7 @@ Mobile web app (PWA) that helps Nigerian graduates decide whether to apply for a
 
 ## Status
 
-Slice 0 (Foundations) built: Next.js 16 PWA shell, design tokens and brand system, database schema with row level security, Google and email code sign in, consent, setup, Home, landing page with waitlist and price button, analytics allow list, the `lib/ai` module with cost logging, Sentry with personal data scrubbing, CI with the eval runner, unit tests. Still to prove on a real phone: sign in and consent at 360x640 on throttled 3G. See `DECISIONS_LOG.md`.
+All MVP slices (0 to 10) are built: sign in and consent, the vault (CV import and story interview), job capture, eligibility, scam check and fit verdict, the tailored CV with the fact lock, the application pack and log, outcomes and check ins, Shortlist mode, Paystack payments, and Settings with data export and deletion. Each slice still needs its "done when" proved on a real low end Android phone and its eval gate run on the golden sets. See `DECISIONS_LOG.md`.
 
 ## Run locally
 
@@ -19,10 +19,21 @@ With no Supabase keys the app runs in preview mode: sample data and a click thro
 
 1. Create a project in the region nearest Lagos the provider offers.
 2. Copy `.env.example` to `.env.local` and fill it in.
-3. Apply `supabase/migrations/0001_init.sql` (`supabase db push`, or paste into the SQL editor).
+3. Apply every file in `supabase/migrations/` in order, 0001 to 0008 (`supabase db push`, or paste each into the SQL editor).
 4. Auth > Providers: enable Email and Google. Redirect URL: `https://<your-domain>/auth/callback`.
 5. Auth > Email templates > Magic link: include `{{ .Token }}` so users get a 6 digit code, not a link.
-6. Run `npm run test:db` to prove one user can't read another user's rows.
+6. Run `npm run test:db` to prove one user can't read another user's rows, payments unlock only through the service role, and account deletion removes everything.
+7. Make yourself staff for the back office (SQL editor): `insert into public.admin_members (user_id, role) select id, 'owner' from public.users where email = 'you@example.com';` then set up two factor at `/admin/mfa`.
+
+## Payments (Paystack)
+
+1. Put `PAYSTACK_SECRET_KEY` (start with `sk_test_`) and `APP_URL` in the environment.
+2. Paystack dashboard > Settings > API Keys & Webhooks: webhook URL `https://<your-domain>/api/payments/paystack/webhook`.
+3. Test card, bank transfer and USSD in test mode. Only the webhook unlocks a pass.
+
+## Scheduled job
+
+`vercel.json` runs `/api/cron/outcomes` daily to mark No reply after 30 days. Set `CRON_SECRET` in Vercel.
 
 ## Checks
 

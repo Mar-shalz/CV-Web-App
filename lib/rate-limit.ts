@@ -15,6 +15,7 @@ export const LIMITS_PER_HOUR = {
   drill: 60,
   debrief: 20,
   payment: 10,
+  export: 5,
 } as const;
 
 export type RateBucket = keyof typeof LIMITS_PER_HOUR;

@@ -63,10 +63,12 @@ Primary user: Tolu, 21 to 27, NYSC or first 3 years of work, an Android phone wi
 - lint: `npm run lint` (ESLint plus copy lint); copy lint alone: `npm run lint:copy`
 - evals: `npm run evals` (placeholder listing gates G1 to G5 until the golden sets land; runs in CI)
 - first load budget: `npm run build && npm run check:size`
-- e2e: not set up yet (Playwright arrives with the first flow slices)
+- e2e: not set up yet (Playwright is the next step for the core flow)
+- env: see `.env.example` (Supabase keys, SUPABASE_SECRET_KEY, SENSITIVE_DATA_KEY_V1, ANTHROPIC_API_KEY, PAYSTACK_SECRET_KEY, APP_URL, CRON_SECRET, SPEECH_PROVIDER)
 
 ## Design
 - Brand and layout rules: design/brand.md. Tokens: app/globals.css (ships) and design/tokens.json (Figma).
 - Words: design/voice.md (UX writing rules, terms, microcopy library). The product name is a placeholder in config/app.json.
 - Icons: import from @/components/icons (generated Iconsax, Linear and Bulk). Never add an icon library.
 - Back office lives at /admin behind lib/admin/auth.ts (staff role + two factor). Log every view of personal data with logAdminAction.
+- Security: the CSP nonce is set in proxy.ts (lib/csp.ts). Only the Paystack webhook unlocks a pass. Status changes go through lib/applications/status.ts.

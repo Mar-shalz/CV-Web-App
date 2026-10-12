@@ -19,7 +19,11 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
-  const mailto = pack.toEmail ? `mailto:${pack.toEmail}?subject=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(pack.body)}` : null;
+  // Both come from the job post, so they're checked: a plain address only (no extra
+  // headers like ?bcc= smuggled in), and only web links.
+  const safeEmail = pack.toEmail && /^[^\s@?&#,;]+@[^\s@?&#,;]+\.[a-z]{2,}$/i.test(pack.toEmail) ? pack.toEmail : null;
+  const applyUrl = pack.applyUrl && /^https?:\/\//i.test(pack.applyUrl) ? pack.applyUrl : null;
+  const mailto = safeEmail ? `mailto:${safeEmail}?subject=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(pack.body)}` : null;
   const cvUrl = `/api/cv/${cvId}/export?type=pdf`;
   const cvName = pack.attachmentNames[0] ?? "CV.pdf";
 
@@ -162,8 +166,8 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
               </ol>
             ) : null}
             <div className="mt-5 flex flex-wrap gap-2">
-              {pack.applyUrl ? (
-                <a href={pack.applyUrl} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex min-h-14 items-center gap-2 rounded-2xl bg-brand-600 px-5 font-semibold text-white hover:bg-brand-700">
+              {applyUrl ? (
+                <a href={applyUrl} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex min-h-14 items-center gap-2 rounded-2xl bg-brand-600 px-5 font-semibold text-white hover:bg-brand-700">
                   {pack.channel === "form" ? "Open the form" : "Open their website"}
                   <ArrowRight size={18} />
                   <span className="sr-only">(opens in a new tab)</span>

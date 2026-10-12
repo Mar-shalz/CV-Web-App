@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import localFont from "next/font/local";
 import { Urbanist } from "next/font/google";
 import { APP, APP_NAME } from "@/lib/config";
@@ -43,7 +44,9 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Every page renders per request so it can carry this request's CSP nonce (lib/csp.ts).
+  await connection();
   return (
     <html lang="en-NG" className={`${lufga.variable} ${urbanist.variable} h-full`}>
       <body className="min-h-full">

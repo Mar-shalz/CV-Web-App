@@ -44,9 +44,32 @@ export async function writeSensitive(userId: string, values: Partial<Record<Sens
   for (const [f, v] of Object.entries(values) as [SensitiveField, string | null][]) row[COL[f]] = v ? encryptField(v, userId) : null;
   const { error } = await supabase.from("sensitive_details").upsert(row, { onConflict: "user_id" });
   if (error) return false;
-  const { data: consent } = await supabase.from("consents").select("id").eq("user_id", userId).eq("type", "sensitive_details").not("granted_at", "is", null).is("withdrawn_at", null).limit(1).maybeSingle();
-  if (!consent) {
+  // Consent rows are append only: the latest row for the type decides.
+  const { data: consent } = await supabase.from("consents").select("granted_at, withdrawn_at").eq("user_id", userId).eq("type", "sensitive_details").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!consent?.granted_at || consent.withdrawn_at) {
     await supabase.from("consents").insert({ user_id: userId, type: "sensitive_details", version: LEGAL.consents.sensitive_details?.version ?? "sensitive-v0.1", granted_at: new Date().toISOString() });
   }
   return true;
+}
+
+/** Clears the given fields. With every field, the row itself goes. */
+export async function deleteSensitive(userId: string, fields: SensitiveField[]): Promise<boolean> {
+  const supabase = await createClient();
+  if (fields.length >= Object.keys(COL).length) {
+    const { error } = await supabase.from("sensitive_details").delete().eq("user_id", userId);
+    return !error;
+  }
+  const row: Record<string, null | string> = { updated_at: new Date().toISOString() };
+  for (const f of fields) row[COL[f]] = null;
+  const { error } = await supabase.from("sensitive_details").update(row).eq("user_id", userId);
+  return !error;
+}
+
+/** Which fields are stored, without decrypting anything. */
+export async function sensitiveSaved(userId: string): Promise<SensitiveField[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("sensitive_details").select(Object.values(COL).join(", ")).eq("user_id", userId).maybeSingle();
+  if (!data) return [];
+  const row = data as unknown as Record<string, string | null>;
+  return (Object.keys(COL) as SensitiveField[]).filter((f) => Boolean(row[COL[f]]));
 }

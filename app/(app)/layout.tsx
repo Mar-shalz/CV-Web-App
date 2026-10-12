@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const stageLabel = MARKETS.career_stages.find((s) => s.id === viewer.careerStage)?.label ?? null;
 
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex min-h-dvh" data-low-data={viewer.lowDataMode || undefined}>
       <Sidebar initialCollapsed={jar.get("sb_collapsed")?.value === "1"} footer={<AccessCard state={access} />} footerCollapsed={<AccessBadge state={access} />} />
 
       <div className="flex min-w-0 flex-1 flex-col">

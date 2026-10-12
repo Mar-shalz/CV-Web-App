@@ -66,12 +66,12 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
             </nav>
             <form role="search" action="/applications" className="relative lg:w-72">
               {active.id !== "all" ? <input type="hidden" name="status" value={active.id} /> : null}
-              <label htmlFor="app-search" className="sr-only">
+              <label htmlFor="apps-filter" className="sr-only">
                 Search applications
               </label>
               <SearchNormal1 size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-400" />
               <input
-                id="app-search"
+                id="apps-filter"
                 name="q"
                 defaultValue={q ?? ""}
                 placeholder="Search by job or employer"

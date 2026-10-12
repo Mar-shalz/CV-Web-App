@@ -277,6 +277,25 @@ body {
   100% { opacity: 0; transform: translateY(30%); }
 }
 
+/* Data saver (Settings): phone fonts instead of downloaded ones, no motion, no blur. */
+[data-low-data] {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+}
+[data-low-data] *,
+[data-low-data] *::before,
+[data-low-data] *::after {
+  animation: none !important;
+  transition: none !important;
+  backdrop-filter: none !important;
+}
+[data-low-data] .aurora::before,
+[data-low-data] .aurora::after,
+[data-low-data] .confetti {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 1ms !important;

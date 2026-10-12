@@ -1,38 +1,8 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-
-// Browser error reports go straight to Sentry's ingest host for our DSN (D-016).
-function originOf(url: string | undefined): string {
-  try {
-    return url ? new URL(url).origin : "";
-  } catch {
-    return "";
-  }
-}
-const sentryOrigin = originOf(process.env.NEXT_PUBLIC_SENTRY_DSN);
-
-// Baseline security headers. A nonce based script CSP is a Slice 10 (hardening)
-// item; see DECISIONS_LOG.md (D-007).
-const csp = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  `form-action 'self' ${supabaseUrl} https://accounts.google.com`.trim(),
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
-  `connect-src 'self' ${supabaseUrl} https://eu.i.posthog.com ${sentryOrigin}`.trim(),
-  "worker-src 'self'",
-  "manifest-src 'self'",
-  "upgrade-insecure-requests",
-].join("; ");
-
+// The Content Security Policy is set per request with a nonce in proxy.ts (lib/csp.ts).
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
