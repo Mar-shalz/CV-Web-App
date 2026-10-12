@@ -3,6 +3,9 @@ import { getViewer } from "@/lib/auth/viewer";
 import { getSpeechProvider } from "@/lib/speech";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 import { getVault } from "@/lib/vault/data";
+import { isPreviewMode } from "@/lib/env";
+
+const PREVIEW_TRANSCRIPT = "During my SIWES at the bank I opened about fifteen customer accounts a day, and I helped the head teller balance the cash at close of business.";
 
 // 2 minutes of speech at our recording bitrate is well under 1MB.
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -12,7 +15,11 @@ export async function POST(request: NextRequest) {
   const viewer = await getViewer();
   if (!viewer) return NextResponse.json({ ok: false, error: "Please sign in again." }, { status: 401 });
   const provider = getSpeechProvider();
-  if (!provider) return NextResponse.json({ ok: false, error: "Voice answers aren't switched on yet. Type your answer instead." }, { status: 501 });
+  if (!provider) {
+    // Local preview only: a sample transcript so the voice flow can be reviewed without a provider.
+    if (isPreviewMode()) return NextResponse.json({ ok: true, text: PREVIEW_TRANSCRIPT });
+    return NextResponse.json({ ok: false, error: "Voice answers aren't switched on yet. Type your answer instead." }, { status: 501 });
+  }
   if (!(await allow("interview"))) return NextResponse.json({ ok: false, error: RATE_LIMITED_MESSAGE }, { status: 429 });
 
   const form = await request.formData();

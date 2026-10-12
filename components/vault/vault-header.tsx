@@ -3,28 +3,26 @@ import type { Vault } from "@/lib/vault/data";
 import { LIMITS } from "@/lib/config";
 import { DocumentUpload, Microphone2, AddCircle } from "@/components/icons";
 
+const ACTIONS = [
+  { href: "/vault/import", icon: DocumentUpload, tint: "bg-brand-50 text-brand-700", title: "Upload a CV", hint: "PDF, Word or a photo of it" },
+  { href: "/vault/interview", icon: Microphone2, tint: "bg-proof-50 text-proof-700", title: "Answer a few questions", hint: "Talk or type, one question at a time" },
+  { href: "/vault/new", icon: AddCircle, tint: "bg-ink-75 text-ink-700", title: "Add a role by hand", hint: "A job, SIWES, NYSC or your degree" },
+] as const;
+
 export function VaultActions() {
-  const cls = "lift flex min-h-14 items-center gap-3 rounded-2xl border border-ink-150 bg-white px-4 text-sm font-semibold text-ink-900 shadow-card";
   return (
     <div className="grid gap-2.5 sm:grid-cols-3">
-      <Link href="/vault/import" className={cls}>
-        <span className="grid size-10 place-items-center rounded-xl bg-brand-50 text-brand-700">
-          <DocumentUpload size={22} variant="bulk" />
-        </span>
-        Upload a CV
-      </Link>
-      <Link href="/vault/interview" className={cls}>
-        <span className="grid size-10 place-items-center rounded-xl bg-proof-50 text-proof-700">
-          <Microphone2 size={22} variant="bulk" />
-        </span>
-        Answer a few questions
-      </Link>
-      <Link href="/vault/new" className={cls}>
-        <span className="grid size-10 place-items-center rounded-xl bg-ink-75 text-ink-700">
-          <AddCircle size={22} variant="bulk" />
-        </span>
-        Add a role by hand
-      </Link>
+      {ACTIONS.map(({ href, icon: Icon, tint, title, hint }) => (
+        <Link key={href} href={href} className="lift flex min-h-16 items-center gap-3 rounded-2xl border border-ink-150 bg-white px-4 py-3 shadow-card">
+          <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${tint}`}>
+            <Icon size={22} variant="bulk" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-ink-900">{title}</span>
+            <span className="block text-[0.8125rem] leading-5 text-ink-500">{hint}</span>
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }

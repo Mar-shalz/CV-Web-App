@@ -130,3 +130,15 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-047 Modal header.** The close button sits on its own row above the title, square with an 8px radius. The modal is up to 896px wide from 640px.
 
 **D-048 Plain words pass.** For Nigerian readers and readers abroad: Interview prep (not Shortlist mode), interview notes (not debrief), saved job post (not snapshot), check if you qualify (not eligibility), must haves (not hard requirements), Join the waiting list (not an idiom). Code names stay. Terms added to design/voice.md.
+
+## Founder feedback round 5 (12 Oct 2026)
+
+**D-049 Voice in preview.** Voice answers appear wherever a speech provider is set. Until the G4 benchmark picks one, they now also appear in local preview mode, where the transcribe endpoint returns a sample transcript, so the flow can be reviewed. In production without a provider the voice option stays hidden and typing is the only way.
+
+**D-050 Updates panel.** The bell in the top bar opens a panel from the right (native dialog, Escape and backdrop close, square close button) listing applications sent in the last 30 days that need an update, each answerable in one tap. It closes on any page change. Answers refresh every page's layout.
+
+**D-051 My experience modals.** Upload a CV, Answer a few questions and Add a role by hand open over the page through intercepting routes, like Tailor my CV. A refresh or shared link still opens the full page. The three action cards now carry a hint line; "Talk or type" makes the voice option visible before opening.
+
+**D-052 All in one SQL.** `npm run sql:bundle` builds `supabase/sql/app_schema.sql` and `supabase/sql/back_office.sql` from the numbered migrations, which stay the source of truth. The bundles are for a brand new project only.
+
+**D-053 Applications header.** The page header has no Tailor my CV button: the top bar has it. The empty state keeps its own button, as it is the only next step there.

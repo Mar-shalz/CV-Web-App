@@ -20,6 +20,8 @@ The errors ("type consent_type already exists", "relation rate_events already ex
 
 Never run a file that already says "applied".
 
+**Starting a brand new Supabase project instead?** Use the two all in one files: run `supabase/sql/app_schema.sql` first (everything the app needs), then `supabase/sql/back_office.sql` (staff roles, truth reports, AI cost log). Don't use them on a project that already ran the numbered files.
+
 ---
 
 ## 1. Put the code on GitHub (15 minutes)

@@ -1,4 +1,5 @@
 import "server-only";
+import { isPreviewMode } from "@/lib/env";
 
 /**
  * Speech to text behind one interface (Build pack section 3). English only: the
@@ -22,6 +23,10 @@ export function getSpeechProvider(): SpeechProvider | null {
   }
 }
 
+/**
+ * Voice shows when a provider is set. In local preview mode it also shows, with a sample
+ * transcript instead of real speech recognition, so the flow can be reviewed (D-049).
+ */
 export function voiceEnabled(): boolean {
-  return getSpeechProvider() !== null;
+  return getSpeechProvider() !== null || isPreviewMode();
 }

@@ -36,10 +36,6 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Applications</h1>
           <p className="mt-1 text-[0.9375rem] text-ink-600">Every job you applied to, with the exact CV you sent and a copy of the post.</p>
         </div>
-        <ButtonLink href="/jobs/new">
-          <Magicpen size={20} variant="bulk" />
-          Tailor my CV
-        </ButtonLink>
       </header>
 
       {rows.length ? (

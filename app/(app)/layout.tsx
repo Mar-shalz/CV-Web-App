@@ -5,15 +5,17 @@ import { Sidebar, BottomNav } from "@/components/shell/nav";
 import { AccessBadge, AccessCard } from "@/components/shell/access-card";
 import { Avatar, UserChip } from "@/components/shell/user-chip";
 import { ButtonLink } from "@/components/ui/button";
-import { Magicpen, Notification, SearchNormal1 } from "@/components/icons";
+import { Magicpen, SearchNormal1 } from "@/components/icons";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { accessState } from "@/lib/entitlements";
-import { getCheckInCount } from "@/lib/home-data";
+import { getCheckIns } from "@/lib/home-data";
+import { UpdatesDrawer } from "@/components/shell/updates-drawer";
+import { CheckInItem } from "@/components/home/check-in-card";
 import { APP_NAME, MARKETS } from "@/lib/config";
 
 export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const viewer = await requireReadyViewer();
-  const [jar, checkIns] = await Promise.all([cookies(), getCheckInCount(viewer)]);
+  const [jar, checkIns] = await Promise.all([cookies(), getCheckIns(viewer)]);
   const access = accessState({
     trialStartedAt: viewer.trial.startedAt,
     trialEndsAt: viewer.trial.endsAt,
@@ -55,18 +57,15 @@ export default async function AppLayout({ children, modal }: { children: React.R
             </form>
 
             <div className="ml-auto flex items-center gap-2 lg:gap-3">
-              <Link
-                href="/home#checkins"
-                className="relative grid size-12 place-items-center rounded-full bg-ink-75 text-ink-700 transition-colors hover:bg-ink-100"
-                aria-label={checkIns ? `${checkIns} applications waiting for an update` : "No updates waiting"}
-              >
-                <Notification size={22} />
-                {checkIns ? (
-                  <span className="absolute right-2.5 top-2.5 grid size-[18px] place-items-center rounded-full bg-flag-600 text-[0.6875rem] font-semibold text-white ring-2 ring-white" aria-hidden="true">
-                    {checkIns}
-                  </span>
-                ) : null}
-              </Link>
+              <UpdatesDrawer count={checkIns.length}>
+                <ul className="space-y-2.5">
+                  {checkIns.map((a) => (
+                    <li key={a.id} className="rounded-xl border border-ink-150 bg-white p-3.5 shadow-card">
+                      <CheckInItem a={a} />
+                    </li>
+                  ))}
+                </ul>
+              </UpdatesDrawer>
               <span className="hidden lg:block">
                 <ButtonLink href="/jobs/new" className="cta-sheen">
                   <Magicpen size={20} variant="bulk" />

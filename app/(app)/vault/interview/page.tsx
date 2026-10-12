@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireReadyViewer } from "@/lib/auth/viewer";
-import { getVault } from "@/lib/vault/data";
+import { interviewRoles } from "@/lib/vault/interview-roles";
 import { voiceEnabled } from "@/lib/speech";
 import { InterviewFlow } from "@/components/vault/interview-flow";
 import { ButtonLink } from "@/components/ui/button";
@@ -10,12 +10,7 @@ export const metadata: Metadata = { title: "Find your wins" };
 export default async function InterviewPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
   const viewer = await requireReadyViewer();
   const { role } = await searchParams;
-  const vault = await getVault(viewer);
-  const roles = vault.roles
-    .filter((r) => !["education", "certification", "licence"].includes(r.kind))
-    .map((r) => ({ id: r.id, title: r.title, organisation: r.organisation, kind: r.kind, items: r.items.length }));
-  // Fewest achievements first: that's where the interview helps most.
-  roles.sort((a, b) => a.items - b.items);
+  const roles = await interviewRoles(viewer);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

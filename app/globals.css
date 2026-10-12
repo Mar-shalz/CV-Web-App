@@ -272,6 +272,11 @@ body {
 @keyframes modal-pop { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 
+/* Updates panel: slides in from the right. */
+.side-sheet[open] { animation: sheet-left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.side-sheet[open]::backdrop { animation: backdrop-in 0.2s ease-out; }
+@keyframes sheet-left { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
 /* A short burst of confetti on a confirmed payment. Pure CSS, no library. */
 .confetti {
   background-image:

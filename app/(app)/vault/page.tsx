@@ -56,7 +56,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
         </div>
       </header>
 
-      <div style={{ "--i": 1 } as CSSProperties} className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      <div style={{ "--i": 1 } as CSSProperties} className="grid gap-3">
         <ReadinessMeter vault={vault} />
         <VaultActions />
       </div>

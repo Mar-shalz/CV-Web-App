@@ -25,6 +25,12 @@ With no Supabase keys the app runs in preview mode: sample data and a click thro
 6. Run `npm run test:db` to prove one user can't read another user's rows, payments unlock only through the service role, and account deletion removes everything.
 7. Make yourself staff for the back office (SQL editor): `insert into public.admin_members (user_id, role) select id, 'owner' from public.users where email = 'you@example.com';` then set up two factor at `/admin/mfa`.
 
+## SQL files
+
+- `supabase/migrations/0001` to `0008`: the source of truth, applied in order.
+- `supabase/sql/app_schema.sql` and `supabase/sql/back_office.sql`: the same SQL in two all in one files for a brand new project (app first, then back office). Rebuild with `npm run sql:bundle` after adding a migration.
+- `supabase/verify_setup.sql`: shows which migrations a project already has. Changes nothing.
+
 ## Payments (Paystack)
 
 1. Put `PAYSTACK_SECRET_KEY` (start with `sk_test_`) and `APP_URL` in the environment.

@@ -101,18 +101,20 @@ export async function getHomeData(viewer: Viewer, opts: { previewEmpty?: boolean
   };
 }
 
-/** Applications waiting for a check in answer: the number on the header bell. */
-export async function getCheckInCount(viewer: Viewer): Promise<number> {
-  if (viewer.preview) return SAMPLE.checkIns.length;
+/** Applications waiting for a check in answer: shown in the top bar's updates panel. */
+export async function getCheckIns(viewer: Viewer): Promise<HomeApplication[]> {
+  if (viewer.preview) return SAMPLE.checkIns;
   const supabase = await createClient();
-  const { count } = await supabase
+  const { data } = await supabase
     .from("applications")
-    .select("id", { count: "exact", head: true })
+    .select("id, status, sent_at, next_check_in_at, job_snapshot, jobs(parsed), application_packs(channel)")
     .eq("user_id", viewer.id)
     .eq("status", "sent")
     .gte("sent_at", new Date(Date.now() - LIMITS.checkins.no_response_after_days * 86400000).toISOString())
-    .lte("next_check_in_at", new Date().toISOString());
-  return Math.min(count ?? 0, LIMITS.checkins.max_per_card);
+    .lte("next_check_in_at", new Date().toISOString())
+    .order("sent_at", { ascending: true })
+    .limit(LIMITS.checkins.max_per_card);
+  return ((data ?? []) as unknown as Row[]).map(toHome);
 }
 
 /** Confirmed vault items: how ready the person is to tailor a CV. */

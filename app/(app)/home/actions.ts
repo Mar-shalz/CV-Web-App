@@ -25,10 +25,10 @@ export async function answerCheckIn(formData: FormData): Promise<void> {
     const res = await changeStatus(viewer, id, answer, { source: "tap" });
     // An invite opens Shortlist mode straight away.
     if ("ok" in res && answer === "interview") {
-      revalidatePath("/home");
+      revalidatePath("/", "layout");
       redirect(`/applications/${id}/shortlist`);
     }
   }
-  revalidatePath("/home");
-  revalidatePath("/applications");
+  // The updates panel in the top bar shows on every page, so refresh them all.
+  revalidatePath("/", "layout");
 }
