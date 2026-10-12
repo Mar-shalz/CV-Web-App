@@ -1,0 +1,46 @@
+// Who can do what in the back office. Pure, so it is unit tested.
+export const ADMIN_ROLES = ["owner", "reviewer", "support", "finance"] as const;
+export type AdminRole = (typeof ADMIN_ROLES)[number];
+
+export const PERMISSIONS = [
+  "overview",
+  "users",
+  "waitlist",
+  "payments",
+  "payments.refund",
+  "reviews",
+  "reviews.resolve",
+  "rules",
+  "rules.publish",
+  "ai",
+  "audit",
+  "team",
+] as const;
+export type Permission = (typeof PERMISSIONS)[number];
+
+const MATRIX: Record<AdminRole, readonly Permission[]> = {
+  owner: PERMISSIONS,
+  reviewer: ["overview", "reviews", "reviews.resolve", "rules", "ai"],
+  support: ["overview", "users", "waitlist", "reviews"],
+  finance: ["overview", "payments", "payments.refund", "ai"],
+};
+
+export function can(role: AdminRole | null | undefined, permission: Permission): boolean {
+  return role ? MATRIX[role].includes(permission) : false;
+}
+
+export const ROLE_LABELS: Record<AdminRole, { label: string; body: string }> = {
+  owner: { label: "Owner", body: "Everything, including team access, publishing rules and refunds." },
+  reviewer: { label: "Reviewer", body: "Truth reports, CV quality samples, rules and AI quality." },
+  support: { label: "Support", body: "Users and the waitlist, with emails masked. Can read reports." },
+  finance: { label: "Finance", body: "Payments, refunds and AI cost." },
+};
+
+/** Masks an email for staff screens: to•••@gm•••.com */
+export function maskEmail(email: string | null | undefined): string {
+  if (!email) return "Unknown";
+  const [user, domain] = email.split("@");
+  if (!user || !domain) return "Hidden";
+  const [host, ...tld] = domain.split(".");
+  return `${user.slice(0, 2)}•••@${(host ?? "").slice(0, 2)}•••${tld.length ? "." + tld.join(".") : ""}`;
+}

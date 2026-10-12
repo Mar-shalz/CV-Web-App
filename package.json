@@ -5,22 +5,40 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "check:size": "node scripts/check-first-load.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint && npm run lint:copy",
+    "lint:copy": "node scripts/copy-lint.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "supabase test db",
+    "evals": "node evals/run.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@sentry/browser": "^11.6.0",
+    "@sentry/nextjs": "^11.6.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.3",
     "next": "16.4.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=22.18"
   }
 }

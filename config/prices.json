@@ -1,0 +1,9 @@
+{
+  "version": "2026-10-10",
+  "currency": "NGN",
+  "products": {
+    "job_hunt_30d": { "label": "Job hunt pass", "amount_kobo": 500000, "days": 30, "auto_renew": false },
+    "interview_boost": { "label": "Interview boost", "amount_kobo": 150000, "days": null, "auto_renew": false }
+  },
+  "refund_rule": { "within_days": 7, "max_packed_applications": 2 }
+}

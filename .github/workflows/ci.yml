@@ -1,0 +1,72 @@
+# Checks every push to main and every pull request (Build pack section 12, Slice 0:
+# "CI with the eval runner"). Make all three jobs required status checks on main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  checks:
+    name: Typecheck, tests and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # next-env.d.ts and route types are generated, not committed.
+      - run: npx next typegen
+      - run: npm run typecheck
+      - run: npm test
+      # ESLint, then copy lint (banned phrases and em dashes in UI copy).
+      - run: npm run lint
+
+  build:
+    name: Build and first load budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # No Supabase or Sentry secrets: the build must pass without them. Source maps
+      # upload only when SENTRY_AUTH_TOKEN is set (D-016).
+      - run: npm run build
+      # Fails if any page's first load passes 300KB compressed (Build pack section 10).
+      - run: npm run check:size
+
+  evals:
+    name: Evals (G1 to G5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Placeholder until the golden sets land (Slices 1 to 7). It lists gates G1 to G5
+      # and exits 0. Once a set has cases, a gate below target fails this job and blocks
+      # the merge. The key is only needed then; add it as a repository secret.
+      - run: npm run evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

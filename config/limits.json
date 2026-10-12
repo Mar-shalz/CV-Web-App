@@ -1,0 +1,40 @@
+{
+  "version": "2026-10-12",
+  "trial": {
+    "days": 3,
+    "tailored_cv_cap": 5,
+    "starts_at": "first_job_check"
+  },
+  "auth": {
+    "otp_length": 6,
+    "otp_resend_seconds": 30,
+    "otp_cookie_minutes": 10
+  },
+  "onboarding": {
+    "max_target_countries": 3,
+    "vault_ready_items": 5,
+    "min_age_years": 18
+  },
+  "checkins": {
+    "max_per_card": 3,
+    "max_reminders_per_week": 1,
+    "no_response_after_days": 30
+  },
+  "files": {
+    "signed_url_seconds": 600,
+    "cv_pdf_max_kb": 150
+  },
+  "data": {
+    "first_load_kb": 300,
+    "session_mb": 1.5
+  },
+  "ai": {
+    "budget_usd_per_active_user_month": 0.5,
+    "note": "Hypothesis. Alert when cost per active user passes this."
+  },
+  "back_office": {
+    "truth_report_sla_hours": 48,
+    "weekly_cv_sample": 20,
+    "list_review_days": 30
+  }
+}

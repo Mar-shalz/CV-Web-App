@@ -1,0 +1,74 @@
+# Decisions log
+
+Choices the Build pack did not cover. Newest last. Each one is the simplest option that respects CLAUDE.md.
+
+## Slice 0: Foundations (12 Oct 2026)
+
+**D-000 Design source.** No Figma frames exist yet. The founder supplied three reference screenshots (a split access page with a blue gradient panel and step cards, a split sign in with a photo panel, and a care dashboard with a white sidebar and stat cards) and asked for the brand and screens to follow them. Built screens 1 to 4 (Welcome, Sign in code, Consent, Setup), 9 (Home) and the shell from that direction and `design/brand.md`. They count as styled, not "unstyled". Screens for later slices show an honest "Being built" card. Next step: mirror these into Figma frames and link them in the screen inventory.
+
+**D-001 Cache Components off.** Next.js 16 enables `cacheComponents` by default. Nearly every screen reads the signed in user, so the request time model is simpler to audit. Revisit in Slice 10 if the static landing page needs partial prerendering.
+
+**D-002 One display font.** Plus Jakarta Sans 600/700, Latin subset, self hosted via `next/font`, headings only. Body text uses the system font. Within the pack's "one subset web font at most". First load measured at about 220KB gzipped against the 300KB budget.
+
+**D-003 OTP email kept in a cookie, not the URL.** Between "Email me a code" and "Enter your code" the address sits in a 10 minute httpOnly cookie, so it never lands in URLs, logs or analytics.
+
+**D-004 Landing page events.** The pack's event list has no landing page events, but Slice 0 and Gate 1 require measuring the waitlist and price button. Added `waitlist_joined {source}` and `landing_price_clicked {product}`. Neither carries personal data. Waitlist emails go to an insert only `waitlist` table that the API can't read back.
+
+**D-005 Local preview mode.** With no Supabase keys and `NODE_ENV` not production, the app shows sample data and the auth forms click through without a backend, with a visible banner. In production, missing keys return 503 from the proxy. Lets design review happen before the Supabase project exists.
+
+**D-006 no_response moves.** "Can still move to any later status if the employer replies late" is read as: the same statuses a sent application can reach (rejected, assessment, interview, offer, withdrawn). Accepted still needs an offer first.
+
+**D-007 CSP.** Baseline headers ship now (frame-ancestors none, object-src none, HSTS, nosniff, strict referrer, permissions policy with microphone for our origin only). Scripts still allow inline because Next needs a nonce for a strict policy; the nonce based CSP is a Slice 10 hardening item.
+
+**D-008 Age gate.** The PRD blocks sign up under 18, but date of birth is a sensitive detail asked for only when a rule needs it. The consent screen asks for a required "I am 18 or older" tick and stores `users.age_confirmed_at`. No date of birth is collected at sign up.
+
+**D-009 Sensitive details encryption.** Application layer AES-256-GCM with a random IV per value and the user id as additional data (a ciphertext moved to another user's row fails to decrypt). Keys are versioned (`SENSITIVE_DATA_KEY_V1`) for rotation. Chosen over pgsodium, which Supabase is phasing out.
+
+**D-010 Column limits on users.** RLS lets a user update their own row; a column grant limits that to preferences (career stage, markets, low data mode, setup and age timestamps). Passes and usage counters are read only for users; only the service role (verified Paystack webhook) writes them.
+
+**D-011 Target markets with "Both".** "Up to three countries" is read as three markets in total. Choosing Both makes Nigeria the first market and allows two countries abroad.
+
+**D-012 Sample names.** Mock verdicts and sample data use fictional employers (Northbridge Bank, Lekki Foods), so marketing never implies a verdict about a real company.
+
+**D-013 Rejected is grey.** Rejected, No response and Skip use neutral styling, never red. Red is reserved for scam flags and form errors (PRD voice principle 5, "no blame").
+
+**D-014 Mobile nav labels.** "Applications" does not fit a 72px column at 12px on a 360px phone, so the bottom nav says "Applied" and "Check job". The desktop sidebar uses full labels.
+
+**D-015 AI module rules the pack leaves open.** `lib/ai` is the only path to a model; `runTask(name, input)` returns validated data or a typed manual fallback, never raw text.
+- Retries: one retry per call. Invalid output (schema failure, broken JSON, cut off at the token limit) retries with the problems attached. Timeouts, rate limits and 5xx retry without them. Refusals, "input too long" and other 4xx errors go straight to the manual step, because a second identical request would fail the same way. The SDK's own retries are off so a call never makes more than two requests.
+- The retry is a fresh single turn request with a `<previous_attempt>` block listing schema paths and rules. The rejected output is never sent back, logged or returned.
+- `timeoutMs` is per attempt, so the worst case is twice the task timeout.
+- Delimiters: untrusted text sits in a tag named with a random 12 character code per request (`<untrusted_input_3f9a1c...>`), so a job post can't forge the closing tag. The ignore instructions rule lives in `prompts/_system/v1.md`, shared by every task. The log carries a hash of the full system prompt, so any wording change without a version bump still shows up.
+- Structured outputs (`output_config.format`) built from the zod schema. The API can't enforce numeric or length bounds, so zod checks them after.
+- No server side refusal fallback to another model. The pack fixes one model per task and the evals gate per model; a refusal goes to the manual step instead.
+- Cost: one JSON log line per attempt with task, model, prompt version and hash, tokens, cost, latency and outcome. Prices are config (`config/ai_pricing.json`); Haiku cache rates use the standard multipliers until the price page lists them. `user_ref` is the same salted hash analytics uses, so cost per active user can be counted without an identifier. Persisting these lines, the weekly cost report and the budget alert arrive with the first real AI task (they need a table and a budget in config).
+- Cache: tasks declare a key and TTL; the key is hashed with task, model, prompt version and prompt hash, and cached values are re-validated on read. No store is wired yet because no Slice 0 task needs one.
+- Only a `smoke_test` stub task exists. Pack tasks arrive with their slices.
+
+**D-016 Error tracking.** Sentry, errors only: no tracing, session replay, feedback widget or browser breadcrumbs.
+- The browser uses a bare `@sentry/browser` client with five small integrations instead of the full `@sentry/nextjs` client. Measured cost: about 22KB compressed instead of about 75KB (largest page 200KB against the 300KB budget). The server and edge use `@sentry/nextjs` through `instrumentation.ts`.
+- Personal data: `dataCollection` turns off user info, cookies, bodies, query strings, frame variables and AI inputs at source. `beforeSend` then masks emails and phone numbers in every text field, drops the user, request bodies, cookies, query strings and all headers except content type, accept and user agent. Tested in `tests/unit/sentry-scrub.test.ts`.
+- No DSN means Sentry is off (local and preview mode). Use an EU hosted project. The DSN's host is added to the CSP `connect-src`.
+- Source maps are generated and uploaded only when `SENTRY_AUTH_TOKEN` is set, then deleted so they are never served.
+- `app/global-error.tsx` reports React render errors that never reach the window. No Figma frame: plain layout with tokens, logged as unstyled.
+
+**D-017 CI.** GitHub Actions on Node 24 with three jobs: typecheck, Vitest, ESLint and copy lint; build plus a first load budget check (`npm run check:size`, gzipped JS and CSS plus preloaded fonts per page, HTML excluded because most pages render per request); evals. The evals job runs on every change, not only prompt changes, so it can be a required check. Until the golden sets exist `evals/run.ts` lists gates G1 to G5 and exits 0; a set with cases but no scorer fails the job so a half wired set can't pass silently.
+
+## UI overhaul (12 Oct 2026, founder feedback round 2)
+
+**D-018 Lufga font, demo files.** The founder chose Lufga with Urbanist as fallback. The supplied files are Fontspring DEMO files: the licence says purchase only, and they swap 30 characters (all symbols, the hyphen and the digit 4) for a "DEMO" watermark. The subset keeps letters and . , : ; ? only; Urbanist (one variable file) renders digits and symbols. Buy a Lufga web licence and replace `app/fonts/` before any public launch.
+
+**D-019 Inactive buttons.** Primary buttons show a grey fill and muted text until the form is complete, using aria-disabled so the button stays focusable and a tap shows what is missing.
+
+**D-020 Name-free brand.** "Receipts" is a placeholder. The mark is now a verified seal with a tick, the tagline is "Apply with proof." (config), and the torn edge class is `torn-edge`.
+
+**D-021 Main action wording.** "Check a job" tested as unclear. The primary action is "Tailor my CV" everywhere, with the steps spelled out (add the job description, see if you qualify, get your CV and email). "Vault" shows as "My experience" in the interface; code keeps vault.
+
+**D-022 Core flow preview.** Capture, job check, tailored CV and send pack screens are built. Capture saves pasted text and links for real; the check, CV and pack screens run on sample data in preview mode only and 404 elsewhere until Slices 3 to 6.
+
+**D-023 Back office.** Founder asked for one. Built at `/admin`: overview against PRD targets and gates, users (masked emails), waitlist, payments with refund recording, truth reports with a 48 hour clock and the weekly CV sample, rules and lists with review then publish, AI cost and quality, audit log, team and roles.
+- Access: an `admin_members` row (owner, reviewer, support, finance) plus TOTP two factor sign in (Supabase AAL2). Non staff get a 404. Role checks live in `lib/admin/permissions.ts` and are unit tested.
+- Data goes through a service role client created per request after the guard, never sent to the browser. Every view of personal data and every change writes to `audit_log` with no personal data in `detail`.
+- Refunds are made in the Paystack dashboard and recorded here (the pack says refunds are by hand in the MVP).
+- New migration `0002_back_office.sql`: admin_members, truth_reports, ai_call_logs (mirrors `lib/ai/log.ts`), audit and rule review columns. Needs `SUPABASE_SECRET_KEY` on the server.
+- Admin layout has no Figma frame: built from the design tokens with a Night sidebar.

@@ -1,0 +1,67 @@
+-- Back office: staff roles, truth reports, AI call log, richer audit entries.
+-- Staff tables have RLS on and no policies, so only the service role (server side,
+-- behind requireAdmin) can read or write them. Nothing here is reachable from the
+-- browser with a user's token.
+
+create type public.admin_role as enum ('owner', 'reviewer', 'support', 'finance');
+
+create table public.admin_members (
+  user_id uuid primary key references public.users (id) on delete cascade,
+  role public.admin_role not null,
+  added_by uuid references public.users (id),
+  created_at timestamptz not null default now(),
+  revoked_at timestamptz
+);
+alter table public.admin_members enable row level security;
+
+-- "This is not true" reports on a CV line (PRD: reviewed within 48 hours).
+create table public.truth_reports (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  cv_version_id uuid references public.cv_versions (id) on delete set null,
+  bullet_id text,
+  reason text check (char_length(reason) <= 500),
+  status text not null default 'open' check (status in ('open', 'resolved', 'dismissed')),
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz,
+  resolved_by uuid references public.users (id)
+);
+alter table public.truth_reports enable row level security;
+create policy truth_reports_insert_own on public.truth_reports for insert to authenticated with check (user_id = (select auth.uid()));
+create policy truth_reports_select_own on public.truth_reports for select to authenticated using (user_id = (select auth.uid()));
+create index truth_reports_open_idx on public.truth_reports (status, created_at);
+
+-- One row per model attempt. Mirrors lib/ai/log.ts AiCallLog. No prompt or output text,
+-- and user_ref is a salted hash, never a user id.
+create table public.ai_call_logs (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  task text not null,
+  model text not null,
+  prompt_version text not null,
+  prompt_hash text not null,
+  pricing_version text not null,
+  attempt int not null,
+  outcome text not null,
+  latency_ms int not null,
+  input_tokens int not null default 0,
+  output_tokens int not null default 0,
+  cache_read_tokens int not null default 0,
+  cache_write_tokens int not null default 0,
+  cost_usd numeric(14, 8) not null default 0, -- lib/ai rounds to 8 places; cache reads cost fractions of a micro-dollar
+  user_ref text,
+  request_id text,
+  problems int
+);
+alter table public.ai_call_logs enable row level security;
+create index ai_call_logs_at_idx on public.ai_call_logs (at desc);
+create index ai_call_logs_task_idx on public.ai_call_logs (task, at desc);
+
+-- Audit entries carry a small detail object (never personal data) and the actor's role.
+alter table public.audit_log add column if not exists actor_role text;
+alter table public.audit_log add column if not exists detail jsonb not null default '{}'::jsonb;
+create index if not exists audit_log_at_idx on public.audit_log (at desc);
+
+-- Rule sets and country profiles move through draft, reviewed and published.
+alter table public.rule_sets add column if not exists reviewed_at timestamptz;
+alter table public.country_profiles add column if not exists reviewed_at timestamptz;
