@@ -8,6 +8,10 @@ import { Logo } from "@/components/brand/logo";
 import { APP } from "@/lib/config";
 import { NAV_ITEMS, type NavItem } from "./nav-items";
 
+// "Tailor my CV" lives in the top bar on wide screens and in the centre of the phone bar,
+// so the sidebar keeps to places, not actions.
+const SIDEBAR_ITEMS = NAV_ITEMS.filter((i) => !("primary" in i));
+
 const ICONS = { home: Category, tailor: Magicpen, applications: Send2, experience: Briefcase, settings: Setting2 };
 
 function isActive(path: string, href: string) {
@@ -29,54 +33,38 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
   return (
     <aside
       className={`sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-ink-150 bg-white transition-[width] duration-300 ease-[var(--ease-out)] lg:flex ${
-        collapsed ? "w-[92px]" : "w-[272px]"
+        collapsed ? "w-[88px]" : "w-[248px]"
       }`}
     >
-      <div className={`flex h-[84px] items-center ${collapsed ? "justify-center px-3" : "justify-between pl-7 pr-4"}`}>
+      {/* The collapse control always sits beside the logo, so collapsing never adds a row. */}
+      <div className={`flex h-[76px] items-center ${collapsed ? "justify-center gap-0.5 px-2" : "justify-between pl-6 pr-3"}`}>
         <Link href="/home" className="rounded-xl" aria-label="Home">
           <Logo collapsed={collapsed} />
         </Link>
-        {!collapsed ? (
-          <button
-            type="button"
-            onClick={toggle}
-            className="grid size-10 place-items-center rounded-xl text-ink-500 transition-colors hover:bg-ink-75 hover:text-ink-900"
-            aria-label="Collapse sidebar"
-            aria-expanded="true"
-          >
-            <span className="flex -space-x-3">
-              <ArrowLeft2 size={18} />
-              <ArrowLeft2 size={18} />
-            </span>
-          </button>
-        ) : null}
-      </div>
-      <div className="mx-5 h-px bg-ink-150" aria-hidden="true" />
-
-      {collapsed ? (
         <button
           type="button"
           onClick={toggle}
-          className="mx-auto mt-4 grid size-10 place-items-center rounded-xl text-ink-500 hover:bg-ink-75 hover:text-ink-900"
-          aria-label="Expand sidebar"
-          aria-expanded="false"
+          className={`grid place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-75 hover:text-ink-900 ${collapsed ? "size-8" : "size-10"}`}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
         >
           <span className="flex -space-x-3">
-            <ArrowRight2 size={18} />
-            <ArrowRight2 size={18} />
+            {collapsed ? <ArrowRight2 size={16} /> : <ArrowLeft2 size={18} />}
+            {collapsed ? <ArrowRight2 size={16} /> : <ArrowLeft2 size={18} />}
           </span>
         </button>
-      ) : null}
+      </div>
+      <div className="mx-4 h-px bg-ink-150" aria-hidden="true" />
 
-      <nav aria-label="Main" className="mt-6 flex-1">
-        <ul className={`space-y-1 ${collapsed ? "px-3" : "pl-3 pr-5"}`}>
-          {NAV_ITEMS.map((item) => (
+      <nav aria-label="Main" className="mt-4 flex-1">
+        <ul className="space-y-1 px-3">
+          {SIDEBAR_ITEMS.map((item) => (
             <SideLink key={item.href} item={item} active={isActive(path, item.href)} collapsed={collapsed} />
           ))}
         </ul>
       </nav>
 
-      <div className={collapsed ? "px-3 pb-6" : "px-5 pb-6"}>
+      <div className={collapsed ? "px-3 pb-5" : "px-4 pb-5"}>
         {collapsed ? footerCollapsed : footer}
         <a
           href={`mailto:${APP.support_email}`}

@@ -11,7 +11,7 @@ const DOCS = {
     title: "Privacy notice",
     version: LEGAL.consents.privacy.version,
     points: [
-      "We keep your CV, your vault, the jobs you check and the applications you log, so the app can do its job.",
+      "We keep your CV, the experience you add, the jobs you check and the applications you record, so the app can do its job.",
       "We never ask for your BVN, NIN, bank details or passport number.",
       "Date of birth, gender and state of origin are encrypted, asked for only when a job needs them, and go on a CV only when you say so for that CV.",
       "Voice recordings are deleted as soon as they are turned into text.",
@@ -26,7 +26,7 @@ const DOCS = {
     points: [
       `You must be 18 or older to use ${APP_NAME}.`,
       "You send every application yourself. We never apply, email or message an employer for you.",
-      "Our verdicts are advice. You can always apply anyway.",
+      "Our advice on a job is only advice. You can always apply anyway.",
       "Our scam check describes what a post shows. It can't prove a job is real or fake, so check before you share personal details or pay anything.",
       "You are responsible for what you send. We flag any CV line we can't trace to your own words.",
       "A pass is paid once, does not renew, and can be refunded within 7 days if you packed fewer than 3 applications.",

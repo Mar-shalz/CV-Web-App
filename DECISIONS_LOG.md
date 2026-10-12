@@ -118,3 +118,15 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-042 Sidebar active item.** Matched to the founder's reference: an inset pill with all corners rounded, a flat soft periwinkle wash, and a navy bar as the pill's left edge (the clipped corners give it the curve). Icon and label turn navy; the icon stays in its outline style. Inactive labels stay ink-500 rather than the lighter grey in the reference, to keep 4.5:1 contrast.
 
 **D-043 Count up fallback.** Animation frames pause in background tabs, which left stat numbers part counted. The final number is now set by a timer after the animation's length.
+
+## Founder feedback round 4 (12 Oct 2026)
+
+**D-044 Tighter layout.** Sidebar 248px (88px collapsed) with the collapse control always beside the logo. Top bar 76px. Content uses the same 24px side padding as the top bar and no max width, so its right edge lines up with the name in the top bar; the name's dropdown arrow is gone (it was a link, not a menu). Home sections and grids sit 12px apart. Settings fills the width in two columns from 1280px, with a full width Sign out.
+
+**D-045 Sidebar holds places only.** "Tailor my CV" left the sidebar: it is the top bar's main button on wide screens and stays in the centre of the phone bar, where there is no top bar button.
+
+**D-046 Overview cards and check in card.** Overview cards follow the founder's sketch: label on top, icon bottom left, number and hint bottom right. The check in card has no visible title or bell; a screen reader heading stays, and the lead line reads "Any news on these applications? Tap one answer for each." Each item shows the role, employer and date sent. "Our promise to you" is an itemised list and stretches to the height of Recent applications.
+
+**D-047 Modal header.** The close button sits on its own row above the title, square with an 8px radius. The modal is up to 896px wide from 640px.
+
+**D-048 Plain words pass.** For Nigerian readers and readers abroad: Interview prep (not Shortlist mode), interview notes (not debrief), saved job post (not snapshot), check if you qualify (not eligibility), must haves (not hard requirements), Join the waiting list (not an idiom). Code names stay. Terms added to design/voice.md.

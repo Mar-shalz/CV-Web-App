@@ -35,7 +35,7 @@ export default async function SettingsPage() {
   const markets = viewer.targetMarkets.map((c) => MARKETS.countries.find((x) => x.code === c)?.label ?? c).join(", ");
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-3">
       <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Settings</h1>
 
       <section className="flex animate-rise items-center gap-4 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
@@ -50,6 +50,7 @@ export default async function SettingsPage() {
         </div>
       </section>
 
+      <div className="grid items-start gap-3 xl:grid-cols-2">
       <section aria-labelledby="acct-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-2 shadow-card">
         <h2 id="acct-title" className="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">
           Account
@@ -79,9 +80,10 @@ export default async function SettingsPage() {
           <Row href="/pass" icon={<Crown1 size={20} />} title="Pass and payments" body="Your pass, receipts and the refund rule." />
         </ul>
       </section>
+      </div>
 
       <form action={signOut}>
-        <Button type="submit" variant="danger" className="w-full sm:w-auto">
+        <Button type="submit" variant="danger" size="lg" className="w-full">
           <Logout size={20} />
           Sign out
         </Button>

@@ -9,10 +9,10 @@ import { APP, APP_NAME, LIMITS, PRICES } from "@/lib/config";
 import { formatNaira } from "@/lib/format";
 
 const STEPS = [
-  { icon: DocumentUpload, title: "Add the job description", body: "Paste it, upload it, share a link, or snap a WhatsApp flyer." },
-  { icon: ShieldSearch, title: "See if it's worth applying", body: "We check hard requirements like class of degree, NYSC and age, and look for scam signs." },
+  { icon: DocumentUpload, title: "Add the job description", body: "Paste it, upload it, share a link, or add a photo of a job flyer from WhatsApp." },
+  { icon: ShieldSearch, title: "See if it's worth applying", body: "We check the must haves, like class of degree, NYSC and age, and look for signs of a scam." },
   { icon: Magicpen, title: "Get your tailored CV", body: "Rewritten to match the job, in the format the employer expects. Nothing made up." },
-  { icon: Send2, title: "Send it your way", body: "The exact subject line and email they asked for. You send it from your phone." },
+  { icon: Send2, title: "Send it yourself", body: "The exact subject line and email they asked for. You send it from your phone." },
 ];
 
 const NEVERS = [
@@ -180,7 +180,7 @@ export default function LandingPage() {
               <h3 className="text-xl font-semibold">Free forever</h3>
               <p className="mt-1 font-display text-[2.5rem] font-semibold tracking-[-0.03em]">₦0</p>
               <ul className="mt-5 space-y-3 text-[0.9375rem]">
-                {["Your experience, stored safely", "Eligibility checks on every job", "Scam checks on every job", "Your applications and check ins"].map((f) => (
+                {["Your experience, stored safely", "Check if you qualify for any job", "Scam checks on any job", "A record of every application you send"].map((f) => (
                   <li key={f} className="flex items-center gap-2.5">
                     <TickCircle size={20} variant="bulk" className="text-proof-600" />
                     {f}
@@ -217,7 +217,7 @@ export default function LandingPage() {
         <section aria-labelledby="wl-title" className="px-3 pb-16 lg:px-4 lg:pb-24">
           <div className="mx-auto max-w-[1200px] rounded-[var(--radius-panel)] bg-brand-50 p-6 lg:p-12">
             <h2 id="wl-title" className="font-display text-[1.75rem] font-semibold tracking-[-0.03em] lg:text-[2.25rem]">
-              Be first in the door
+              Join the waiting list
             </h2>
             <p className="mt-2 max-w-xl text-[0.9375rem] leading-6 text-ink-600">We&apos;re letting people in from job groups and campuses in small batches.</p>
             <div className="mt-5 max-w-xl">

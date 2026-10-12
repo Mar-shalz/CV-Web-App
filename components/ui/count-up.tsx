@@ -9,7 +9,8 @@ export function CountUp({ value, duration = 900 }: { value: number; duration?: n
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || value === 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // No animation when it can't be seen or isn't wanted: the real number shows as is.
+    if (!el || value === 0 || document.visibilityState !== "visible" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let raf = 0;
     let done: ReturnType<typeof setTimeout> | undefined;
     const io = new IntersectionObserver(([entry]) => {

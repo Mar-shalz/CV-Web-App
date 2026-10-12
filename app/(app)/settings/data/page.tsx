@@ -14,7 +14,7 @@ export default async function DataPage() {
         <h2 id="export-title" className="text-[0.9375rem] font-semibold text-ink-900">
           Download a copy
         </h2>
-        <p className="mb-4 mt-1 text-[0.8125rem] leading-5 text-ink-600">One file with your vault, jobs, CVs, applications, debriefs and payments.</p>
+        <p className="mb-4 mt-1 text-[0.8125rem] leading-5 text-ink-600">One file with your experience, jobs, CVs, applications, interview notes and payments.</p>
         <ExportData />
       </section>
       <section aria-labelledby="delete-title" className="rounded-[var(--radius-card)] border border-flag-100 bg-white p-5 shadow-card lg:p-6">
@@ -22,7 +22,7 @@ export default async function DataPage() {
           Delete my account
         </h2>
         <ul className="mb-4 mt-2 list-disc space-y-1 pl-5 text-[0.8125rem] leading-5 text-ink-700">
-          <li>Your vault, CVs, applications, job snapshots and files are deleted straight away. This can&apos;t be undone.</li>
+          <li>Your experience, CVs, applications, saved job posts and files are deleted straight away. This can&apos;t be undone.</li>
           <li>Download a copy first if you want to keep anything.</li>
           <li>An active pass ends with your account. If you&apos;re within {PRICES.refund_rule.within_days} days of paying, ask us about a refund before you delete.</li>
           <li>Paystack keeps its own payment records, as the law requires.</li>

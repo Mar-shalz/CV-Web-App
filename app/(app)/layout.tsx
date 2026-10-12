@@ -34,7 +34,7 @@ export default async function AppLayout({ children, modal }: { children: React.R
         ) : null}
 
         <header className="sticky top-0 z-20 border-b border-ink-150 bg-white/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-          <div className="flex h-16 items-center gap-3 px-4 lg:h-[84px] lg:gap-4 lg:px-8 xl:px-10">
+          <div className="flex h-16 items-center gap-3 px-4 lg:h-[76px] lg:gap-4 lg:px-6">
             <Link href="/home" className="flex items-center gap-2 lg:hidden" aria-label={`${APP_NAME} home`}>
               <Mark size={34} />
               <span className="font-display text-lg font-semibold tracking-[-0.02em] text-brand-900">{APP_NAME}</span>
@@ -83,8 +83,8 @@ export default async function AppLayout({ children, modal }: { children: React.R
           </div>
         </header>
 
-        {/* Content sits close to the sidebar on wide screens instead of floating in the middle. */}
-        <main id="main" className="w-full max-w-[1480px] flex-1 px-4 pb-32 pt-5 lg:px-8 lg:pb-12 lg:pt-8 xl:px-10">
+        {/* Same side padding as the top bar, so content lines up with its right edge. */}
+        <main id="main" className="w-full flex-1 px-4 pb-32 pt-4 lg:px-6 lg:pb-10 lg:pt-5">
           {children}
         </main>
       </div>

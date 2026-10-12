@@ -63,7 +63,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
       ) : INVITED.has(app.status) ? (
         <Banner tone="proof" icon={<Teacher size={24} variant="bulk" />} title="You're invited. Let's get you ready." body="Likely questions from this job and the CV you sent, practice answers with feedback, and a checklist for the day." href={`/applications/${app.id}/shortlist`} cta="Prepare for the interview" />
       ) : hadInterview && !debriefed ? (
-        <Banner tone="ink" icon={<MessageQuestion size={24} variant="bulk" />} title="How did the interview go?" body="Two minutes, voice or text. Note the questions they asked while you still remember them." href={`/applications/${app.id}/debrief`} cta="Add a debrief" />
+        <Banner tone="ink" icon={<MessageQuestion size={24} variant="bulk" />} title="How did the interview go?" body="Two minutes, voice or text. Note the questions they asked while you still remember them." href={`/applications/${app.id}/debrief`} cta="Add interview notes" />
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">

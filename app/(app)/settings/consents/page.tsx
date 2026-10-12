@@ -53,7 +53,7 @@ export default async function ConsentsPage() {
           Optional
         </h2>
         <ConsentSwitch type="sensitive_details" title="Sensitive details" body="Lets us keep the details a job's rules need, encrypted. Turning this off deletes them." initial={on("sensitive_details")} />
-        <ConsentSwitch type="question_bank" title="Question bank" body="Share the questions from your debriefs, without your name or notes, so other graduates can practise." initial={on("question_bank")} />
+        <ConsentSwitch type="question_bank" title="Question bank" body="Share the interview questions from your notes, without your name, so other graduates can practise." initial={on("question_bank")} />
         <ConsentSwitch type="marketing" title="News and tips" body="Occasional emails about new features and job hunting tips. Never shared." initial={on("marketing")} />
       </section>
     </SettingsShell>

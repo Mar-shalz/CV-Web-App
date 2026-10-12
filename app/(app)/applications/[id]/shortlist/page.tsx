@@ -14,7 +14,7 @@ import { Drill } from "@/components/shortlist/drill";
 import { ButtonLink } from "@/components/ui/button";
 import { ArrowLeft2, Teacher, TickCircle, Crown1, DocumentText } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Shortlist mode" };
+export const metadata: Metadata = { title: "Interview prep" };
 
 export default async function ShortlistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -63,7 +63,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
               </ButtonLink>
             </div>
             <p className="mt-3 text-xs leading-5 text-ink-500">
-              {boost.label}: Shortlist mode for this one invite, paid once. The pass includes Shortlist mode for every invite and tailored CVs for {pass.days} days. Your application log and check ins stay free.
+              {boost.label}: interview prep for this one invite, paid once. The pass includes interview prep for every invite and tailored CVs for {pass.days} days. Your application log and check ins stay free.
             </p>
           </div>
         </section>
@@ -80,7 +80,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
       <header className="animate-rise">
         <p className="inline-flex items-center gap-1.5 rounded-full bg-proof-50 px-3 py-1 text-[0.8125rem] font-semibold text-proof-700">
           <Teacher size={16} variant="bulk" />
-          Shortlist mode
+          Interview prep
         </p>
         <h1 className="mt-3 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Get ready for {app.employer}</h1>
         <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Everything here comes from the job post you saved and the exact CV you sent. Nothing new to memorise, only your own proof to explain well.</p>

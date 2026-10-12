@@ -8,7 +8,7 @@ import { voiceEnabled } from "@/lib/speech";
 import { DebriefForm } from "@/components/applications/debrief-form";
 import { ArrowLeft2 } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Debrief" };
+export const metadata: Metadata = { title: "Interview notes" };
 
 export default async function DebriefPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

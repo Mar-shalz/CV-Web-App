@@ -11,8 +11,8 @@ import { Crown1, TickCircle, ShieldTick, Card, Bank, Mobile, Teacher, Receipt21,
 
 export const metadata: Metadata = { title: "Job hunt pass" };
 
-const ADDS = ["Tailored CVs for every job, to the CV writing standard", "Application packs: the email, subject line and checklist each employer asked for", "Shortlist mode for every invite: likely questions and practice with feedback"];
-const FREE = ["Your vault of experience", "Eligibility and scam checks on any job", "Your application log, job snapshots and check ins"];
+const ADDS = ["A tailored CV for every job you apply to", "The exact email, subject line and documents each employer asks for", "Interview prep for every invite: likely questions and practice with feedback"];
+const FREE = ["Your saved experience", "Checking if you qualify, and scam checks, on any job", "A record of every application, with the job post and the CV you sent"];
 
 type Search = { product?: string; application?: string; reason?: string };
 

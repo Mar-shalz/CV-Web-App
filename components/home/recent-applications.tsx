@@ -12,7 +12,7 @@ const CHANNEL = {
 
 export function RecentApplications({ items, title = "Recent applications", showAll = true }: { items: HomeApplication[]; title?: string; showAll?: boolean }) {
   return (
-    <section aria-labelledby="recent-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card">
+    <section aria-labelledby="recent-title" className="h-full rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card">
       <div className="flex min-h-12 items-center justify-between gap-3 px-5 pt-5">
         <h2 id="recent-title" className="text-lg font-semibold text-ink-900">
           {title}

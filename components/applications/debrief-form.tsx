@@ -38,7 +38,7 @@ export function DebriefForm({ applicationId, voice, existing }: { applicationId:
             <TickCircle size={26} variant="bulk" />
           </span>
           <div>
-            <h2 className="font-display text-lg font-semibold text-ink-900">Debrief saved</h2>
+            <h2 className="font-display text-lg font-semibold text-ink-900">Notes saved</h2>
             <p className="text-sm text-ink-600">
               {FORMAT[result.format ?? "unknown"]}
               {result.panel ? ` · ${result.panel}` : ""}
@@ -126,7 +126,7 @@ export function DebriefForm({ applicationId, voice, existing }: { applicationId:
         </p>
       ) : null}
       <Button size="lg" className="mt-5 w-full sm:w-auto" onClick={submit} disabled={busy || text.trim().length < 20} aria-busy={busy || undefined}>
-        {busy ? "Saving…" : "Save my debrief"}
+        {busy ? "Saving…" : "Save my notes"}
       </Button>
     </section>
   );

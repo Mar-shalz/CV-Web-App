@@ -43,7 +43,7 @@ export default async function PaymentResultPage({ searchParams }: { searchParams
           </span>
           <h1 className="relative mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Payment confirmed</h1>
           <p className="relative mt-2 text-[0.9375rem] leading-6 text-ink-600">
-            {label}, {formatNaira(v.amount)}.{v.ends ? ` Active until ${formatDate(v.ends)}.` : " Shortlist mode is unlocked for this invite."}
+            {label}, {formatNaira(v.amount)}.{v.ends ? ` Active until ${formatDate(v.ends)}.` : " Interview prep is unlocked for this invite."}
           </p>
           <div className="relative mt-6">
             {v.type === "interview_boost" && v.applicationId ? (

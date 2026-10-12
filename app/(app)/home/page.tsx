@@ -16,6 +16,13 @@ import { Send2, TickCircle, Clock, Briefcase, ShieldTick } from "@/components/ic
 
 export const metadata: Metadata = { title: "Home" };
 
+const PROMISES = [
+  { title: "Only your real experience", body: "We never add anything to your CV that you didn't tell us." },
+  { title: "Honest job checks", body: "We never call a job \u201csafe\u201d. We show you what we found, so you decide." },
+  { title: "You stay in control", body: "We never send anything to an employer for you. You send it yourself." },
+  { title: "Your data is yours", body: "Download it or delete it any time in Settings." },
+];
+
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ preview?: string }> }) {
   const viewer = await requireReadyViewer();
   const { preview } = await searchParams;
@@ -32,8 +39,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const name = firstName(viewer.fullName);
 
   return (
-    <div className="stagger space-y-4">
-      <header style={{ "--i": 0 } as CSSProperties}>
+    <div className="stagger space-y-3">
+      <header style={{ "--i": 0 } as CSSProperties} className="pb-1">
         <p className="text-sm text-ink-500">{formatDate(new Date())}</p>
         <h1 className="mt-0.5 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">
           {greeting()}
@@ -75,27 +82,33 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
       <div
         style={{ "--i": 4 } as CSSProperties}
-        className={isNew ? "grid gap-4 md:grid-cols-2" : "grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]"}
+        className={isNew ? "grid gap-3 md:grid-cols-2" : "grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]"}
       >
         {isNew ? null : (
           <div className="min-w-0">
             <RecentApplications items={data.recent} />
           </div>
         )}
-        <div className={isNew ? "contents" : "space-y-4"}>
+        <div className={isNew ? "contents" : "flex flex-col gap-3"}>
           <div className="lg:hidden">
             <AccessCard state={access} />
           </div>
           <VaultCard confirmed={data.stats.vaultConfirmed} />
-          <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
-            <h2 className="flex items-center gap-2 text-[0.9375rem] font-semibold text-ink-900">
+          <section aria-labelledby="promise-title" className="flex-1 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
+            <h2 id="promise-title" className="flex items-center gap-2 text-[0.9375rem] font-semibold text-ink-900">
               <ShieldTick size={20} variant="bulk" className="text-proof-600" />
               Our promise to you
             </h2>
-            <ul className="mt-3 space-y-2 text-[0.8125rem] leading-5 text-ink-600">
-              <li>We never add anything to your CV that you didn&apos;t tell us.</li>
-              <li>We never call a job &ldquo;safe&rdquo;. We show you what we found.</li>
-              <li>We never send anything to an employer for you.</li>
+            <ul className="mt-4 space-y-3.5">
+              {PROMISES.map((p) => (
+                <li key={p.title} className="flex gap-3">
+                  <TickCircle size={20} variant="bulk" className="mt-0.5 shrink-0 text-proof-600" />
+                  <span>
+                    <span className="block text-sm font-semibold text-ink-900">{p.title}</span>
+                    <span className="block text-[0.8125rem] leading-5 text-ink-600">{p.body}</span>
+                  </span>
+                </li>
+              ))}
             </ul>
           </section>
         </div>

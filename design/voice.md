@@ -55,6 +55,14 @@ Tone shifts with the moment, voice does not:
 | Looks genuine / Couldn't verify / Red flags found | Safe, legit, scam (about a company) | We describe the post, never accuse an employer |
 | Data saver | Low data mode | Benefit, not mechanism |
 | Sign in or create an account | Log in / Register (two paths) | One passwordless path |
+| Interview prep | Shortlist mode | Says what it does (code keeps "shortlist") |
+| Interview notes | Debrief | Plain for first time job seekers (code keeps "debrief") |
+| Practise / practice | Drill | Less military, clearer for readers abroad |
+| The job post you saved | Snapshot | Says what it is |
+| Check if you qualify | Eligibility | Everyday words |
+| Must haves | Hard requirements, hard filters | Everyday words |
+| Join the waiting list | Be first in the door | Idioms don't travel; readers abroad and second language readers |
+| Any news on these applications? | Heard back yet? (card title) | Founder asked for no title on the card; the line says what to do |
 
 ## 5. Microcopy library
 

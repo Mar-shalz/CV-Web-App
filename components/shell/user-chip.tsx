@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { initials } from "@/lib/format";
-import { ArrowDown2 } from "@/components/icons";
 
 export function Avatar({ name, size = 44 }: { name: string | null; size?: number }) {
   return (
@@ -16,13 +15,12 @@ export function Avatar({ name, size = 44 }: { name: string | null; size?: number
 
 export function UserChip({ name, stageLabel }: { name: string | null; stageLabel: string | null }) {
   return (
-    <Link href="/settings" className="flex min-h-12 items-center gap-3 rounded-2xl py-1 pl-1 pr-2 transition-colors hover:bg-ink-75">
+    <Link href="/settings" className="flex min-h-12 items-center gap-3 rounded-2xl py-1 pl-1 pr-1 transition-colors hover:bg-ink-75 xl:pr-3">
       <Avatar name={name} />
       <span className="hidden text-left leading-tight xl:block">
         <span className="block text-[0.9375rem] font-semibold text-ink-900">{name ?? "Your account"}</span>
         {stageLabel ? <span className="mt-0.5 block text-xs text-ink-500">{stageLabel}</span> : null}
       </span>
-      <ArrowDown2 size={16} className="hidden text-ink-400 xl:block" />
       <span className="sr-only">Account and settings</span>
     </Link>
   );
