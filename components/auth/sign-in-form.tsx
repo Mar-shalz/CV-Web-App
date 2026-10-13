@@ -9,8 +9,8 @@ import { FormError } from "./form-error";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function SignInForm({ initialError }: { initialError?: string }) {
-  const [googleState, googleAction] = useActionState<FormState>(signInWithGoogle, undefined);
+export function SignInForm({ initialError, dest }: { initialError?: string; dest?: "admin" }) {
+  const [googleState, googleAction] = useActionState<FormState, FormData>(signInWithGoogle, undefined);
   const [emailState, emailAction] = useActionState<FormState, FormData>(sendEmailCode, undefined);
   // Controlled, so a failed submit never wipes what the user typed.
   const [email, setEmail] = useState("");
@@ -24,6 +24,7 @@ export function SignInForm({ initialError }: { initialError?: string }) {
       <FormError message={googleState?.error ?? emailState?.error ?? initialError} />
 
       <form action={googleAction}>
+        {dest ? <input type="hidden" name="dest" value={dest} /> : null}
         <SubmitButton variant="secondary" size="lg" className="w-full" pendingLabel="Opening Google">
           <GoogleIcon />
           Continue with Google
@@ -37,6 +38,7 @@ export function SignInForm({ initialError }: { initialError?: string }) {
       </div>
 
       <form action={emailAction} className="space-y-5" noValidate>
+        {dest ? <input type="hidden" name="dest" value={dest} /> : null}
         <Field id="email" label="Email address" error={emailError} hint="We'll email you a code and a sign in link. No password needed.">
           <TextInput
             id="email"

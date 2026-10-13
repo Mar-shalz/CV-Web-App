@@ -58,7 +58,10 @@ function tldCountry(host: string | null): string | null {
   return null;
 }
 
-export function detectDestination(job: ParsedJob, targetMarkets: string[]): Destination {
+export function detectDestination(job: ParsedJob, markets: string[]): Destination {
+  // "INTL" means "abroad" without a country (lib/markets.ts): the post decides.
+  const abroadOnly = markets.includes("INTL") && !markets.includes("NG");
+  const targetMarkets = markets.filter((m) => m !== "INTL");
   const votes = new Map<string, { score: number; signals: string[] }>();
   const vote = (country: string | null, strength: number, signal: string) => {
     if (!country) return;
@@ -98,10 +101,15 @@ export function detectDestination(job: ParsedJob, targetMarkets: string[]): Dest
     [country, { score: confidence, signals }] = ranked[0] as [string, { score: number; signals: string[] }];
     // A disagreeing signal of the same strength lowers confidence.
     if (ranked[1] && ranked[1][1].score >= confidence - 0.05) confidence = Math.min(confidence, 0.65);
-  } else {
-    country = targetMarkets[0] ?? "NG";
+  } else if (targetMarkets[0]) {
+    country = targetMarkets[0];
     confidence = 0.3;
     signals = ["No location found: using your first target market"];
+  } else {
+    // Applying abroad with no country in the post: the UK format is our international one.
+    country = abroadOnly ? "GB" : "NG";
+    confidence = 0.3;
+    signals = [abroadOnly ? "No location in the post: using our international (UK style) format. Change the country if you know it" : "No location found: using Nigeria"];
   }
 
   const ask = confidence >= 0.5 && confidence < 0.8;

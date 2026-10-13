@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { LIMITS, MARKETS } from "@/lib/config";
+import { LIMITS } from "@/lib/config";
 import banned from "@/config/lists/banned_phrases.json";
 import { maskEmail } from "./permissions";
 import type { Staff } from "./auth";
@@ -99,39 +99,10 @@ export async function getOverview(staff: Staff): Promise<Overview> {
 // ---------------------------------------------------------------------------
 // Users and waitlist
 // ---------------------------------------------------------------------------
-export type UserRow = { id: string; email: string; stage: string; markets: string; joined: string; setup: boolean };
-
-const stageLabel = (id: string | null) => MARKETS.career_stages.find((s) => s.id === id)?.label ?? "Not set";
-const marketLabel = (codes: string[] | null) => (codes ?? []).map((c) => MARKETS.countries.find((x) => x.code === c)?.label ?? c).join(", ") || "Not set";
-
-export async function listUsers(staff: Staff, q?: string): Promise<UserRow[]> {
-  if (staff.preview) {
-    const sample: UserRow[] = [
-      { id: "u1", email: maskEmail("tolu.adebayo@gmail.com"), stage: stageLabel("nysc"), markets: marketLabel(["NG", "GB"]), joined: ago(0, 3), setup: true },
-      { id: "u2", email: maskEmail("chidi.okafor@yahoo.com"), stage: stageLabel("graduate_0_3"), markets: marketLabel(["NG"]), joined: ago(1), setup: true },
-      { id: "u3", email: maskEmail("amaka.eze@outlook.com"), stage: stageLabel("experienced_3_plus"), markets: marketLabel(["GB", "CA"]), joined: ago(2), setup: true },
-      { id: "u4", email: maskEmail("ife.bello@gmail.com"), stage: stageLabel(null), markets: marketLabel(null), joined: ago(2, 5), setup: false },
-      { id: "u5", email: maskEmail("kunle.ade@gmail.com"), stage: stageLabel("final_year"), markets: marketLabel(["NG"]), joined: ago(4), setup: true },
-    ];
-    return q ? sample.filter((u) => u.email.startsWith(q.slice(0, 2).toLowerCase())) : sample;
-  }
-  const db = createAdminClient();
-  let query = db.from("users").select("id, email, career_stage, target_markets, created_at, setup_completed_at").order("created_at", { ascending: false }).limit(50);
-  if (q) query = query.ilike("email", `${q.replace(/[%_]/g, "")}%`);
-  const { data } = await query;
-  return (data ?? []).map((u) => ({
-    id: u.id,
-    email: maskEmail(u.email),
-    stage: stageLabel(u.career_stage),
-    markets: marketLabel(u.target_markets),
-    joined: u.created_at,
-    setup: Boolean(u.setup_completed_at),
-  }));
-}
-
 export type WaitlistData = { total: number; bySource: { source: string; count: number }[]; rows: { email: string; source: string; joined: string }[] };
 
-export async function getWaitlist(staff: Staff): Promise<WaitlistData> {
+export async function getWaitlist(staff: Staff, full = false): Promise<WaitlistData> {
+  const show = (email: string | null | undefined) => (full ? (email ?? "Unknown") : maskEmail(email));
   if (staff.preview) {
     return {
       total: 412,
@@ -142,9 +113,9 @@ export async function getWaitlist(staff: Staff): Promise<WaitlistData> {
         { source: "Campus talks", count: 88 },
       ],
       rows: [
-        { email: maskEmail("bisi.o@gmail.com"), source: "Price button", joined: ago(0, 1) },
-        { email: maskEmail("emeka.n@gmail.com"), source: "Job group links", joined: ago(0, 6) },
-        { email: maskEmail("zainab.m@yahoo.com"), source: "Landing page footer", joined: ago(1) },
+        { email: show("bisi.o@gmail.com"), source: "Price button", joined: ago(0, 1) },
+        { email: show("emeka.n@gmail.com"), source: "Job group links", joined: ago(0, 6) },
+        { email: show("zainab.m@yahoo.com"), source: "Landing page footer", joined: ago(1) },
       ],
     };
   }
@@ -158,29 +129,40 @@ export async function getWaitlist(staff: Staff): Promise<WaitlistData> {
   return {
     total: count ?? 0,
     bySource: [...by].map(([source, c]) => ({ source, count: c })).sort((a, b) => b.count - a.count),
-    rows: (data ?? []).slice(0, 50).map((r) => ({ email: maskEmail(r.email), source: r.source ?? "unknown", joined: r.created_at })),
+    rows: (data ?? []).slice(0, 50).map((r) => ({ email: show(r.email), source: r.source ?? "unknown", joined: r.created_at })),
   };
 }
 
 // ---------------------------------------------------------------------------
 // Payments
 // ---------------------------------------------------------------------------
-export type PaymentRow = { id: string; reference: string; product: string; amountKobo: number; status: string; created: string };
+export type PaymentRow = { id: string; userId: string; email: string; reference: string; product: string; amountKobo: number; status: string; created: string };
 
-export async function listPayments(staff: Staff): Promise<PaymentRow[]> {
+/** Payments, newest first, with who paid. Full emails only for the owner ("users.manage"). */
+export async function listPayments(staff: Staff, full = false): Promise<PaymentRow[]> {
+  const show = (email: string | null | undefined) => (full ? (email ?? "Unknown") : maskEmail(email));
   if (staff.preview) {
     return [
-      { id: "p1", reference: "PSK_7f3a91", product: "job_hunt_30d", amountKobo: 500000, status: "active", created: ago(0, 2) },
-      { id: "p2", reference: "PSK_2c8b44", product: "job_hunt_30d", amountKobo: 500000, status: "pending", created: ago(0, 1) },
-      { id: "p3", reference: "PSK_91d0e2", product: "interview_boost", amountKobo: 150000, status: "active", created: ago(1) },
-      { id: "p4", reference: "PSK_5e61aa", product: "job_hunt_30d", amountKobo: 500000, status: "pending", created: ago(1, 4) },
-      { id: "p5", reference: "PSK_c0ffee", product: "job_hunt_30d", amountKobo: 500000, status: "refunded", created: ago(6) },
-      { id: "p6", reference: "PSK_0a0b1c", product: "job_hunt_30d", amountKobo: 500000, status: "failed", created: ago(7) },
+      { id: "p1", userId: "u1", email: show("tolu.adebayo@gmail.com"), reference: "PSK_7f3a91", product: "job_hunt_30d", amountKobo: 500000, status: "active", created: ago(0, 2) },
+      { id: "p2", userId: "u2", email: show("chidi.okafor@yahoo.com"), reference: "PSK_2c8b44", product: "job_hunt_30d", amountKobo: 500000, status: "pending", created: ago(0, 1) },
+      { id: "p3", userId: "u1", email: show("tolu.adebayo@gmail.com"), reference: "PSK_91d0e2", product: "interview_boost", amountKobo: 150000, status: "active", created: ago(1) },
+      { id: "p4", userId: "u4", email: show("ife.bello@gmail.com"), reference: "PSK_5e61aa", product: "job_hunt_30d", amountKobo: 500000, status: "pending", created: ago(1, 4) },
+      { id: "p5", userId: "u5", email: show("kunle.ade@gmail.com"), reference: "PSK_c0ffee", product: "job_hunt_30d", amountKobo: 500000, status: "refunded", created: ago(6) },
+      { id: "p6", userId: "u3", email: show("amaka.eze@outlook.com"), reference: "PSK_0a0b1c", product: "job_hunt_30d", amountKobo: 500000, status: "failed", created: ago(7) },
     ];
   }
   const db = createAdminClient();
-  const { data } = await db.from("passes").select("id, paystack_reference, type, amount_kobo, status, created_at").neq("type", "trial_3d").order("created_at", { ascending: false }).limit(100);
-  return (data ?? []).map((p) => ({ id: p.id, reference: p.paystack_reference ?? "None", product: p.type, amountKobo: p.amount_kobo, status: p.status, created: p.created_at }));
+  const { data } = await db.from("passes").select("id, user_id, paystack_reference, type, amount_kobo, status, created_at, users(email)").neq("type", "trial_3d").order("created_at", { ascending: false }).limit(100);
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    userId: p.user_id,
+    email: show((p.users as unknown as { email: string } | null)?.email),
+    reference: p.paystack_reference ?? "None",
+    product: p.type,
+    amountKobo: p.amount_kobo,
+    status: p.status,
+    created: p.created_at,
+  }));
 }
 
 // ---------------------------------------------------------------------------

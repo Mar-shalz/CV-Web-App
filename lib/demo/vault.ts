@@ -12,6 +12,7 @@ export const DEMO_VAULT: VaultRole[] = [
     end: "2026-10",
     isCurrent: false,
     grade: null,
+    employmentType: null,
     source: "cv_import",
     confirmed: true,
     items: [
@@ -29,6 +30,7 @@ export const DEMO_VAULT: VaultRole[] = [
     end: "2023-06",
     isCurrent: false,
     grade: null,
+    employmentType: null,
     source: "cv_import",
     confirmed: true,
     items: [
@@ -46,6 +48,7 @@ export const DEMO_VAULT: VaultRole[] = [
     end: "2024-07",
     isCurrent: false,
     grade: null,
+    employmentType: null,
     source: "text",
     confirmed: true,
     items: [
@@ -62,6 +65,7 @@ export const DEMO_VAULT: VaultRole[] = [
     end: "2024-06",
     isCurrent: false,
     grade: null,
+    employmentType: null,
     source: "cv_import",
     confirmed: true,
     items: [
@@ -78,6 +82,7 @@ export const DEMO_VAULT: VaultRole[] = [
     end: "2024-07",
     isCurrent: false,
     grade: "Second Class Upper",
+    employmentType: null,
     source: "cv_import",
     confirmed: true,
     items: [],
@@ -92,6 +97,7 @@ export const DEMO_VAULT: VaultRole[] = [
     end: null,
     isCurrent: true,
     grade: null,
+    employmentType: null,
     source: "text",
     confirmed: false,
     items: [],

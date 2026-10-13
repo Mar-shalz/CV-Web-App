@@ -1,5 +1,6 @@
 import { requireAdmin, logAdminAction } from "@/lib/admin/auth";
 import { getWaitlist } from "@/lib/admin/data";
+import { can } from "@/lib/admin/permissions";
 import { PageHeader, Panel, Table, Td } from "@/components/admin/ui";
 import { formatDate } from "@/lib/format";
 
@@ -7,7 +8,7 @@ export const metadata = { title: "Waitlist" };
 
 export default async function AdminWaitlist() {
   const staff = await requireAdmin("waitlist");
-  const w = await getWaitlist(staff);
+  const w = await getWaitlist(staff, can(staff.role, "users.manage"));
   await logAdminAction(staff, "view", "waitlist");
   const max = Math.max(1, ...w.bySource.map((s) => s.count));
 

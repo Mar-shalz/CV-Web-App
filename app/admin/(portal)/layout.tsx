@@ -1,34 +1,37 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
-import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminNav, AdminMobileNav } from "@/components/admin/admin-nav";
+import { SubmitButton } from "@/components/auth/submit-button";
+import { signOutAdmin } from "@/app/admin/actions";
 import { Avatar } from "@/components/shell/user-chip";
 import { getStaff } from "@/lib/admin/auth";
 import { PERMISSIONS, can, ROLE_LABELS } from "@/lib/admin/permissions";
-import { ShieldTick } from "@/components/icons";
+import { ShieldTick, Logout } from "@/components/icons";
 
 export const metadata: Metadata = { title: { default: "Back office", template: "%s · Back office" }, robots: { index: false, follow: false } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const staff = await getStaff();
-  // Non staff get a plain 404: the back office never admits it exists.
+  // Signed in but not on the team: a plain 404. Signed out visits go to /admin/sign-in (proxy.ts).
   if (!staff) notFound();
   const allowed = PERMISSIONS.filter((p) => can(staff.role, p));
 
   return (
     <div className="flex min-h-dvh bg-[#f3f5fa]">
-      <aside className="sticky top-0 hidden h-dvh w-[272px] shrink-0 flex-col bg-brand-950 lg:flex">
-        <div className="flex h-[84px] items-center px-7">
+      {/* Fixed to the screen height and never scrolls: the page scrolls beside it. */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[272px] flex-col overflow-hidden bg-brand-950 pb-4 lg:flex">
+        <div className="flex h-[72px] shrink-0 items-center px-7">
           <Logo tone="onDark" />
         </div>
-        <div className="mx-6 mb-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <div className="mx-6 mb-4 shrink-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 [@media(max-height:700px)]:hidden">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-300">Back office</p>
           <p className="mt-0.5 text-xs text-white/60">Staff only. Every view is logged.</p>
         </div>
-        <div className="flex-1 overflow-y-auto">{staff.mfa ? <AdminNav allowed={allowed} /> : null}</div>
+        {staff.mfa ? <AdminNav allowed={allowed} /> : <div className="flex-1" />}
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-[272px]">
         {staff.preview ? (
           <p className="bg-care-50 px-4 py-2 text-center text-[0.8125rem] font-medium text-care-700">Preview mode: sample data, no database connected.</p>
         ) : null}
@@ -48,19 +51,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <span className="text-xs text-ink-500">{ROLE_LABELS[staff.role].label}</span>
               </span>
               <Avatar name={staff.name} size={40} />
+              <form action={signOutAdmin}>
+                <SubmitButton variant="secondary" size="sm" pendingLabel="Signing out" aria-label="Sign out of the back office">
+                  <Logout size={18} />
+                  <span className="hidden sm:inline">Sign out</span>
+                </SubmitButton>
+              </form>
             </div>
           </div>
-          {staff.mfa ? (
-            <nav aria-label="Back office" className="no-scrollbar flex gap-1 overflow-x-auto border-t border-ink-100 px-3 py-2 lg:hidden">
-              {allowed
-                .filter((p) => !p.includes("."))
-                .map((p) => (
-                  <a key={p} href={p === "overview" ? "/admin" : `/admin/${p === "reviews" ? "reviews" : p}`} className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-ink-75 px-3.5 text-sm font-medium capitalize text-ink-700">
-                    {p}
-                  </a>
-                ))}
-            </nav>
-          ) : null}
+          {staff.mfa ? <AdminMobileNav allowed={allowed} /> : null}
         </header>
         <main id="main" className="w-full max-w-[1480px] flex-1 space-y-6 px-4 py-6 lg:px-8 lg:py-8">
           {children}

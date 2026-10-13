@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/auth/submit-button";
 import { FormError } from "@/components/auth/form-error";
 import type { VaultItem } from "@/lib/vault/data";
 import type { Ownership } from "@/lib/vault/schema";
+import { CloseSquare } from "@/components/icons";
 
 const OWN: { id: Ownership; label: string; hint: string }[] = [
   { id: "did", label: "I did it", hint: "Your own work" },
@@ -34,8 +35,30 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
   }, undefined);
   const hasNumber = /\d/.test(text);
 
+  const close = () => onDone?.();
+
   return (
-    <form action={action} className="space-y-3" noValidate>
+    <form
+      action={action}
+      className="space-y-3"
+      noValidate
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && onDone) {
+          e.preventDefault();
+          close();
+        }
+      }}
+    >
+      {!item ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-ink-900">{added ? `${added} added` : "Add achievements"}</p>
+          {onDone ? (
+            <button type="button" onClick={close} aria-label="Close and stop adding" className="grid size-10 place-items-center rounded-lg border border-ink-150 bg-white text-ink-600 transition-colors hover:bg-ink-75 hover:text-ink-900">
+              <CloseSquare size={18} />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <FormError message={state?.error} />
       <input type="hidden" name="role_id" value={roleId} />
       {item ? <input type="hidden" name="item_id" value={item.id} /> : null}
@@ -78,9 +101,9 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
         <SubmitButton size="sm" pendingLabel="Saving" inactive={text.trim().length < 8}>
           {item ? "Save" : added ? "Add this one too" : "Add achievement"}
         </SubmitButton>
-        {!item && added ? (
-          <button type="button" onClick={() => onDone?.()} className="inline-flex min-h-12 items-center rounded-2xl px-4 text-sm font-semibold text-ink-700 hover:bg-ink-75">
-            Done
+        {onDone ? (
+          <button type="button" onClick={close} className="inline-flex min-h-12 items-center rounded-2xl px-4 text-sm font-semibold text-ink-700 hover:bg-ink-75">
+            {item ? "Cancel" : added ? "Done" : "Cancel"}
           </button>
         ) : null}
       </div>

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { after } from "next/server";
+import { recordVisit } from "@/lib/activity";
 import { Mark } from "@/components/brand/logo";
 import { Sidebar, BottomNav } from "@/components/shell/nav";
 import { AccessBadge, AccessCard } from "@/components/shell/access-card";
@@ -16,6 +18,8 @@ import { APP_NAME, MARKETS } from "@/lib/config";
 
 export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const viewer = await requireReadyViewer();
+  // Counts the day as active for the back office, after the page is sent.
+  if (!viewer.preview) after(() => recordVisit(viewer.id));
   const [jar, checkIns, inbox] = await Promise.all([cookies(), getCheckIns(viewer), getInbox(viewer)]);
   const access = accessState({
     trialStartedAt: viewer.trial.startedAt,

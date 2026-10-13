@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { confirmItem, confirmRole, deleteItem, deleteRole } from "@/app/(app)/vault/actions";
 import type { VaultItem, VaultRole } from "@/lib/vault/data";
-import { ROLE_KIND_LABELS } from "@/lib/vault/schema";
+import { ROLE_KIND_LABELS, EMPLOYMENT_LABELS } from "@/lib/vault/schema";
 import { rangeLabel } from "@/lib/vault/dates";
 import { RoleForm } from "./role-form";
 import { ItemForm } from "./item-form";
 import { Badge } from "@/components/ui/status";
 import { AddCircle, Edit2, Trash, TickCircle, Warning2, Briefcase, Book1, Award, Teacher, Building4, People, Lamp } from "@/components/icons";
+import { PendingButton } from "@/components/ui/pending-button";
 
 const KIND_ICON = {
   job: Briefcase,
@@ -52,6 +53,7 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {role.confirmed ? <Badge tone="proof">Confirmed</Badge> : <Badge tone="care">Check these details</Badge>}
+            {role.employmentType && role.employmentType !== "full_time" ? <Badge tone="neutral">{EMPLOYMENT_LABELS[role.employmentType]}</Badge> : null}
             {noDates ? <Badge tone="care">No dates</Badge> : null}
             {!isRecordOnly && role.items.length === 0 ? <Badge tone="neutral">No achievements yet</Badge> : null}
           </div>
@@ -72,7 +74,7 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
           <div className="mt-3 flex gap-2">
             <form action={deleteRole}>
               <input type="hidden" name="role_id" value={role.id} />
-              <button className="min-h-11 rounded-xl bg-flag-600 px-4 text-sm font-semibold text-white hover:bg-flag-700">Remove</button>
+              <PendingButton pendingLabel="Removing" className="min-h-11 rounded-xl bg-flag-600 px-4 text-sm font-semibold text-white hover:bg-flag-700">Remove</PendingButton>
             </form>
             <button type="button" onClick={() => setConfirmDelete(false)} className="min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-ink-700">
               Keep it
@@ -83,17 +85,17 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
 
       {editing ? (
         <div className="animate-rise border-t border-ink-100 p-4 lg:p-5">
-          <RoleForm role={role} onDone={() => setEditing(false)} />
+          <RoleForm role={role} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
         </div>
       ) : !role.confirmed ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-ink-100 px-4 py-3 lg:px-5">
           <p className="mr-auto text-[0.8125rem] text-ink-600">Is the title, employer, dates{role.grade ? " and grade" : ""} right?</p>
           <form action={confirmRole}>
             <input type="hidden" name="role_id" value={role.id} />
-            <button className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-proof-50 px-4 text-sm font-semibold text-proof-700 hover:bg-proof-100">
+            <PendingButton pendingLabel="Saving" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-proof-50 px-4 text-sm font-semibold text-proof-700 hover:bg-proof-100">
               <TickCircle size={18} variant="bulk" />
               Yes, that&apos;s right
-            </button>
+            </PendingButton>
           </form>
           <button type="button" onClick={() => setEditing(true)} className="min-h-11 rounded-xl bg-ink-75 px-4 text-sm font-semibold text-ink-700 hover:bg-ink-100">
             Fix it
@@ -125,7 +127,7 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
                 <form action={confirmRole} className="ml-auto">
                   <input type="hidden" name="role_id" value={role.id} />
                   <input type="hidden" name="with_items" value="1" />
-                  <button className="min-h-11 rounded-xl px-3 text-sm font-semibold text-proof-700 hover:bg-proof-50">Confirm all {unchecked}</button>
+                  <PendingButton pendingLabel="Confirming" className="min-h-11 rounded-xl px-3 text-sm font-semibold text-proof-700 hover:bg-proof-50">Confirm all {unchecked}</PendingButton>
                 </form>
               ) : null}
             </div>
@@ -180,10 +182,10 @@ function ItemRow({ item, roleId }: { item: VaultItem; roleId: string }) {
             {!item.confirmed ? (
               <form action={confirmItem}>
                 <input type="hidden" name="item_id" value={item.id} />
-                <button className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-proof-50 px-3.5 text-sm font-semibold text-proof-700 hover:bg-proof-100">
+                <PendingButton pendingLabel="Saving" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-proof-50 px-3.5 text-sm font-semibold text-proof-700 hover:bg-proof-100">
                   <TickCircle size={18} variant="bulk" />
                   Confirm
-                </button>
+                </PendingButton>
               </form>
             ) : null}
             <button type="button" onClick={() => setEditing(true)} className="min-h-11 rounded-xl bg-ink-75 px-3.5 text-sm font-semibold text-ink-700 hover:bg-ink-100">
@@ -191,7 +193,7 @@ function ItemRow({ item, roleId }: { item: VaultItem; roleId: string }) {
             </button>
             <form action={deleteItem}>
               <input type="hidden" name="item_id" value={item.id} />
-              <button className="min-h-11 rounded-xl px-3.5 text-sm font-semibold text-ink-500 hover:bg-flag-50 hover:text-flag-700">Remove</button>
+              <PendingButton pendingLabel="Removing" className="min-h-11 rounded-xl px-3.5 text-sm font-semibold text-ink-500 hover:bg-flag-50 hover:text-flag-700">Remove</PendingButton>
             </form>
           </div>
         </div>

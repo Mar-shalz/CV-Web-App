@@ -27,10 +27,10 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-dvh bg-white p-3 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-center lg:gap-6 lg:px-8 lg:py-10">
+    <div className="min-h-dvh bg-white p-3 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-center lg:gap-6 lg:px-6 lg:py-6">
       {/* Brand panel */}
-      {/* The whole panel sits in the middle of the screen, with space above and below. */}
-      <aside className="aurora flex flex-col rounded-[24px] px-5 pb-6 pt-5 text-white lg:h-[min(780px,calc(100dvh-5rem))] lg:min-h-[600px] lg:rounded-[28px] lg:p-10 xl:p-14">
+      {/* Nearly full height, centred, with a strip of white above and below. */}
+      <aside className="aurora flex flex-col rounded-[24px] px-5 pb-6 pt-5 text-white lg:h-[min(1120px,calc(100dvh-3rem))] lg:min-h-[600px] lg:rounded-[28px] lg:p-10 xl:p-14">
         <div className="aurora-floor" aria-hidden="true" />
         <Link href="/" className="inline-flex rounded-xl" aria-label={`${APP_NAME} home`}>
           <Logo tone="onDark" />

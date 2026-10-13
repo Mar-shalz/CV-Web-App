@@ -4,6 +4,7 @@ import { endAnnouncement } from "@/app/admin/actions";
 import { PageHeader, Panel, StatusPill, Table, Td } from "@/components/admin/ui";
 import { SendUpdateForm } from "@/components/admin/forms";
 import { formatDate } from "@/lib/format";
+import { PendingButton } from "@/components/ui/pending-button";
 
 export const metadata = { title: "Messages to users" };
 
@@ -53,7 +54,7 @@ export default async function AdminMessages() {
                   {live ? (
                     <form action={endAnnouncement}>
                       <input type="hidden" name="id" value={r.id} />
-                      <button className="min-h-11 rounded-xl px-3 text-sm font-semibold text-flag-700 hover:bg-flag-50">End now</button>
+                      <PendingButton pendingLabel="Ending" className="min-h-11 rounded-xl px-3 text-sm font-semibold text-flag-700 hover:bg-flag-50">End now</PendingButton>
                     </form>
                   ) : null}
                 </Td>

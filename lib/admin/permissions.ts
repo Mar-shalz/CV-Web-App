@@ -5,6 +5,8 @@ export type AdminRole = (typeof ADMIN_ROLES)[number];
 export const PERMISSIONS = [
   "overview",
   "users",
+  // Full emails, usage, pause and delete accounts. Owner only.
+  "users.manage",
   "waitlist",
   "payments",
   "payments.refund",
@@ -31,7 +33,7 @@ export function can(role: AdminRole | null | undefined, permission: Permission):
 }
 
 export const ROLE_LABELS: Record<AdminRole, { label: string; body: string }> = {
-  owner: { label: "Owner", body: "Everything, including team access, publishing rules and refunds." },
+  owner: { label: "Owner", body: "Everything, including full emails, pausing and deleting accounts, team access, publishing rules and refunds." },
   reviewer: { label: "Reviewer", body: "Truth reports, CV quality samples, rules and AI quality." },
   support: { label: "Support", body: "Users and the waitlist, with emails masked. Can read reports and send messages to users." },
   finance: { label: "Finance", body: "Payments, refunds and AI cost." },

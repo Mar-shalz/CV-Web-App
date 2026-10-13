@@ -14,7 +14,7 @@ const nullableText = (max: number) => z.string().max(max).nullable();
 export const parseCv = defineTask({
   name: "parse_cv",
   model: "claude-haiku-5-5",
-  promptVersion: "v2",
+  promptVersion: "v3",
   input,
   output: z.object({
     is_cv: z.boolean(),

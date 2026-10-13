@@ -1,8 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { isPreviewMode } from "@/lib/env";
+import { removeUserFiles } from "@/lib/account/files";
 import { logAdminAction, requireAdmin } from "@/lib/admin/auth";
 import { ADMIN_ROLES } from "@/lib/admin/permissions";
 import { notify } from "@/lib/notifications/data";
@@ -178,4 +182,82 @@ export async function revokeFreeAccess(formData: FormData): Promise<void> {
   await createAdminClient().from("free_access").update({ revoked_at: new Date().toISOString() }).eq("id", id.data);
   await logAdminAction(staff, "revoke_free_access", "free_access", id.data);
   revalidatePath("/admin/payments");
+}
+
+// ---------------------------------------------------------------------------
+// Account controls (owner only)
+// ---------------------------------------------------------------------------
+
+/** Signs staff out and back to the back office sign in page. */
+export async function signOutAdmin(): Promise<void> {
+  if (isPreviewMode()) redirect("/admin/sign-in?signed_out=1");
+  const supabase = await createClient();
+  await supabase.auth.signOut().catch(() => {});
+  redirect("/admin/sign-in?signed_out=1");
+}
+
+/** Team members can't be paused or deleted here: remove them from the team first. */
+async function guardTarget(staffId: string, userId: string): Promise<string | null> {
+  if (userId === staffId) return "You can't do this to your own account.";
+  const { data } = await createAdminClient().from("admin_members").select("user_id").eq("user_id", userId).is("revoked_at", null).maybeSingle();
+  return data ? "This person is on the team. Remove them in Team and access first." : null;
+}
+
+/**
+ * Pauses an account: the app sends them to a "paused" page at once, and the sign in
+ * service refuses new sessions. Nothing is deleted; Restore undoes it.
+ */
+export async function suspendUser(_prev: AdminActionState, formData: FormData): Promise<AdminActionState> {
+  const staff = await requireAdmin("users.manage");
+  const id = uuid.safeParse(formData.get("user_id"));
+  const reason = z.string().trim().max(200).safeParse(formData.get("reason") ?? "");
+  if (!id.success || !reason.success) return { error: "Keep the reason under 200 characters." };
+  if (staff.preview) return { ok: "Preview: nothing changed." };
+  const blocked = await guardTarget(staff.id, id.data);
+  if (blocked) return { error: blocked };
+  const db = createAdminClient();
+  const { error } = await db.from("users").update({ suspended_at: new Date().toISOString(), suspended_reason: reason.data || null }).eq("id", id.data);
+  if (error) return { error: "Couldn't pause the account. Has the latest database update been run?" };
+  await db.auth.admin.updateUserById(id.data, { ban_duration: "876000h" });
+  await logAdminAction(staff, "suspend", "users", id.data, { with_reason: Boolean(reason.data) });
+  revalidatePath(`/admin/users/${id.data}`);
+  revalidatePath("/admin/users");
+  return { ok: "Account paused." };
+}
+
+export async function restoreUser(formData: FormData): Promise<void> {
+  const staff = await requireAdmin("users.manage");
+  const id = uuid.safeParse(formData.get("user_id"));
+  if (staff.preview || !id.success) return;
+  const db = createAdminClient();
+  await db.from("users").update({ suspended_at: null, suspended_reason: null }).eq("id", id.data);
+  await db.auth.admin.updateUserById(id.data, { ban_duration: "none" });
+  await logAdminAction(staff, "restore", "users", id.data);
+  revalidatePath(`/admin/users/${id.data}`);
+  revalidatePath("/admin/users");
+}
+
+/**
+ * Deletes an account for good: files first, then the sign in record, which removes every
+ * row we hold through the database cascade. The owner types the person's email to confirm.
+ */
+export async function deleteUserAccount(_prev: AdminActionState, formData: FormData): Promise<AdminActionState> {
+  const staff = await requireAdmin("users.manage");
+  const id = uuid.safeParse(formData.get("user_id"));
+  if (!id.success) return { error: "Unknown account." };
+  if (staff.preview) return { ok: "Preview: nothing changed." };
+  const blocked = await guardTarget(staff.id, id.data);
+  if (blocked) return { error: blocked };
+  const db = createAdminClient();
+  const { data: user } = await db.from("users").select("email").eq("id", id.data).maybeSingle();
+  if (!user) return { error: "This account no longer exists." };
+  const typed = String(formData.get("confirm_email") ?? "").trim().toLowerCase();
+  if (typed !== user.email.toLowerCase()) return { error: "Type the person's email exactly to confirm." };
+  if (!(await removeUserFiles(db, id.data))) return { error: "Couldn't delete their files. Nothing else was removed. Try again." };
+  const { error } = await db.auth.admin.deleteUser(id.data);
+  if (error) return { error: "Couldn't delete the account. Their files are gone; try again to finish." };
+  // No email in the log: the account id is enough, and the person is gone.
+  await logAdminAction(staff, "delete_account", "users", id.data);
+  revalidatePath("/admin/users");
+  redirect("/admin/users?deleted=1");
 }

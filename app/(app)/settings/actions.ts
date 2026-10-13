@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteSensitive, type SensitiveField } from "@/lib/sensitive";
 import { LEGAL } from "@/lib/config";
 import { track } from "@/lib/analytics/server";
+import { removeUserFiles } from "@/lib/account/files";
 
 export type SettingsState = { ok?: boolean; error?: string; fieldErrors?: Record<string, string> } | undefined;
 
@@ -106,14 +107,8 @@ export async function deleteAccount(_prev: SettingsState, formData: FormData): P
   if (viewer.preview) redirect("/?account=deleted");
 
   const supabase = await createClient();
-  for (const bucket of ["job-uploads", "cv-exports"]) {
-    for (let round = 0; round < 20; round++) {
-      const { data: files } = await supabase.storage.from(bucket).list(viewer.id, { limit: 100 });
-      if (!files?.length) break;
-      const { error } = await supabase.storage.from(bucket).remove(files.map((f) => `${viewer.id}/${f.name}`));
-      if (error) return { error: "We couldn't delete your files. Try again, or contact us and we'll do it for you." };
-    }
-  }
+  // Files first (including sub folders): the database cascade doesn't reach storage.
+  if (!(await removeUserFiles(supabase, viewer.id))) return { error: "We couldn't delete your files. Try again, or contact us and we'll do it for you." };
   const { error } = await createAdminClient().auth.admin.deleteUser(viewer.id);
   if (error) return { error: "We couldn't close your account just now. Try again, or contact us and we'll do it for you." };
   await supabase.auth.signOut().catch(() => {});

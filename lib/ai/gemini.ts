@@ -16,6 +16,18 @@ export function geminiModelFor(model: AiModel): string {
   return model.includes("haiku") ? fast : strong;
 }
 
+/**
+ * The model to try first, then others of the class when Google is busy (429 or 5xx) or
+ * a model name is retired (404). Free tier capacity spikes are common.
+ */
+export function geminiModelsFor(model: AiModel): string[] {
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.5-flash,gemini-3.5-flash-lite")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  return [...new Set([geminiModelFor(model), ...fallbacks])];
+}
+
 export function geminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
@@ -70,6 +82,21 @@ async function call(model: string, body: unknown, timeoutMs: number): Promise<Ge
   return (await res.json()) as GeminiResponse;
 }
 
+/** Tries each model in turn while the failure is Google's capacity or a retired name. */
+async function callAny(models: string[], body: unknown, timeoutMs: number): Promise<{ r: GeminiResponse; model: string }> {
+  let last: unknown = new ProviderError("fatal");
+  for (const model of models) {
+    try {
+      return { r: await call(model, body, timeoutMs), model };
+    } catch (error) {
+      last = error;
+      const retry = error instanceof ProviderError && (error.kind === "transient" || error.status === 404);
+      if (!retry) throw error;
+    }
+  }
+  throw last;
+}
+
 const textOf = (r: GeminiResponse) =>
   (r.candidates?.[0]?.content?.parts ?? [])
     .filter((p) => !p.thought)
@@ -88,12 +115,11 @@ const priced = () => (process.env.GEMINI_TIER === "paid" ? undefined : 0);
 
 export const geminiProvider: AiProvider = {
   async complete(request) {
-    const model = geminiModelFor(request.model);
     // The schema goes in the instructions as well as the JSON mode: lib/ai validates every
     // reply against it and retries once with the problems, whatever the model supports.
     const system = `${request.system}\n\n## Reply format\nReply with one JSON object only, no markdown fences, that matches this JSON Schema exactly:\n${JSON.stringify(request.jsonSchema)}`;
-    const r = await call(
-      model,
+    const { r, model } = await callAny(
+      geminiModelsFor(request.model),
       {
         system_instruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: parts(request.user, request.attachments) }],
@@ -109,9 +135,8 @@ export const geminiProvider: AiProvider = {
 
   /** Web research with Google Search grounding; sources come only from the grounding results. */
   async research(request) {
-    const model = geminiModelFor(request.model);
-    const r = await call(
-      model,
+    const { r } = await callAny(
+      geminiModelsFor(request.model),
       {
         system_instruction: { parts: [{ text: request.system }] },
         contents: [{ role: "user", parts: [{ text: request.user }] }],

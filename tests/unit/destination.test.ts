@@ -36,4 +36,13 @@ describe("destination detection (Build pack section 8)", () => {
     const d = detectDestination(job({ location: { ...EMPTY_JOB.location, remote: true }, employer_domain_claimed: "acme.co.uk" }), ["NG"]);
     expect(d.country).toBe("GB");
   });
+  it("abroad without a country: the post decides, and no post signal means the international format", () => {
+    expect(detectDestination(job({ location: { ...EMPTY_JOB.location, country_code: "CA", country: "Canada" } }), ["INTL"]).country).toBe("CA");
+    const d = detectDestination(EMPTY_JOB, ["INTL"]);
+    expect(d).toMatchObject({ country: "GB", profile: "uk", confidence: 0.3 });
+    expect(d.alternatives).not.toContain("INTL");
+  });
+  it("Nigeria and abroad with no signal falls back to Nigeria", () => {
+    expect(detectDestination(EMPTY_JOB, ["NG", "INTL"]).country).toBe("NG");
+  });
 });

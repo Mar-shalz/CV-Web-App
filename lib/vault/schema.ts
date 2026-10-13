@@ -16,6 +16,20 @@ export const ROLE_KIND_LABELS: Record<RoleKind, string> = {
   licence: "Licence or membership",
 };
 
+/** Full time, part time or contract. Only part time and contract print on the CV (D-082). */
+export const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract"] as const;
+export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
+export const EMPLOYMENT_LABELS: Record<EmploymentType, string> = { full_time: "Full time", part_time: "Part time", contract: "Contract" };
+/** How it reads next to the job title on a CV. Full time is the default, so it prints nothing. */
+export const EMPLOYMENT_ON_CV: Record<EmploymentType, string | null> = { full_time: null, part_time: "Part-time", contract: "Contract" };
+/** "Accounts Officer (Contract)". With no title, the label stands alone. */
+export function withTerms(title: string, terms: string | null): string {
+  if (!terms) return title;
+  return title ? `${title} (${terms})` : terms;
+}
+/** Role kinds where employment type applies. */
+export const EMPLOYMENT_KINDS: readonly RoleKind[] = ["job", "internship_siwes"];
+
 /** Year and month only: CVs rarely give days, and the fact lock compares months. */
 export const yearMonth = z
   .string()
@@ -50,6 +64,7 @@ export const draftRoleSchema = z.object({
   end: yearMonth,
   is_current: z.boolean(),
   grade: z.string().max(80).nullable(),
+  employment_type: z.enum(EMPLOYMENT_TYPES).nullable().optional(),
   items: z.array(draftItemSchema).max(12),
 });
 export type DraftRole = z.infer<typeof draftRoleSchema>;

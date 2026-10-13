@@ -16,6 +16,8 @@ export type Viewer = {
   setupDone: boolean;
   trial: { startedAt: string | null; endsAt: string | null; cvsUsed: number };
   activePass: { type: string; endsAt: string | null } | null;
+  /** Paused by the back office. Every app screen sends them to /suspended. */
+  suspended: boolean;
   preview: boolean;
 };
 
@@ -30,6 +32,7 @@ const PREVIEW_VIEWER: Viewer = {
   setupDone: true,
   trial: { startedAt: null, endsAt: null, cvsUsed: 0 },
   activePass: null,
+  suspended: false,
   preview: true,
 };
 
@@ -44,7 +47,8 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   if (!user) return null;
 
   const [{ data: row }, { data: profile }, { data: consents }, { data: usage }, { data: passes }, { data: free }] = await Promise.all([
-    supabase.from("users").select("career_stage, target_markets, low_data_mode, age_confirmed_at, setup_completed_at").eq("id", user.id).maybeSingle(),
+    // "*" so new columns (suspended_at) never break sign in before their migration runs.
+    supabase.from("users").select("*").eq("id", user.id).maybeSingle(),
     supabase.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
     supabase.from("consents").select("type, version, granted_at, withdrawn_at").eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("usage_counters").select("trial_started_at, trial_ends_at, trial_cvs_used").eq("user_id", user.id).maybeSingle(),
@@ -77,6 +81,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
       cvsUsed: usage?.trial_cvs_used ?? 0,
     },
     activePass: passes?.[0] ? { type: passes[0].type, endsAt: passes[0].ends_at } : freeLive ? { type: "free_access", endsAt: free?.ends_at ?? "2099-12-31T00:00:00.000Z" } : null,
+    suspended: Boolean((row as { suspended_at?: string | null } | null)?.suspended_at),
     preview: false,
   };
 });
@@ -92,6 +97,7 @@ export function nextOnboardingPath(v: Viewer): string {
 export async function requireReadyViewer(): Promise<Viewer> {
   const v = await getViewer();
   if (!v) redirect("/sign-in");
+  if (v.suspended) redirect("/suspended");
   const next = nextOnboardingPath(v);
   if (next !== "/home") redirect(next);
   return v;
@@ -100,5 +106,6 @@ export async function requireReadyViewer(): Promise<Viewer> {
 export async function requireViewer(): Promise<Viewer> {
   const v = await getViewer();
   if (!v) redirect("/sign-in");
+  if (v.suspended) redirect("/suspended");
   return v;
 }

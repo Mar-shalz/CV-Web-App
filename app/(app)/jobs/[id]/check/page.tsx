@@ -22,6 +22,7 @@ import { MissingDetailCard } from "@/components/flow/missing-detail";
 import { Badge } from "@/components/ui/status";
 import { buttonClass } from "@/components/ui/button";
 import { Building, Location, Calendar1, Sms, Global, Magicpen, ArrowRight, TickCircle, Warning2, MinusCircle, Archive, Lamp, Crown1 } from "@/components/icons";
+import { PendingButton } from "@/components/ui/pending-button";
 
 export const metadata: Metadata = { title: "Job check" };
 
@@ -135,11 +136,11 @@ async function VerdictHero({ promise, viewer, job }: { promise: Promise<FinalVer
     <form action={setJobState}>
       <input type="hidden" name="job_id" value={job.id} />
       <input type="hidden" name="state" value="applying" />
-      <button className={buttonClass("primary", "lg", "cta-sheen w-full sm:w-auto")}>
+      <PendingButton pendingLabel="Opening" className={buttonClass("primary", "lg", "cta-sheen w-full sm:w-auto")}>
         <Magicpen size={20} variant="bulk" />
         Tailor my CV
         <ArrowRight size={18} />
-      </button>
+      </PendingButton>
     </form>
   ) : (
     <Link href="/pass?from=tailor" className={buttonClass("primary", "lg", "w-full sm:w-auto")}>
@@ -151,10 +152,10 @@ async function VerdictHero({ promise, viewer, job }: { promise: Promise<FinalVer
     <form action={setJobState}>
       <input type="hidden" name="job_id" value={job.id} />
       <input type="hidden" name="state" value="saved" />
-      <button className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>
+      <PendingButton pendingLabel="Saving" className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>
         <Archive size={20} />
         Save for later
-      </button>
+      </PendingButton>
     </form>
   );
 
@@ -186,10 +187,10 @@ async function VerdictHero({ promise, viewer, job }: { promise: Promise<FinalVer
                 <input type="hidden" name="job_id" value={job.id} />
                 <input type="hidden" name="state" value="applying" />
                 <input type="hidden" name="override" value="1" />
-                <button className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>
+                <PendingButton pendingLabel="Opening" className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>
                   <Magicpen size={20} />
                   Build my closest CV anyway
-                </button>
+                </PendingButton>
               </form>
             ) : (
               <Link href="/pass?from=tailor" className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>

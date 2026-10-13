@@ -44,13 +44,14 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
         <button
           type="button"
           onClick={toggle}
-          className={`grid shrink-0 place-items-center rounded-full bg-white text-ink-600 shadow-[0_2px_8px_-2px_rgb(15_23_42/0.18),0_0_0_1px_rgb(15_23_42/0.06)] transition-[color,box-shadow,transform] hover:text-brand-700 hover:shadow-[0_6px_16px_-4px_rgb(30_71_217/0.35),0_0_0_1px_rgb(30_71_217/0.15)] active:scale-95 ${collapsed ? "size-8" : "size-9"}`}
+          className={`grid shrink-0 place-items-center rounded-full bg-white text-ink-600 shadow-[0_2px_8px_-2px_rgb(15_23_42/0.18),0_0_0_1px_rgb(15_23_42/0.06)] transition-[color,box-shadow,transform] hover:text-brand-700 hover:shadow-[0_6px_16px_-4px_rgb(30_71_217/0.35),0_0_0_1px_rgb(30_71_217/0.15)] active:scale-95 size-9`}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!collapsed}
         >
-          <span className="flex -space-x-3">
-            {collapsed ? <ArrowRight2 size={14} /> : <ArrowLeft2 size={16} />}
-            {collapsed ? <ArrowRight2 size={14} /> : <ArrowLeft2 size={16} />}
+          {/* Two chevrons with a clear gap between them: a double arrow, not a blur. */}
+          <span className="flex -space-x-2" aria-hidden="true">
+            {collapsed ? <ArrowRight2 size={16} /> : <ArrowLeft2 size={16} />}
+            {collapsed ? <ArrowRight2 size={16} /> : <ArrowLeft2 size={16} />}
           </span>
         </button>
       </div>

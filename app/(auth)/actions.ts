@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isPreviewMode } from "@/lib/env";
 import { LEGAL, LIMITS, MARKETS } from "@/lib/config";
+import { marketsFor } from "@/lib/markets";
 import { getViewer, nextOnboardingPath } from "@/lib/auth/viewer";
 import { track } from "@/lib/analytics/server";
 
@@ -14,6 +15,9 @@ export type FormState = { error?: string; fieldErrors?: Record<string, string>; 
 // The email between "send code" and "enter code" lives in a short lived httpOnly
 // cookie, never in the URL (D-003).
 const OTP_COOKIE = "rcpt_otp_email";
+// Set when sign in starts on the back office page, so the code or link lands on /admin.
+const DEST_COOKIE = "rcpt_dest";
+const isAdminDest = (formData?: FormData | null) => formData?.get("dest") === "admin";
 
 async function origin(): Promise<string> {
   const h = await headers();
@@ -28,12 +32,13 @@ const GENERIC_AUTH_ERROR = "We couldn't sign you in just now. Check your connect
 // ---------------------------------------------------------------------------
 // Google
 // ---------------------------------------------------------------------------
-export async function signInWithGoogle(): Promise<FormState> {
-  if (isPreviewMode()) redirect("/onboarding/consent");
+export async function signInWithGoogle(_prev?: FormState, formData?: FormData): Promise<FormState> {
+  const admin = isAdminDest(formData);
+  if (isPreviewMode()) redirect(admin ? "/admin" : "/onboarding/consent");
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${await origin()}/auth/callback`, queryParams: { prompt: "select_account" } },
+    options: { redirectTo: `${await origin()}/auth/callback${admin ? "?dest=admin" : ""}`, queryParams: { prompt: "select_account" } },
   });
   if (error || !data.url) return { error: GENERIC_AUTH_ERROR };
   redirect(data.url);
@@ -50,12 +55,13 @@ export async function sendEmailCode(_prev: FormState, formData: FormData): Promi
   const parsed = emailSchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) return { fieldErrors: { email: parsed.error.issues[0]?.message ?? "Enter a valid email" } };
   const { email } = parsed.data;
+  const admin = isAdminDest(formData);
 
   if (!isPreviewMode()) {
     const supabase = await createClient();
     // The email carries a 6 digit code when the template has {{ .Token }}, and a sign in
     // link either way; the link lands on /auth/callback (D-069).
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: `${await origin()}/auth/callback?method=email` } });
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: await linkTarget(admin) } });
     if (error) {
       if (error.status === 429) return { error: "Too many codes asked for. Wait a minute, then try again." };
       return { error: GENERIC_AUTH_ERROR };
@@ -69,15 +75,24 @@ export async function sendEmailCode(_prev: FormState, formData: FormData): Promi
     path: "/",
     maxAge: LIMITS.auth.otp_cookie_minutes * 60,
   });
-  redirect("/sign-in/verify");
+  const jar = await cookies();
+  if (admin) jar.set(DEST_COOKIE, "admin", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: LIMITS.auth.otp_cookie_minutes * 60 });
+  else jar.delete(DEST_COOKIE);
+  redirect(admin ? "/admin/sign-in/verify" : "/sign-in/verify");
+}
+
+async function linkTarget(admin: boolean): Promise<string> {
+  return `${await origin()}/auth/callback?method=email${admin ? "&dest=admin" : ""}`;
 }
 
 export async function resendEmailCode(): Promise<FormState> {
-  const email = (await cookies()).get(OTP_COOKIE)?.value;
-  if (!email) redirect("/sign-in");
+  const jar = await cookies();
+  const email = jar.get(OTP_COOKIE)?.value;
+  const admin = jar.get(DEST_COOKIE)?.value === "admin";
+  if (!email) redirect(admin ? "/admin/sign-in" : "/sign-in");
   if (isPreviewMode()) return { ok: true };
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: `${await origin()}/auth/callback?method=email` } });
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: await linkTarget(admin) } });
   if (error) {
     if (error.status === 429) return { error: "Please wait a little before asking for another code." };
     return { error: GENERIC_AUTH_ERROR };
@@ -100,9 +115,11 @@ export async function verifyEmailCode(_prev: FormState, formData: FormData): Pro
   const parsed = codeSchema.safeParse({ code: formData.get("code") });
   if (!parsed.success) return { fieldErrors: { code: parsed.error.issues[0]?.message ?? "Enter the code" } };
 
+  const admin = jar.get(DEST_COOKIE)?.value === "admin";
   if (isPreviewMode()) {
     jar.delete(OTP_COOKIE);
-    redirect("/onboarding/consent");
+    jar.delete(DEST_COOKIE);
+    redirect(admin ? "/admin" : "/onboarding/consent");
   }
 
   const supabase = await createClient();
@@ -111,6 +128,9 @@ export async function verifyEmailCode(_prev: FormState, formData: FormData): Pro
     return { fieldErrors: { code: "That code didn't work. Check it, or ask for a new one." } };
   }
   jar.delete(OTP_COOKIE);
+  jar.delete(DEST_COOKIE);
+  // Back office sign in: straight to /admin, which asks for the authenticator code next.
+  if (admin) redirect("/admin");
 
   const viewer = await getViewer();
   if (viewer && !viewer.consentDone) await track("signup_completed", { method: "email" }, viewer.id);
@@ -158,28 +178,17 @@ export async function saveConsent(_prev: FormState, formData: FormData): Promise
 // Setup (screen 4)
 // ---------------------------------------------------------------------------
 const stageIds = MARKETS.career_stages.map((s) => s.id) as [string, ...string[]];
-const countryCodes = MARKETS.countries.map((c) => c.code) as [string, ...string[]];
 
-const setupSchema = z
-  .object({
-    career_stage: z.enum(stageIds, { message: "Choose where you are right now." }),
-    region: z.enum(["nigeria", "abroad", "both"], { message: "Choose where you're applying." }),
-    countries: z.array(z.enum(countryCodes)).max(LIMITS.onboarding.max_target_countries, {
-      message: `Pick up to ${LIMITS.onboarding.max_target_countries} countries.`,
-    }),
-    low_data_mode: z.boolean(),
-  })
-  .superRefine((v, ctx) => {
-    if (v.region !== "nigeria" && v.countries.filter((c) => c !== "NG").length === 0) {
-      ctx.addIssue({ code: "custom", path: ["countries"], message: "Pick at least one country abroad." });
-    }
-  });
+const setupSchema = z.object({
+  career_stage: z.enum(stageIds, { message: "Choose where you are right now." }),
+  region: z.enum(["nigeria", "abroad", "both"], { message: "Choose where you're applying." }),
+  low_data_mode: z.boolean(),
+});
 
 export async function saveSetup(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = setupSchema.safeParse({
     career_stage: formData.get("career_stage"),
     region: formData.get("region"),
-    countries: formData.getAll("countries"),
     low_data_mode: formData.get("low_data_mode") === "on",
   });
   if (!parsed.success) {
@@ -191,11 +200,9 @@ export async function saveSetup(_prev: FormState, formData: FormData): Promise<F
     return { fieldErrors };
   }
 
-  const { career_stage, region, countries, low_data_mode } = parsed.data;
-  // Nigeria first when the user applies at home; the first market is the default destination.
-  const markets =
-    region === "nigeria" ? ["NG"] : region === "both" ? ["NG", ...countries.filter((c) => c !== "NG")] : countries.filter((c) => c !== "NG");
-  const target_markets = markets.slice(0, LIMITS.onboarding.max_target_countries);
+  const { career_stage, region, low_data_mode } = parsed.data;
+  // No country list: the job post decides the country for each CV (D-085).
+  const target_markets = marketsFor(region);
 
   if (isPreviewMode()) redirect("/home");
 
@@ -204,10 +211,12 @@ export async function saveSetup(_prev: FormState, formData: FormData): Promise<F
   const supabase = await createClient();
   const { error } = await supabase
     .from("users")
-    .update({ career_stage, target_markets, low_data_mode, setup_completed_at: new Date().toISOString() })
+    .update({ career_stage, target_markets, low_data_mode, ...(viewer.setupDone ? {} : { setup_completed_at: new Date().toISOString() }) })
     .eq("id", viewer.id);
   if (error) return { error: "We couldn't save your setup. Check your connection and try again." };
 
+  // Opened again from Settings: back there. First time: on to Home.
+  if (viewer.setupDone) redirect("/settings");
   await track("setup_completed", { career_stage, target_markets_count: target_markets.length }, viewer.id);
   redirect("/home");
 }

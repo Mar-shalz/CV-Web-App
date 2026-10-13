@@ -8,7 +8,8 @@ import { track } from "@/lib/analytics/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const method = searchParams.get("method") === "email" ? "email" : "google";
-  const failed = `${origin}/sign-in?error=${method === "email" ? "link" : "google"}`;
+  const admin = searchParams.get("dest") === "admin";
+  const failed = `${origin}${admin ? "/admin/sign-in" : "/sign-in"}?error=${method === "email" ? "link" : "google"}`;
   const code = searchParams.get("code");
   if (!code) return NextResponse.redirect(failed);
 
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
   if (!viewer) return NextResponse.redirect(failed);
   if (!viewer.consentDone) await track("signup_completed", { method }, viewer.id);
 
-  // Only ever redirect to our own fixed onboarding paths, never to a caller supplied URL.
+  // Only ever redirect to our own fixed paths, never to a caller supplied URL.
+  if (admin) return NextResponse.redirect(`${origin}/admin`);
   return NextResponse.redirect(`${origin}${nextOnboardingPath(viewer)}`);
 }

@@ -3,7 +3,9 @@ import { connection } from "next/server";
 import localFont from "next/font/local";
 import { Urbanist } from "next/font/google";
 import { APP, APP_NAME } from "@/lib/config";
+import { Suspense } from "react";
 import { ServiceWorker } from "@/components/shell/service-worker";
+import { NavProgress } from "@/components/shell/nav-progress";
 import "./globals.css";
 
 // Lufga is the product font (founder's choice, D-018). These are the vendor's DEMO
@@ -56,6 +58,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Skip to content
         </a>
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
         {children}
         <ServiceWorker />
       </body>

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { saveRole, type VaultActionState } from "@/app/(app)/vault/actions";
-import { ROLE_KINDS, type RoleKind } from "@/lib/vault/schema";
+import { ROLE_KINDS, EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_KINDS, type RoleKind, type EmploymentType } from "@/lib/vault/schema";
 import { inputClass } from "@/components/ui/field";
 import { MonthYearField } from "@/components/ui/date-fields";
 import { SubmitButton } from "@/components/auth/submit-button";
@@ -12,7 +12,7 @@ import type { VaultRole } from "@/lib/vault/data";
 
 // Words people use on CVs: "Work experience" rather than "Job".
 const OPTION_LABELS: Record<RoleKind, string> = {
-  job: "Work experience (full time, part time or contract)",
+  job: "Work experience",
   internship_siwes: "Internship or SIWES",
   nysc_ppa: "NYSC (your place of primary assignment)",
   volunteer: "Volunteering, leadership or a campus role",
@@ -37,7 +37,7 @@ const LABELS: Record<RoleKind, { title: string; titleHint: string; org: string; 
 const HAS_WORK: RoleKind[] = ["job", "internship_siwes", "nysc_ppa", "volunteer", "project"];
 
 /** Add or edit a role. Employer, title, dates and grade are facts the CV can never change. */
-export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRole; defaultKind?: RoleKind; onDone?: () => void }) {
+export function RoleForm({ role, defaultKind = "job", onDone, onCancel }: { role?: VaultRole; defaultKind?: RoleKind; onDone?: () => void; onCancel?: () => void }) {
   const [state, action] = useActionState<VaultActionState, FormData>(async (prev, fd) => {
     const res = await saveRole(prev, fd);
     if (res?.ok) onDone?.();
@@ -45,6 +45,8 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
   }, undefined);
   const [kind, setKind] = useState<RoleKind>(role?.kind ?? defaultKind);
   const [current, setCurrent] = useState(role?.isCurrent ?? false);
+  const [employment, setEmployment] = useState<EmploymentType>(role?.employmentType ?? "full_time");
+  const hasEmployment = EMPLOYMENT_KINDS.includes(kind);
   const [things, setThings] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const l = LABELS[kind];
@@ -62,18 +64,43 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
     <form action={action} className="space-y-4" noValidate>
       <FormError message={state?.error} />
       {role ? <input type="hidden" name="role_id" value={role.id} /> : null}
-      <div className={field}>
-        <label htmlFor="kind" className={label}>
-          What kind of role is this?
-        </label>
-        <select id="kind" name="kind" value={kind} onChange={(e) => setKind(e.target.value as RoleKind)} className={inputClass}>
-          {ROLE_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {OPTION_LABELS[k]}
-            </option>
-          ))}
-        </select>
+      <div className={`grid gap-4 ${hasEmployment ? "sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]" : ""}`}>
+        <div className={field}>
+          <label htmlFor="kind" className={label}>
+            What kind of role is this?
+          </label>
+          <select id="kind" name="kind" value={kind} onChange={(e) => setKind(e.target.value as RoleKind)} className={inputClass}>
+            {ROLE_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {OPTION_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </div>
+        {hasEmployment ? (
+          <div className={`${field} animate-rise`}>
+            <label htmlFor="employment_type" className={label}>
+              Full time, part time or contract?
+            </label>
+            <select id="employment_type" name="employment_type" value={employment} onChange={(e) => setEmployment(e.target.value as EmploymentType)} aria-describedby="employment-hint" className={inputClass}>
+              {EMPLOYMENT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {EMPLOYMENT_LABELS[t]}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </div>
+      {hasEmployment ? (
+        <p id="employment-hint" className="-mt-2 text-xs leading-5 text-ink-500">
+          {employment === "full_time"
+            ? "Full time roles need no label on your CV."
+            : employment === "contract"
+              ? "Your CV will say Contract next to the job title, so an employer knows a short stay was planned."
+              : "Your CV will say Part-time next to the job title."}
+        </p>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className={field}>
           <label htmlFor="title" className={label}>
@@ -161,9 +188,16 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
         </section>
       ) : null}
 
-      <SubmitButton className="w-full sm:w-auto" pendingLabel="Saving">
-        {role ? "Save and confirm" : things.length ? `Save role and ${things.length} ${things.length === 1 ? "thing" : "things"} you did` : "Save role"}
-      </SubmitButton>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+        <SubmitButton className="w-full sm:w-auto" pendingLabel="Saving">
+          {role ? "Save and confirm" : things.length ? `Save role and ${things.length} ${things.length === 1 ? "thing" : "things"} you did` : "Save role"}
+        </SubmitButton>
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className="inline-flex min-h-12 items-center justify-center rounded-2xl px-4 text-sm font-semibold text-ink-700 hover:bg-ink-75">
+            Cancel
+          </button>
+        ) : null}
+      </div>
     </form>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin, logAdminAction } from "@/lib/admin/auth";
 import { listPayments } from "@/lib/admin/data";
 import { can } from "@/lib/admin/permissions";
@@ -7,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revokeFreeAccess } from "@/app/admin/actions";
 import { formatDate, formatNaira } from "@/lib/format";
 import { PRICES } from "@/lib/config";
+import { PendingButton } from "@/components/ui/pending-button";
 
 export const metadata = { title: "Payments" };
 
@@ -15,9 +17,11 @@ const PRODUCT: Record<string, string> = { job_hunt_30d: PRICES.products.job_hunt
 
 export default async function AdminPayments() {
   const staff = await requireAdmin("payments");
-  const rows = await listPayments(staff);
+  const full = can(staff.role, "users.manage");
+  const rows = await listPayments(staff, full);
   await logAdminAction(staff, "view", "passes");
   const canRefund = can(staff.role, "payments.refund");
+  const canUsers = can(staff.role, "users");
   const total = rows.filter((r) => r.status === "active").reduce((s, r) => s + r.amountKobo, 0);
   type Free = { id: string; email: string; note: string | null; ends_at: string | null; created_at: string };
   let free: Free[] = [];
@@ -57,7 +61,7 @@ export default async function AdminPayments() {
                 <Td>
                   <form action={revokeFreeAccess}>
                     <input type="hidden" name="id" value={f.id} />
-                    <button className="min-h-11 rounded-xl px-3 text-sm font-semibold text-flag-700 hover:bg-flag-50">Remove</button>
+                    <PendingButton pendingLabel="Removing" className="min-h-11 rounded-xl px-3 text-sm font-semibold text-flag-700 hover:bg-flag-50">Remove</PendingButton>
                   </form>
                 </Td>
               </tr>
@@ -66,9 +70,18 @@ export default async function AdminPayments() {
         ) : null}
       </Panel>
       <Panel title="All payments">
-        <Table caption="Payments" head={["Reference", "Product", "Amount", "Status", "Date", canRefund ? "Refund" : ""]}>
+        <Table caption="Payments" head={["Who paid", "Reference", "Product", "Amount", "Status", "Date", canRefund ? "Refund" : ""]}>
           {rows.map((p) => (
             <tr key={p.id}>
+              <Td className="font-medium [overflow-wrap:anywhere]">
+                {canUsers ? (
+                  <Link href={`/admin/users/${p.userId}`} className="hover:text-brand-700 hover:underline">
+                    {p.email}
+                  </Link>
+                ) : (
+                  p.email
+                )}
+              </Td>
               <Td className="font-mono text-[0.8125rem]">{p.reference}</Td>
               <Td>{PRODUCT[p.product] ?? p.product}</Td>
               <Td className="tabular-nums">{formatNaira(p.amountKobo)}</Td>

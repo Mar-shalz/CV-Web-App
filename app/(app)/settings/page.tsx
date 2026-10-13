@@ -3,10 +3,11 @@ import Link from "next/link";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { signOut } from "@/app/(auth)/actions";
 import { MARKETS } from "@/lib/config";
-import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/shell/user-chip";
 import { ArrowRight2, Lock1, Logout, ShieldTick, DocumentDownload, Mobile, Global, Crown1, Edit2 } from "@/components/icons";
 import { DataSaverSwitch } from "@/components/settings/settings-forms";
+import { SubmitButton } from "@/components/auth/submit-button";
+import { marketsLabel } from "@/lib/markets";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -32,13 +33,13 @@ function Row({ href, icon, title, body }: { href?: string; icon: React.ReactNode
 export default async function SettingsPage() {
   const viewer = await requireReadyViewer();
   const stage = MARKETS.career_stages.find((s) => s.id === viewer.careerStage)?.label;
-  const markets = viewer.targetMarkets.map((c) => MARKETS.countries.find((x) => x.code === c)?.label ?? c).join(", ");
+  const markets = marketsLabel(viewer.targetMarkets);
 
   return (
     <div className="space-y-3">
       <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Settings</h1>
 
-      <section className="relative flex animate-rise items-center gap-4 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 pr-16 shadow-card">
+      <section className="relative flex animate-rise items-center gap-4 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 pr-16 shadow-card sm:pr-5">
         {/* No avatar on phones: the name and details get the full width. */}
         <span className="hidden sm:block">
           <Avatar name={viewer.fullName} size={64} />
@@ -51,13 +52,13 @@ export default async function SettingsPage() {
             {markets ? ` · Applying in ${markets}` : ""}
           </p>
         </div>
+        {/* Phones: an edit icon in the corner. Wider screens: a labelled button. */}
         <Link
           href="/settings/profile"
-          aria-label="Edit your details"
-          title="Edit your details"
-          className="absolute right-3 top-3 grid size-10 place-items-center rounded-lg border border-ink-150 bg-white text-ink-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+          className="absolute right-3 top-3 grid size-10 shrink-0 place-items-center rounded-lg border border-ink-150 bg-white text-ink-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 sm:static sm:inline-flex sm:size-auto sm:min-h-12 sm:gap-2 sm:rounded-xl sm:px-4 sm:text-sm sm:font-semibold sm:text-ink-800"
         >
           <Edit2 size={18} />
+          <span className="sr-only sm:not-sr-only">Edit details</span>
         </Link>
       </section>
 
@@ -82,10 +83,10 @@ export default async function SettingsPage() {
       </div>
 
       <form action={signOut}>
-        <Button type="submit" variant="danger" size="lg" className="w-full">
+        <SubmitButton variant="danger" size="lg" className="w-full" pendingLabel="Signing out">
           <Logout size={20} />
           Sign out
-        </Button>
+        </SubmitButton>
       </form>
     </div>
   );

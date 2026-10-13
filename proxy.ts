@@ -3,8 +3,10 @@ import { updateSession } from "@/lib/supabase/proxy";
 import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { buildCsp, newNonce } from "@/lib/csp";
 
-const APP_PREFIXES = ["/home", "/jobs", "/applications", "/vault", "/settings", "/onboarding", "/pass", "/admin"];
+const APP_PREFIXES = ["/home", "/jobs", "/applications", "/vault", "/settings", "/onboarding", "/pass"];
 const AUTH_PREFIXES = ["/sign-in"];
+// The back office has its own sign in page, and signed out visits to /admin go there.
+const ADMIN_SIGN_IN = "/admin/sign-in";
 
 export async function proxy(incoming: NextRequest) {
   // A new nonce for every page. Next reads it from the request's CSP header and puts it
@@ -30,6 +32,13 @@ export async function proxy(incoming: NextRequest) {
 
   const { response, user } = await updateSession(request);
   const path = request.nextUrl.pathname;
+
+  if (path.startsWith("/admin")) {
+    const onSignIn = path === ADMIN_SIGN_IN || path.startsWith(`${ADMIN_SIGN_IN}/`);
+    if (!user && !onSignIn) return NextResponse.redirect(new URL(ADMIN_SIGN_IN, request.url));
+    if (user && onSignIn && !request.nextUrl.searchParams.has("signed_out")) return NextResponse.redirect(new URL("/admin", request.url));
+    return withCsp(response);
+  }
 
   if (!user && APP_PREFIXES.some((p) => path.startsWith(p))) {
     const url = request.nextUrl.clone();

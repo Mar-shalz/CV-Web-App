@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DraftRole } from "./schema";
+import { EMPLOYMENT_KINDS, type DraftRole } from "./schema";
 import { toDate } from "./dates";
 
 /**
@@ -11,23 +11,23 @@ export async function saveDraftRoles(supabase: SupabaseClient, userId: string, r
   let roleCount = 0;
   let itemCount = 0;
   for (const r of roles) {
-    const { data: role, error } = await supabase
-      .from("vault_roles")
-      .insert({
-        user_id: userId,
-        kind: r.kind,
-        organisation: r.organisation,
-        title: r.title,
-        location: r.location,
-        start_date: toDate(r.start),
-        end_date: r.is_current ? null : toDate(r.end),
-        is_current: r.is_current,
-        grade: r.grade,
-        source,
-        confirmed: false,
-      })
-      .select("id")
-      .single();
+    const row = {
+      user_id: userId,
+      kind: r.kind,
+      organisation: r.organisation,
+      title: r.title,
+      location: r.location,
+      start_date: toDate(r.start),
+      end_date: r.is_current ? null : toDate(r.end),
+      is_current: r.is_current,
+      grade: r.grade,
+      source,
+      confirmed: false,
+    };
+    const typed = r.employment_type && EMPLOYMENT_KINDS.includes(r.kind) ? { ...row, employment_type: r.employment_type } : row;
+    let { data: role, error } = await supabase.from("vault_roles").insert(typed).select("id").single();
+    // Before the employment type migration runs, save the role without it.
+    if (error && typed !== row) ({ data: role, error } = await supabase.from("vault_roles").insert(row).select("id").single());
     if (error || !role) continue;
     roleCount++;
     if (r.items.length) {

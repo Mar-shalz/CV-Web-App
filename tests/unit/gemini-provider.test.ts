@@ -40,10 +40,25 @@ describe("Gemini provider", () => {
   });
 
   it("treats rate limits as transient and bad requests as fatal", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("{}", { status: 429 }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("{}", { status: 429 }));
     await expect(geminiProvider.complete({ model: "claude-haiku-5-5", system: "", user: "x", maxTokens: 10, timeoutMs: 1000, jsonSchema: {} })).rejects.toMatchObject({ kind: "transient" });
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("{}", { status: 400 }));
     await expect(geminiProvider.complete({ model: "claude-haiku-5-5", system: "", user: "x", maxTokens: 10, timeoutMs: 1000, jsonSchema: {} })).rejects.toBeInstanceOf(ProviderError);
+  });
+
+  it("moves to the next Gemini model when one is busy", async () => {
+    const seen: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      seen.push(String(url));
+      return seen.length === 1
+        ? new Response("{}", { status: 503 })
+        : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] }, finishReason: "STOP" }] }), { status: 200 });
+    });
+    const res = await geminiProvider.complete({ model: "claude-sonnet-5-5", system: "", user: "x", maxTokens: 10, timeoutMs: 1000, jsonSchema: {} });
+    expect(res.text).toBe('{"ok":true}');
+    expect(seen[0]).toContain("gemini-3.8-flash");
+    expect(seen[1]).toContain("gemini-3.5-flash");
+    expect(res.servedModel).toBe("gemini-3.5-flash");
   });
 
   it("keeps only grounded sources from web research", async () => {

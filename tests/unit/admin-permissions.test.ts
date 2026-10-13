@@ -16,6 +16,9 @@ describe("back office permissions", () => {
     expect(can("support", "payments")).toBe(false);
     expect(can("finance", "users")).toBe(false);
   });
+  it("only the owner sees full emails and can pause or delete accounts", () => {
+    expect(ADMIN_ROLES.filter((r) => can(r, "users.manage"))).toEqual(["owner"]);
+  });
   it("refunds are owner and finance only", () => {
     expect(ADMIN_ROLES.filter((r) => can(r, "payments.refund"))).toEqual(["owner", "finance"]);
   });

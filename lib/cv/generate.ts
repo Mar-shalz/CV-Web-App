@@ -5,6 +5,7 @@ import type { JobView } from "@/lib/jobs/data";
 import { runTask } from "@/lib/ai";
 import { factLock, lockLine, type LockSource } from "@/lib/rules/fact-lock";
 import { rangeLabel, monthLabel } from "@/lib/vault/dates";
+import { EMPLOYMENT_KINDS, EMPLOYMENT_ON_CV, withTerms } from "@/lib/vault/schema";
 import { PROFILES, SECTION_HEADINGS, fileBase, profileRules } from "./profiles";
 import type { CvBullet, CvDoc, CvFlag, CvRoleBlock, CvSection } from "./types";
 
@@ -139,7 +140,9 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
       const first = sources.get(k.source_item_ids[0] ?? "");
       return [{ id: `${r.id.slice(0, 8)}-${n}`, text: k.text, sourceItemIds: k.source_item_ids.filter((id) => sources.has(id)), rewriteType: b.rewrite_type, flags: toFlags(k.flags), original: first?.text ?? k.text, sourceQuote: first?.sourceQuote ?? null }];
     });
-    return { roleId: r.id, title: r.title ?? "", organisation: r.organisation, location: r.location, dates: rangeLabel(r.start, r.end, r.isCurrent), grade: null, bullets };
+    // Part-time and contract roles say so next to the title; full time prints nothing (D-082).
+    const terms = r.employmentType && EMPLOYMENT_KINDS.includes(r.kind) ? EMPLOYMENT_ON_CV[r.employmentType] : null;
+    return { roleId: r.id, title: withTerms(r.title ?? "", terms), organisation: r.organisation, location: r.location, dates: rangeLabel(r.start, r.end, r.isCurrent), grade: null, bullets };
   };
 
   const sumSources = out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s));

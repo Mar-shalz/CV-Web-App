@@ -2,13 +2,13 @@
 
 import { useActionState, useState } from "react";
 import { saveSetup, type FormState } from "@/app/(auth)/actions";
-import { Award, Book1, Briefcase, Chart2, TickCircle, Mobile } from "@/components/icons";
+import { Award, Book1, Briefcase, Chart2, Mobile } from "@/components/icons";
 import { FieldError } from "@/components/ui/field";
 import { SubmitButton } from "./submit-button";
 import { FormError } from "./form-error";
 
 type Option = { id: string; label: string };
-type Country = { code: string; label: string; profile: string | null };
+type Initial = { stage: string | null; region: string | null; lowData: boolean };
 
 const STAGE_ICON: Record<string, typeof Book1> = {
   final_year: Book1,
@@ -20,27 +20,22 @@ const STAGE_ICON: Record<string, typeof Book1> = {
 const tile =
   "flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-[0.9375rem] font-medium transition-colors duration-200 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500";
 
-export function SetupForm({ stages, regions, countries, maxCountries }: { stages: Option[]; regions: Option[]; countries: Country[]; maxCountries: number }) {
-  const [state, action] = useActionState<FormState, FormData>(saveSetup, undefined);
-  const [region, setRegion] = useState<string>("nigeria");
-  const [picked, setPicked] = useState<string[]>([]);
-  const [stage, setStage] = useState<string>("");
-  const [lowData, setLowData] = useState(false);
-  const [tried, setTried] = useState(false);
+const REGION_HINT: Record<string, string> = {
+  nigeria: "We format your CVs the way Nigerian employers expect.",
+  abroad: "No need to pick countries. We read the country from each job post and format that CV for it.",
+  both: "No need to pick countries. We read the country from each job post and format that CV for it.",
+};
 
-  // Nigeria counts as one of the markets when applying at home and abroad.
-  const abroadLimit = region === "both" ? maxCountries - 1 : maxCountries;
-  const abroad = countries.filter((c) => c.code !== "NG");
-  const needCountries = region !== "nigeria" && picked.length === 0;
-  const ready = Boolean(stage) && !needCountries;
+export function SetupForm({ stages, regions, initial, submitLabel = "Finish setup" }: { stages: Option[]; regions: Option[]; initial?: Initial; submitLabel?: string }) {
+  const [state, action] = useActionState<FormState, FormData>(saveSetup, undefined);
+  const [region, setRegion] = useState<string>(initial?.region ?? "nigeria");
+  const [stage, setStage] = useState<string>(initial?.stage ?? "");
+  const [lowData, setLowData] = useState(initial?.lowData ?? false);
+  const [tried, setTried] = useState(false);
+  const ready = Boolean(stage);
   const fe = {
     career_stage: (tried && !stage ? "Choose the option that fits you best." : undefined) ?? state?.fieldErrors?.career_stage,
-    countries: (tried && needCountries ? "Pick at least one country abroad." : undefined) ?? state?.fieldErrors?.countries,
   };
-
-  function toggle(code: string) {
-    setPicked((cur) => (cur.includes(code) ? cur.filter((c) => c !== code) : cur.length >= abroadLimit ? cur : [...cur, code]));
-  }
 
   return (
     <form action={action} className="space-y-8" noValidate>
@@ -83,49 +78,17 @@ export function SetupForm({ stages, regions, countries, maxCountries }: { stages
                 name="region"
                 value={r.id}
                 checked={region === r.id}
-                onChange={() => {
-                  setRegion(r.id);
-                  setPicked((cur) => cur.slice(0, r.id === "both" ? maxCountries - 1 : maxCountries));
-                }}
+                onChange={() => setRegion(r.id)}
                 className="sr-only"
               />
               {r.label}
             </label>
           ))}
         </div>
+        <p className="mt-2 text-[0.8125rem] leading-5 text-ink-600" aria-live="polite">
+          {REGION_HINT[region]}
+        </p>
       </fieldset>
-
-      {region !== "nigeria" ? (
-        <fieldset aria-describedby="countries-hint" className="animate-rise">
-          <legend className="text-sm font-semibold text-ink-900">Which countries abroad?</legend>
-          <p id="countries-hint" className="mt-1 text-[0.8125rem] text-ink-500" aria-live="polite">
-            Pick up to {abroadLimit}. {picked.length} of {abroadLimit} chosen.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {abroad.map((c) => {
-              const on = picked.includes(c.code);
-              const full = !on && picked.length >= abroadLimit;
-              return (
-                <label
-                  key={c.code}
-                  className={`inline-flex min-h-12 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-[0.9375rem] font-medium transition-colors duration-200 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500 ${
-                    on ? "border-brand-600 bg-brand-600 text-white" : full ? "cursor-not-allowed border-transparent bg-ink-75 text-ink-400" : "border-transparent bg-ink-75 text-ink-800 hover:bg-ink-100"
-                  }`}
-                >
-                  <input type="checkbox" name="countries" value={c.code} checked={on} disabled={full} onChange={() => toggle(c.code)} className="sr-only" />
-                  {on ? <TickCircle size={18} variant="bulk" /> : null}
-                  {c.label}
-                </label>
-              );
-            })}
-          </div>
-          {fe.countries ? (
-            <div className="mt-2">
-              <FieldError>{fe.countries}</FieldError>
-            </div>
-          ) : null}
-        </fieldset>
-      ) : null}
 
       <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-ink-75 p-4 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500">
         <span className="flex items-start gap-3">
@@ -145,7 +108,7 @@ export function SetupForm({ stages, regions, countries, maxCountries }: { stages
       </label>
 
       <SubmitButton size="lg" className="w-full" pendingLabel="Saving" inactive={!ready} onInactiveClick={() => setTried(true)}>
-        Finish setup
+        {submitLabel}
       </SubmitButton>
     </form>
   );

@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
 import { LIMITS } from "@/lib/config";
-import type { Metric, Ownership, RoleKind } from "./schema";
+import type { EmploymentType, Metric, Ownership, RoleKind } from "./schema";
 import { DEMO_VAULT } from "@/lib/demo/vault";
 
 export type VaultItem = {
@@ -27,6 +27,8 @@ export type VaultRole = {
   end: string | null;
   isCurrent: boolean;
   grade: string | null;
+  /** Null means full time (or not said). */
+  employmentType: EmploymentType | null;
   source: "cv_import" | "voice" | "text";
   confirmed: boolean;
   items: VaultItem[];
@@ -44,6 +46,7 @@ type RoleRow = {
   end_date: string | null;
   is_current: boolean;
   grade: string | null;
+  employment_type?: EmploymentType | null;
   source: VaultRole["source"];
   confirmed: boolean;
 };
@@ -82,7 +85,8 @@ export async function getVault(viewer: Viewer): Promise<Vault> {
   if (viewer.preview) return summarise(DEMO_VAULT);
   const supabase = await createClient();
   const [{ data: roles }, { data: items }] = await Promise.all([
-    supabase.from("vault_roles").select("id, kind, organisation, title, location, start_date, end_date, is_current, grade, source, confirmed").eq("user_id", viewer.id),
+    // "*" so a new column (employment type) never breaks reads before its migration runs.
+    supabase.from("vault_roles").select("*").eq("user_id", viewer.id),
     supabase.from("vault_items").select("id, role_id, text, metrics, skills, ownership, source_quote, source_type, confirmed_at").eq("user_id", viewer.id).order("created_at"),
   ]);
   const byRole = new Map<string | null, VaultItem[]>();
@@ -111,6 +115,7 @@ export async function getVault(viewer: Viewer): Promise<Vault> {
     end: r.end_date?.slice(0, 7) ?? null,
     isCurrent: r.is_current,
     grade: r.grade,
+    employmentType: r.employment_type ?? null,
     source: r.source,
     confirmed: r.confirmed,
     items: byRole.get(r.id) ?? [],

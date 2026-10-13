@@ -4,6 +4,7 @@ import { can } from "@/lib/admin/permissions";
 import { publishRuleSet } from "@/app/admin/actions";
 import { PageHeader, Panel, StatusPill, Table, Td } from "@/components/admin/ui";
 import { formatDate } from "@/lib/format";
+import { PendingButton } from "@/components/ui/pending-button";
 
 export const metadata = { title: "Rules and lists" };
 
@@ -35,7 +36,7 @@ export default async function AdminRules() {
                     <form action={publishRuleSet}>
                       <input type="hidden" name="version" value={r.version} />
                       <input type="hidden" name="table" value={r.kind === "Country profile" ? "country_profiles" : "rule_sets"} />
-                      <button className="min-h-11 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">Publish</button>
+                      <PendingButton pendingLabel="Publishing" className="min-h-11 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">Publish</PendingButton>
                     </form>
                   ) : null}
                 </Td>

@@ -16,7 +16,7 @@ You ran the two baseline files, so the database matches `supabase/migrations/202
 - [x] App schema and back office (done 13 Oct 2026).
 - [ ] Run `supabase/migrations/20261013000200_notifications.sql` once in the SQL editor. It adds the Updates panel: messages from the back office, payment receipts, and pass and trial reminders. Until you run it, the panel shows only check ins.
 - [ ] Run `supabase/migrations/20261013000300_uploads_10mb.sql` once. It lets uploads go up to 10MB and accepts Word and text files.
-- [ ] Run `supabase/migrations/20261014000000_links_free_access_records.sql` once. It adds the portfolio and website fields, free access for family and testers, saving applications sent with a CV made elsewhere, and interview questions found on the web. Until you run it, those features fail to save.
+- [ ] Run `supabase/migrations/20261014000000_links_free_access_records.sql` once. In Finder it's in `Desktop/CV Web App/receipts/supabase/migrations`. Open it in TextEdit, select all, copy, paste into Supabase > **SQL Editor** > **New query**, press **Run**. It adds the portfolio and website fields, free access for family and testers, applications sent with a CV made elsewhere, interview questions from the web, full time, part time or contract on roles, paused accounts, and how often people use the app. It's safe to run again if you're not sure it ran. Until you run it, those features fail to save.
 
 From now on every database change comes as one new file in that folder with a later date in its name. Run each new file once, in date order. Never re-run an old one: "already exists" errors mean it ran before.
 
@@ -112,7 +112,8 @@ Sentry tells you when the app breaks for someone: which screen, which step, on w
   insert into public.admin_members (user_id, role)
   select id, 'owner' from public.users where email = 'THEIR EMAIL HERE';
   ```
-- [ ] There is no separate back office password. Open `https://YOUR-ADDRESS/admin`, sign in with your normal email, then set up two factor at `/admin/mfa` by scanning the code with an authenticator app (Google Authenticator or Microsoft Authenticator). Every visit after that asks for the 6 digit code from the app.
+- [ ] The back office has its own sign in page: `https://YOUR-ADDRESS/admin/sign-in` (opening `/admin` while signed out takes you there too). There is no separate password: sign in with your normal email or Google. The first time, it asks you to set up two factor: scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator). Every visit after that asks for the 6 digit code from the app. Bookmark the page.
+- [ ] **Users** shows everyone's full email (owner only), their plan, what they paid, how many days they used the app and when they were last active. Open a person to see their usage chart and payments, or to pause or delete the account.
 - [ ] Free access for family and testers: **Back office > Payments > Free access for family and testers**. Type their email, choose how long, press **Give free access**. They get everything a pass gives the next time they sign in with that email.
 
 ---

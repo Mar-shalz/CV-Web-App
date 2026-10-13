@@ -5,6 +5,7 @@ import { resolveReport } from "@/app/admin/actions";
 import { PageHeader, Panel, StatusPill, Table, Td } from "@/components/admin/ui";
 import { formatDate } from "@/lib/format";
 import { LIMITS } from "@/lib/config";
+import { PendingButton } from "@/components/ui/pending-button";
 
 export const metadata = { title: "Truth reviews" };
 
@@ -35,12 +36,12 @@ export default async function AdminReviews() {
                 {canResolve ? (
                   <form action={resolveReport} className="flex shrink-0 gap-2">
                     <input type="hidden" name="report_id" value={rep.id} />
-                    <button name="outcome" value="resolved" className="min-h-11 rounded-xl bg-proof-50 px-4 text-sm font-semibold text-proof-700 hover:bg-proof-100">
+                    <PendingButton name="outcome" value="resolved" pendingLabel="Saving" className="min-h-11 rounded-xl bg-proof-50 px-4 text-sm font-semibold text-proof-700 hover:bg-proof-100">
                       Fixed
-                    </button>
-                    <button name="outcome" value="dismissed" className="min-h-11 rounded-xl bg-ink-75 px-4 text-sm font-semibold text-ink-700 hover:bg-ink-100">
+                    </PendingButton>
+                    <PendingButton name="outcome" value="dismissed" pendingLabel="Saving" className="min-h-11 rounded-xl bg-ink-75 px-4 text-sm font-semibold text-ink-700 hover:bg-ink-100">
                       Not an error
-                    </button>
+                    </PendingButton>
                   </form>
                 ) : null}
               </li>

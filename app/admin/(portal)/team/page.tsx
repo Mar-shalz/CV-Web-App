@@ -5,6 +5,7 @@ import { ROLE_LABELS, type AdminRole } from "@/lib/admin/permissions";
 import { PageHeader, Panel, StatusPill, Table, Td } from "@/components/admin/ui";
 import { AddMemberForm } from "@/components/admin/forms";
 import { formatDate } from "@/lib/format";
+import { PendingButton } from "@/components/ui/pending-button";
 
 export const metadata = { title: "Team and access" };
 
@@ -30,7 +31,7 @@ export default async function AdminTeam() {
                   {!m.revoked && m.userId !== staff.id && m.role !== "owner" ? (
                     <form action={revokeMember}>
                       <input type="hidden" name="user_id" value={m.userId} />
-                      <button className="min-h-11 rounded-xl px-3 text-sm font-semibold text-flag-700 hover:bg-flag-50">Remove</button>
+                      <PendingButton pendingLabel="Removing" className="min-h-11 rounded-xl px-3 text-sm font-semibold text-flag-700 hover:bg-flag-50">Remove</PendingButton>
                     </form>
                   ) : null}
                 </Td>

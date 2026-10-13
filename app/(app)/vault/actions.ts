@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth/viewer";
-import { ROLE_KINDS, OWNERSHIP } from "@/lib/vault/schema";
+import { ROLE_KINDS, OWNERSHIP, EMPLOYMENT_TYPES, EMPLOYMENT_KINDS } from "@/lib/vault/schema";
 import { toDate } from "@/lib/vault/dates";
 import { extractMetrics } from "@/lib/vault/metrics";
 import { lintCopy } from "@/lib/copy-lint";
@@ -66,6 +66,7 @@ const roleSchema = z.object({
   end: ym,
   is_current: z.boolean(),
   grade: text(80),
+  employment_type: z.enum(EMPLOYMENT_TYPES).nullable(),
 });
 
 function readRole(formData: FormData) {
@@ -78,6 +79,7 @@ function readRole(formData: FormData) {
     end: formData.get("end") ?? "",
     is_current: formData.get("is_current") === "on",
     grade: formData.get("grade") ?? "",
+    employment_type: formData.get("employment_type") || null,
   });
 }
 
@@ -100,6 +102,11 @@ export async function saveRole(_prev: VaultActionState, formData: FormData): Pro
     grade: r.grade,
     confirmed: true,
   };
+  // Full time is the default and prints nothing, so it's stored as empty.
+  const employment = EMPLOYMENT_KINDS.includes(r.kind) && r.employment_type && r.employment_type !== "full_time" ? r.employment_type : null;
+  const typed = { ...row, employment_type: employment };
+  // Before the employment type migration runs, the role still saves without it.
+  const missingColumn = (e: { code?: string; message?: string } | null) => Boolean(e && (e.code === "PGRST204" || e.code === "42703"));
   // What they did there, added one at a time in the same form: their own words, so confirmed.
   const things = formData
     .getAll("items")
@@ -114,10 +121,12 @@ export async function saveRole(_prev: VaultActionState, formData: FormData): Pro
   const roleId = id.safeParse(formData.get("role_id"));
   let savedId: string | null = roleId.success ? roleId.data : null;
   if (roleId.success) {
-    const { error } = await supabase.from("vault_roles").update(row).eq("id", roleId.data).eq("user_id", viewer.id);
+    let { error } = await supabase.from("vault_roles").update(typed).eq("id", roleId.data).eq("user_id", viewer.id);
+    if (missingColumn(error)) ({ error } = await supabase.from("vault_roles").update(row).eq("id", roleId.data).eq("user_id", viewer.id));
     if (error) return { error: "We couldn't save that. Check your connection and try again." };
   } else {
-    const { data, error } = await supabase.from("vault_roles").insert({ ...row, user_id: viewer.id, source: "text" }).select("id").single();
+    let { data, error } = await supabase.from("vault_roles").insert({ ...typed, user_id: viewer.id, source: "text" }).select("id").single();
+    if (missingColumn(error)) ({ data, error } = await supabase.from("vault_roles").insert({ ...row, user_id: viewer.id, source: "text" }).select("id").single());
     if (error || !data) return { error: "We couldn't save that. Check your connection and try again." };
     savedId = data.id;
   }
