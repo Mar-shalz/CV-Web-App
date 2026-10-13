@@ -6,7 +6,7 @@ import { PageHeader, Panel, StatusPill, Table, Td } from "@/components/admin/ui"
 import { formatDate } from "@/lib/format";
 import { PendingButton } from "@/components/ui/pending-button";
 
-export const metadata = { title: "Rules and lists" };
+export const metadata = { title: "Rules and Lists" };
 
 export default async function AdminRules() {
   const staff = await requireAdmin("rules");

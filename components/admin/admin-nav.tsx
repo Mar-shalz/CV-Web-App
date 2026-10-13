@@ -9,12 +9,12 @@ const ITEMS = [
   { href: "/admin/users", label: "Users", short: "Users", icon: Profile2User, perm: "users" },
   { href: "/admin/waitlist", label: "Waitlist", short: "Waitlist", icon: ClipboardText, perm: "waitlist" },
   { href: "/admin/payments", label: "Payments", short: "Payments", icon: Card, perm: "payments" },
-  { href: "/admin/messages", label: "Messages to users", short: "Messages", icon: Messages2, perm: "messages" },
-  { href: "/admin/reviews", label: "Truth reviews", short: "Reviews", icon: TaskSquare, perm: "reviews" },
-  { href: "/admin/rules", label: "Rules and lists", short: "Rules", icon: Judge, perm: "rules" },
-  { href: "/admin/ai", label: "AI cost and quality", short: "AI", icon: Cpu, perm: "ai" },
-  { href: "/admin/audit", label: "Audit log", short: "Audit", icon: Book1, perm: "audit" },
-  { href: "/admin/team", label: "Team and access", short: "Team", icon: People, perm: "team" },
+  { href: "/admin/messages", label: "Messages to Users", short: "Messages", icon: Messages2, perm: "messages" },
+  { href: "/admin/reviews", label: "Truth Reviews", short: "Reviews", icon: TaskSquare, perm: "reviews" },
+  { href: "/admin/rules", label: "Rules and Lists", short: "Rules", icon: Judge, perm: "rules" },
+  { href: "/admin/ai", label: "AI Cost and Quality", short: "AI", icon: Cpu, perm: "ai" },
+  { href: "/admin/audit", label: "Audit Log", short: "Audit", icon: Book1, perm: "audit" },
+  { href: "/admin/team", label: "Team and Access", short: "Team", icon: People, perm: "team" },
 ] as const;
 
 const isActive = (path: string, href: string) => (href === "/admin" ? path === "/admin" : path.startsWith(href));
@@ -46,7 +46,7 @@ export function AdminNav({ allowed }: { allowed: string[] }) {
       </ul>
       <Link href="/home" className="mt-auto flex min-h-11 items-center gap-3 rounded-r-2xl pl-6 text-sm font-medium text-white/65 hover:text-white">
         <ArrowLeft size={20} />
-        Back to the app
+        Back to the App
       </Link>
     </nav>
   );

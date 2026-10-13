@@ -240,7 +240,20 @@ export async function getRules(staff: Staff): Promise<{ rules: RuleRow[]; lists:
 // AI cost and quality
 // ---------------------------------------------------------------------------
 export type AiTaskRow = { task: string; model: string; calls: number; failed: number; avgLatencyMs: number; costUsd: number };
-export type AiData = { rows: AiTaskRow[]; totalUsd: number; activeUsers: number; perActiveUsd: number; budgetUsd: number };
+export type AiProviderStatus = { name: string; ready: boolean; position: number | null };
+export type AiProblem = { at: string; task: string; model: string; outcome: string };
+export type AiData = { rows: AiTaskRow[]; totalUsd: number; activeUsers: number; perActiveUsd: number; budgetUsd: number; providers: AiProviderStatus[]; problems: AiProblem[] };
+
+/** Which AI keys this server has (never the keys themselves), in the order they're tried. */
+function providerStatus(): AiProviderStatus[] {
+  const order = (process.env.AI_PROVIDERS || "gemini,anthropic").split(",").map((p) => p.trim());
+  const ready = { gemini: Boolean(process.env.GEMINI_API_KEY), anthropic: Boolean(process.env.ANTHROPIC_API_KEY) };
+  const live = order.filter((p) => ready[p as keyof typeof ready]);
+  return [
+    { name: "Google Gemini", ready: ready.gemini, position: live.includes("gemini") ? live.indexOf("gemini") + 1 : null },
+    { name: "Anthropic Claude", ready: ready.anthropic, position: live.includes("anthropic") ? live.indexOf("anthropic") + 1 : null },
+  ];
+}
 
 export async function getAi(staff: Staff): Promise<AiData> {
   const budgetUsd = LIMITS.ai.budget_usd_per_active_user_month;
@@ -253,10 +266,13 @@ export async function getAi(staff: Staff): Promise<AiData> {
       { task: "build_pack", model: "claude-haiku-5-5", calls: 655, failed: 2, avgLatencyMs: 1700, costUsd: 2.4 },
     ];
     const totalUsd = rows.reduce((s, r) => s + r.costUsd, 0);
-    return { rows, totalUsd, activeUsers: 430, perActiveUsd: totalUsd / 430, budgetUsd };
+    return { rows, totalUsd, activeUsers: 430, perActiveUsd: totalUsd / 430, budgetUsd, providers: providerStatus(), problems: [{ at: ago(0, 2), task: "parse_cv", model: "gemini-3.8-flash", outcome: "provider_error" }] };
   }
   const db = createAdminClient();
-  const { data } = await db.from("ai_call_logs").select("task, model, outcome, latency_ms, cost_usd, user_ref").gte("at", ago(30)).limit(50000);
+  const [{ data }, { data: bad }] = await Promise.all([
+    db.from("ai_call_logs").select("task, model, outcome, latency_ms, cost_usd, user_ref").gte("at", ago(30)).limit(50000),
+    db.from("ai_call_logs").select("at, task, model, outcome").not("outcome", "in", "(ok,cache_hit)").order("at", { ascending: false }).limit(12),
+  ]);
   const by = new Map<string, AiTaskRow & { latencyTotal: number }>();
   const users = new Set<string>();
   for (const r of data ?? []) {
@@ -271,46 +287,129 @@ export async function getAi(staff: Staff): Promise<AiData> {
   }
   const rows = [...by.values()].map(({ latencyTotal, ...r }) => ({ ...r, avgLatencyMs: r.calls ? latencyTotal / r.calls : 0 }));
   const totalUsd = rows.reduce((s, r) => s + r.costUsd, 0);
-  return { rows, totalUsd, activeUsers: users.size, perActiveUsd: users.size ? totalUsd / users.size : 0, budgetUsd };
+  return { rows, totalUsd, activeUsers: users.size, perActiveUsd: users.size ? totalUsd / users.size : 0, budgetUsd, providers: providerStatus(), problems: (bad ?? []) as AiProblem[] };
 }
 
 // ---------------------------------------------------------------------------
 // Audit log and team
 // ---------------------------------------------------------------------------
-export type AuditRow = { id: string; at: string; actor: string; role: string | null; action: string; entity: string; entityId: string | null };
+export type AuditKind = "actions" | "views" | "sign_ins";
+export type AuditRow = { id: string; at: string; who: string; whoEmail: string | null; role: string | null; action: string; target: string | null };
 
-export async function listAudit(staff: Staff, action?: string): Promise<AuditRow[]> {
+// Plain words for each logged action. Views of personal data are logged too (Build pack),
+// but the log shows what staff did unless "Views" is chosen.
+export const AUDIT_ACTIONS: Record<string, string> = {
+  suspend: "Paused an account",
+  restore: "Restored an account",
+  delete_account: "Deleted an account",
+  grant_free_access: "Gave free access",
+  revoke_free_access: "Removed free access",
+  refund: "Recorded a refund",
+  add_member: "Added to the team",
+  pause_member: "Paused team access",
+  reactivate_member: "Reactivated team access",
+  delete_member: "Deleted from the team",
+  revoke_member: "Removed from the team",
+  message_person: "Sent a message",
+  announce: "Posted an announcement",
+  end_announcement: "Ended an announcement",
+  resolve: "Fixed a truth report",
+  dismiss: "Dismissed a truth report",
+  publish: "Published rules",
+  mfa_verified: "Signed in with two factor",
+  view: "Viewed",
+};
+
+const VIEW_OF: Record<string, string> = { users: "users", passes: "payments", waitlist: "the waitlist", truth_reports: "truth reports", announcements: "messages" };
+
+export async function listAudit(staff: Staff, kind: AuditKind = "actions"): Promise<AuditRow[]> {
   if (staff.preview) {
-    const rows: AuditRow[] = [
-      { id: "a1", at: ago(0, 1), actor: "Owner", role: "owner", action: "view", entity: "users", entityId: null },
-      { id: "a2", at: ago(0, 3), actor: "Finance", role: "finance", action: "refund", entity: "passes", entityId: "PSK_c0ffee" },
-      { id: "a3", at: ago(1), actor: "Reviewer", role: "reviewer", action: "resolve", entity: "truth_reports", entityId: "r0" },
-      { id: "a4", at: ago(2), actor: "Owner", role: "owner", action: "publish", entity: "rule_sets", entityId: "eligibility_v0.3" },
-      { id: "a5", at: ago(3), actor: "Owner", role: "owner", action: "add_member", entity: "admin_members", entityId: null },
+    const rows: (AuditRow & { kind: AuditKind })[] = [
+      { id: "a1", at: ago(0, 1), who: "Tolu Adebayo", whoEmail: "founder@example.test", role: "owner", action: "Paused an account", target: "kunle.ade@gmail.com", kind: "actions" },
+      { id: "a2", at: ago(0, 2), who: "Tolu Adebayo", whoEmail: "founder@example.test", role: "owner", action: "Gave free access", target: "amaka.eze@outlook.com", kind: "actions" },
+      { id: "a3", at: ago(0, 3), who: "Finance", whoEmail: "finance@example.test", role: "finance", action: "Recorded a refund", target: "PSK_c0ffee", kind: "actions" },
+      { id: "a4", at: ago(1), who: "Chidi Okafor", whoEmail: "reviewer@example.test", role: "reviewer", action: "Fixed a truth report", target: null, kind: "actions" },
+      { id: "a5", at: ago(2), who: "Tolu Adebayo", whoEmail: "founder@example.test", role: "owner", action: "Published rules", target: "eligibility_v0.3", kind: "actions" },
+      { id: "a6", at: ago(0, 1), who: "Tolu Adebayo", whoEmail: "founder@example.test", role: "owner", action: "Viewed users", target: null, kind: "views" },
+      { id: "a7", at: ago(0, 4), who: "Tolu Adebayo", whoEmail: "founder@example.test", role: "owner", action: "Signed in with two factor", target: null, kind: "sign_ins" },
     ];
-    return action ? rows.filter((r) => r.action === action) : rows;
+    return rows.filter((r) => r.kind === kind);
   }
   const db = createAdminClient();
   let query = db.from("audit_log").select("id, at, actor, actor_role, action, entity, entity_id").order("at", { ascending: false }).limit(200);
-  if (action) query = query.eq("action", action);
+  query = kind === "views" ? query.eq("action", "view") : kind === "sign_ins" ? query.eq("action", "mfa_verified") : query.not("action", "in", "(view,mfa_verified)");
   const { data } = await query;
-  return (data ?? []).map((r) => ({ id: String(r.id), at: r.at, actor: `${String(r.actor).slice(0, 8)}…`, role: r.actor_role, action: r.action, entity: r.entity, entityId: r.entity_id }));
+  const rows = data ?? [];
+
+  // Who: the staff member's name and email. What: the person or thing acted on.
+  const actorIds = [...new Set(rows.map((r) => r.actor as string).filter(Boolean))];
+  const userTargets = [...new Set(rows.filter((r) => (r.entity === "users" || r.entity === "admin_members" || r.entity === "notifications") && r.entity_id).map((r) => r.entity_id as string))];
+  const freeIds = rows.filter((r) => r.entity === "free_access" && r.entity_id).map((r) => r.entity_id as string);
+  const passIds = rows.filter((r) => r.entity === "passes" && r.entity_id).map((r) => r.entity_id as string);
+  const people = [...new Set([...actorIds, ...userTargets])].filter((id) => /^[0-9a-f-]{36}$/.test(id));
+  const [users, names, frees, passes] = await Promise.all([
+    people.length ? db.from("users").select("id, email").in("id", people) : Promise.resolve({ data: [] }),
+    actorIds.length ? db.from("profiles").select("user_id, full_name").in("user_id", actorIds) : Promise.resolve({ data: [] }),
+    freeIds.length ? db.from("free_access").select("id, email").in("id", freeIds) : Promise.resolve({ data: [] }),
+    passIds.length ? db.from("passes").select("id, paystack_reference").in("id", passIds) : Promise.resolve({ data: [] }),
+  ]);
+  const emailOf = new Map(((users.data ?? []) as { id: string; email: string }[]).map((u) => [u.id, u.email]));
+  const nameOf = new Map(((names.data ?? []) as { user_id: string; full_name: string | null }[]).map((n) => [n.user_id, n.full_name]));
+  const freeOf = new Map(((frees.data ?? []) as { id: string; email: string }[]).map((f) => [f.id, f.email]));
+  const passOf = new Map(((passes.data ?? []) as { id: string; paystack_reference: string | null }[]).map((p) => [p.id, p.paystack_reference]));
+
+  return rows.map((r) => {
+    const id = r.entity_id as string | null;
+    const target =
+      r.entity === "users" || r.entity === "admin_members" || r.entity === "notifications"
+        ? id
+          ? (emailOf.get(id) ?? (r.action === "delete_account" ? "Account now deleted" : "Account no longer exists"))
+          : null
+        : r.entity === "free_access"
+          ? (id && freeOf.get(id)) || null
+          : r.entity === "passes"
+            ? (id && passOf.get(id)) || null
+            : r.action === "publish"
+              ? id
+              : null;
+    const actor = r.actor as string;
+    return {
+      id: String(r.id),
+      at: r.at,
+      who: nameOf.get(actor) || emailOf.get(actor) || "Former staff member",
+      whoEmail: emailOf.get(actor) ?? null,
+      role: r.actor_role,
+      action: r.action === "view" ? `Viewed ${VIEW_OF[r.entity] ?? r.entity}` : (AUDIT_ACTIONS[r.action] ?? r.action.replace(/_/g, " ")),
+      target,
+    };
+  });
 }
 
-export type TeamRow = { userId: string; email: string; role: string; added: string; revoked: boolean };
+export type TeamRow = { userId: string; email: string; name: string | null; role: string; added: string; status: "active" | "paused" | "removed" };
 
+/** The team. Team and access is owner only, so emails are shown in full. */
 export async function listTeam(staff: Staff): Promise<TeamRow[]> {
   if (staff.preview) {
     return [
-      { userId: "t1", email: maskEmail("founder@example.test"), role: "owner", added: ago(30), revoked: false },
-      { userId: "t2", email: maskEmail("reviewer@example.test"), role: "reviewer", added: ago(12), revoked: false },
-      { userId: "t3", email: maskEmail("support@example.test"), role: "support", added: ago(5), revoked: false },
+      { userId: "t1", email: "founder@example.test", name: "Tolu Adebayo", role: "owner", added: ago(30), status: "active" },
+      { userId: "t2", email: "reviewer@example.test", name: "Chidi Okafor", role: "reviewer", added: ago(12), status: "active" },
+      { userId: "t3", email: "support@example.test", name: null, role: "support", added: ago(5), status: "paused" },
     ];
   }
   const db = createAdminClient();
-  const { data } = await db.from("admin_members").select("user_id, role, created_at, revoked_at, users(email)").order("created_at");
+  const { data } = await db.from("admin_members").select("*, users(email)").order("created_at");
+  const ids = (data ?? []).map((m) => m.user_id as string);
+  const { data: names } = ids.length ? await db.from("profiles").select("user_id, full_name").in("user_id", ids) : { data: [] };
+  const nameOf = new Map((names ?? []).map((n) => [n.user_id as string, n.full_name as string | null]));
   return (data ?? []).map((m) => {
     const u = m.users as unknown as { email: string } | null;
-    return { userId: m.user_id, email: maskEmail(u?.email), role: m.role, added: m.created_at, revoked: Boolean(m.revoked_at) };
+    return {
+      userId: m.user_id,
+      email: u?.email ?? "Unknown",
+      name: nameOf.get(m.user_id) ?? null,
+      role: m.role,
+      added: m.created_at,
+      status: m.revoked_at ? "removed" : m.paused_at ? "paused" : "active",
+    };
   });
 }

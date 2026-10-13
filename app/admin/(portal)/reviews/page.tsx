@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/format";
 import { LIMITS } from "@/lib/config";
 import { PendingButton } from "@/components/ui/pending-button";
 
-export const metadata = { title: "Truth reviews" };
+export const metadata = { title: "Truth Reviews" };
 
 export default async function AdminReviews() {
   const staff = await requireAdmin("reviews");

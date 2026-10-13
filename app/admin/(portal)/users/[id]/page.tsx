@@ -5,7 +5,7 @@ import { can } from "@/lib/admin/permissions";
 import { getUserDetail } from "@/lib/admin/users";
 import { PageHeader, Panel, StatusPill, Table, Td } from "@/components/admin/ui";
 import { BarChart } from "@/components/admin/bar-chart";
-import { PlanPill, lastSeen } from "@/components/admin/user-bits";
+import { PlanPill, lastSeen, countryName } from "@/components/admin/user-bits";
 import { SuspendControl, DeleteControl } from "@/components/admin/user-controls";
 import { formatDate, formatNaira } from "@/lib/format";
 import { ArrowLeft, Lock1 } from "@/components/icons";
@@ -26,7 +26,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
     ["Name", u.name ?? "Not added"],
     ["Signs in with", u.provider === "google" ? "Google" : "Email"],
     ...(full && u.phone ? ([["Phone", u.phone]] as [string, string][]) : []),
-    ["Lives in", u.place ?? "Not added"],
+    ["Using the app from", countryName(u.country)],
     ["Stage", u.stage],
     ["Applying in", u.markets || "Not set"],
     ["Joined", formatDate(u.joined)],
@@ -64,8 +64,8 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
         ))}
       </div>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="space-y-4">
           <Panel title="Visits per day, last 30 days" action={<span className="text-xs text-ink-500">Last active {lastSeen(u.lastActive).toLowerCase()}</span>}>
             <BarChart data={u.activity} label="Visits" />
           </Panel>
@@ -114,7 +114,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
           </Panel>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Panel title="Details">
             <dl className="divide-y divide-ink-100">
               {facts.map(([k, v]) => (

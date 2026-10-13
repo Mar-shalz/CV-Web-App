@@ -6,11 +6,12 @@ import { Lock1 } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; to?: string }> }) {
+  const { error, to } = await searchParams;
   return (
     <AuthShell step={1} title="Let's get you started" subtitle="Sign in or create an account. It takes less than a minute.">
       <SignInForm
+        dest={to === "admin" ? "admin" : undefined}
         initialError={
           error === "google"
             ? "Google sign in didn't finish. Try again, or use your email instead."

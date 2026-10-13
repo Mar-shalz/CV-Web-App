@@ -66,18 +66,59 @@ export async function addMember(_prev: AdminActionState, formData: FormData): Pr
   if (!user) return { error: "No account uses that email. Ask them to sign up first." };
   const { error } = await db.from("admin_members").upsert({ user_id: user.id, role: parsed.data.role, added_by: staff.id, revoked_at: null });
   if (error) return { error: "Couldn't add them." };
+  // Adding someone who was paused brings them straight back (no-op before the migration).
+  await db.from("admin_members").update({ paused_at: null }).eq("user_id", user.id);
   await logAdminAction(staff, "add_member", "admin_members", user.id, { role: parsed.data.role });
   revalidatePath("/admin/team");
   return { ok: "Added. They'll be asked to set up two factor sign in." };
 }
 
-export async function revokeMember(formData: FormData): Promise<void> {
+/** Team changes never touch your own access, and never leave the team without an owner. */
+async function teamTarget(staffId: string, formData: FormData): Promise<{ id: string; role: string } | null> {
+  const id = uuid.safeParse(formData.get("user_id"));
+  if (!id.success || id.data === staffId) return null;
+  const db = createAdminClient();
+  const { data } = await db.from("admin_members").select("*").eq("user_id", id.data).maybeSingle();
+  if (!data) return null;
+  if (data.role === "owner") {
+    const { data: owners } = await db.from("admin_members").select("*").eq("role", "owner").is("revoked_at", null);
+    const active = (owners ?? []).filter((o) => !o.paused_at && o.user_id !== id.data);
+    if (!active.length) return null;
+  }
+  return { id: id.data, role: data.role };
+}
+
+/** Pause: no back office access until reactivated. Their account and app use are untouched. */
+export async function pauseMember(formData: FormData): Promise<void> {
+  const staff = await requireAdmin("team");
+  if (staff.preview) return;
+  const target = await teamTarget(staff.id, formData);
+  if (!target) return;
+  const { error } = await createAdminClient().from("admin_members").update({ paused_at: new Date().toISOString() }).eq("user_id", target.id);
+  if (!error) await logAdminAction(staff, "pause_member", "admin_members", target.id, { role: target.role });
+  revalidatePath("/admin/team");
+}
+
+export async function reactivateMember(formData: FormData): Promise<void> {
   const staff = await requireAdmin("team");
   const id = uuid.safeParse(formData.get("user_id"));
   if (staff.preview || !id.success || id.data === staff.id) return;
   const db = createAdminClient();
-  await db.from("admin_members").update({ revoked_at: new Date().toISOString() }).eq("user_id", id.data);
-  await logAdminAction(staff, "revoke_member", "admin_members", id.data);
+  let { error } = await db.from("admin_members").update({ paused_at: null, revoked_at: null }).eq("user_id", id.data);
+  // Before the pause migration runs there is no paused_at column.
+  if (error) ({ error } = await db.from("admin_members").update({ revoked_at: null }).eq("user_id", id.data));
+  if (!error) await logAdminAction(staff, "reactivate_member", "admin_members", id.data);
+  revalidatePath("/admin/team");
+}
+
+/** Delete: off the team for good. Their app account stays; add them again any time. */
+export async function deleteMember(formData: FormData): Promise<void> {
+  const staff = await requireAdmin("team");
+  if (staff.preview) return;
+  const target = await teamTarget(staff.id, formData);
+  if (!target) return;
+  const { error } = await createAdminClient().from("admin_members").delete().eq("user_id", target.id);
+  if (!error) await logAdminAction(staff, "delete_member", "admin_members", target.id, { role: target.role });
   revalidatePath("/admin/team");
 }
 
@@ -188,12 +229,12 @@ export async function revokeFreeAccess(formData: FormData): Promise<void> {
 // Account controls (owner only)
 // ---------------------------------------------------------------------------
 
-/** Signs staff out and back to the back office sign in page. */
+/** Signs staff out, back to the sign in page. */
 export async function signOutAdmin(): Promise<void> {
-  if (isPreviewMode()) redirect("/admin/sign-in?signed_out=1");
+  if (isPreviewMode()) redirect("/sign-in?signed_out=1");
   const supabase = await createClient();
   await supabase.auth.signOut().catch(() => {});
-  redirect("/admin/sign-in?signed_out=1");
+  redirect("/sign-in?signed_out=1");
 }
 
 /** Team members can't be paused or deleted here: remove them from the team first. */

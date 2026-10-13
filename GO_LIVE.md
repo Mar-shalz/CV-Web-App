@@ -16,7 +16,7 @@ You ran the two baseline files, so the database matches `supabase/migrations/202
 - [x] App schema and back office (done 13 Oct 2026).
 - [ ] Run `supabase/migrations/20261013000200_notifications.sql` once in the SQL editor. It adds the Updates panel: messages from the back office, payment receipts, and pass and trial reminders. Until you run it, the panel shows only check ins.
 - [ ] Run `supabase/migrations/20261013000300_uploads_10mb.sql` once. It lets uploads go up to 10MB and accepts Word and text files.
-- [ ] Run `supabase/migrations/20261014000000_links_free_access_records.sql` once. In Finder it's in `Desktop/CV Web App/receipts/supabase/migrations`. Open it in TextEdit, select all, copy, paste into Supabase > **SQL Editor** > **New query**, press **Run**. It adds the portfolio and website fields, free access for family and testers, applications sent with a CV made elsewhere, interview questions from the web, full time, part time or contract on roles, paused accounts, and how often people use the app. It's safe to run again if you're not sure it ran. Until you run it, those features fail to save.
+- [ ] Run `supabase/migrations/20261014000000_links_free_access_records.sql` once. In Finder it's in `Desktop/CV Web App/receipts/supabase/migrations`. Open it in TextEdit, select all, copy, paste into Supabase > **SQL Editor** > **New query**, press **Run**. It adds the portfolio and website fields, free access for family and testers, applications sent with a CV made elsewhere, interview questions from the web, full time, part time or contract on roles, paused accounts and paused team members, and how often (and from which country) people use the app. It's safe to run again if you're not sure it ran. Until you run it, those features fail to save.
 
 From now on every database change comes as one new file in that folder with a later date in its name. Run each new file once, in date order. Never re-run an old one: "already exists" errors mean it ran before.
 
@@ -97,6 +97,9 @@ Supabase's built in sender only allows a few emails an hour.
 - [ ] **Settings > Environment Variables**: set `APP_URL` to that address (with https://). Then **Deployments** > the latest one > **Redeploy**.
 - [ ] Optional now, needed for launch: **Settings > Domains** > add your domain and follow the DNS steps. Then change `APP_URL` and the Supabase Site URL to it.
 - [ ] **Settings > Cron Jobs** should list `/api/cron/outcomes` (it marks No reply after 30 days, once a day).
+- [ ] **Settings > Deployment Protection**: turn **Vercel Authentication** off for production. While it's on, only people logged in to your Vercel account can open the app; everyone else sees a Vercel login page.
+- [ ] **A clean address** (no `victor-ajibodu-s-projects`): **Settings > Domains** > **Add Domain**, type a free name such as `receipts-ng.vercel.app` (`applywithproof.vercel.app` and `receipts-cv.vercel.app` were also free on 13 Oct 2026), and save. Then set `APP_URL` to it, redeploy, and in Supabase **Authentication > URL Configuration** set the Site URL to it and add `https://NEW-ADDRESS/auth/callback` to the redirect URLs. The long address keeps working; share only the new one. A domain you buy (for example `receipts.ng`) replaces it later the same way.
+- [ ] **Settings > Environment Variables**: make sure `GEMINI_API_KEY` is there (the same value as in `.env.local`), then redeploy. Without it, CV upload, job checks and tailoring fail on the live site. **Back office > AI Cost and Quality** shows whether this server has a key.
 
 ### Error alerts with Sentry (optional, free)
 Sentry tells you when the app breaks for someone: which screen, which step, on which phone, and how many people it hit, so you can fix it before people complain. It never sees CV text or personal details: the app strips them before sending. The free Developer plan is enough for the beta.
@@ -112,7 +115,8 @@ Sentry tells you when the app breaks for someone: which screen, which step, on w
   insert into public.admin_members (user_id, role)
   select id, 'owner' from public.users where email = 'THEIR EMAIL HERE';
   ```
-- [ ] The back office has its own sign in page: `https://YOUR-ADDRESS/admin/sign-in` (opening `/admin` while signed out takes you there too). There is no separate password: sign in with your normal email or Google. The first time, it asks you to set up two factor: scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator). Every visit after that asks for the 6 digit code from the app. Bookmark the page.
+- [ ] Open `https://YOUR-ADDRESS/admin`. If you're signed out you go to the normal sign in page, and come back to the back office afterwards. There is no separate password. The first time, it asks you to set up two factor: scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator). Every visit after that asks for the 6 digit code from the app. Bookmark it.
+- [ ] Use the account that is on the team. Any other account gets "We couldn't find that page" at `/admin`, on purpose. To let another account in, add it in **Team and Access**.
 - [ ] **Users** shows everyone's full email (owner only), their plan, what they paid, how many days they used the app and when they were last active. Open a person to see their usage chart and payments, or to pause or delete the account.
 - [ ] Free access for family and testers: **Back office > Payments > Free access for family and testers**. Type their email, choose how long, press **Give free access**. They get everything a pass gives the next time they sign in with that email.
 

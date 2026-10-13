@@ -1,12 +1,24 @@
 import type { ReactNode } from "react";
 import { TickCircle, Warning2, MinusCircle, Danger } from "@/components/icons";
 
+// Back office headings use Title Case, with short joining words kept small (founder's
+// rule: and, of, or, the; plus the usual a, an, to, in, on, for, by, at). Emails and
+// paths are left exactly as written.
+const SMALL = new Set(["and", "of", "or", "the", "a", "an", "to", "in", "on", "for", "by", "at"]);
+export function titleCase(text: string): string {
+  if (/[@/]/.test(text)) return text;
+  return text
+    .split(" ")
+    .map((word, i) => (i > 0 && SMALL.has(word.toLowerCase()) ? word.toLowerCase() : word.charAt(0).toUpperCase() + word.slice(1)))
+    .join(" ");
+}
+
 export function PageHeader({ title, intro, action }: { title: string; intro?: string; action?: ReactNode }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-3 animate-rise">
       <div>
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900">{title}</h1>
-        {intro ? <p className="mt-1 max-w-3xl text-[0.9375rem] leading-6 text-ink-600">{intro}</p> : null}
+        <h1 className="font-display text-[1.625rem] font-semibold leading-8 tracking-[-0.03em] text-ink-900 [overflow-wrap:anywhere]">{titleCase(title)}</h1>
+        {intro ? <p className="mt-0.5 max-w-3xl text-[0.9375rem] leading-6 text-ink-600">{intro}</p> : null}
       </div>
       {action}
     </header>
@@ -17,8 +29,8 @@ export function Panel({ title, children, action, className = "" }: { title?: str
   return (
     <section className={`rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card ${className}`}>
       {title ? (
-        <div className="flex min-h-14 items-center justify-between gap-3 border-b border-ink-100 px-5 py-3">
-          <h2 className="text-[0.9375rem] font-semibold text-ink-900">{title}</h2>
+        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-ink-100 px-5 py-2.5">
+          <h2 className="text-[0.9375rem] font-semibold text-ink-900">{titleCase(title)}</h2>
           {action}
         </div>
       ) : null}
@@ -36,8 +48,8 @@ export function Table({ head, children, caption }: { head: string[]; children: R
         <thead>
           <tr className="border-b border-ink-100 bg-ink-50/70 text-xs font-medium text-ink-500">
             {head.map((h) => (
-              <th key={h} scope="col" className="px-5 py-3 font-medium">
-                {h}
+              <th key={h} scope="col" className="whitespace-nowrap px-5 py-2.5 font-medium">
+                {titleCase(h)}
               </th>
             ))}
           </tr>
@@ -49,7 +61,7 @@ export function Table({ head, children, caption }: { head: string[]; children: R
 }
 
 export function Td({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <td className={`px-5 py-3.5 align-middle ${className}`}>{children}</td>;
+  return <td className={`px-5 py-3 align-middle ${className}`}>{children}</td>;
 }
 
 const STATUS = {
@@ -74,7 +86,7 @@ export function KpiCard({ label, value, target, status, note }: { label: string;
   return (
     <div className="flex h-full flex-col rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[0.8125rem] leading-5 text-ink-500">{label}</p>
+        <p className="text-[0.8125rem] leading-5 text-ink-500">{titleCase(label)}</p>
         <StatusPill status={status} />
       </div>
       <p className={`mt-2 font-display font-semibold tracking-[-0.02em] text-ink-900 ${value.length > 10 ? "text-base" : "text-[1.75rem] leading-9"}`}>{value}</p>

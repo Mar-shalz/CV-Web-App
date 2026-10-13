@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MfaForm } from "@/components/admin/mfa-form";
 import { ShieldTick } from "@/components/icons";
 
-export const metadata = { title: "Two factor sign in" };
+export const metadata = { title: "Two Factor Sign in" };
 
 export default async function MfaPage() {
   const staff = await getStaff();

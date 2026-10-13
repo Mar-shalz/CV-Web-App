@@ -300,6 +300,9 @@ select {
 /* Route modal: a bottom sheet on phones, a centred card from sm up. */
 .route-modal[open] { animation: sheet-up 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .route-modal[open]::backdrop { animation: backdrop-in 0.2s ease-out; }
+/* The loading frame already opened: the filled screen appears in place, no second pop. */
+.route-modal[data-settled][open],
+.route-modal[data-settled][open]::backdrop { animation: none !important; }
 @media (min-width: 40rem) {
   .route-modal[open] { animation: modal-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
 }

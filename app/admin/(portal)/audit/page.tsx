@@ -1,52 +1,62 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/auth";
-import { listAudit } from "@/lib/admin/data";
+import { listAudit, type AuditKind } from "@/lib/admin/data";
+import { Avatar } from "@/components/shell/user-chip";
 import { PageHeader, Panel, Table, Td } from "@/components/admin/ui";
 import { ROLE_LABELS, type AdminRole } from "@/lib/admin/permissions";
 
-export const metadata = { title: "Audit log" };
+export const metadata = { title: "Audit Log" };
 
-const ACTIONS = ["view", "refund", "resolve", "dismiss", "publish", "add_member", "revoke_member", "mfa_verified"];
+const KINDS: { id: AuditKind; label: string }[] = [
+  { id: "actions", label: "Actions" },
+  { id: "views", label: "Views of personal data" },
+  { id: "sign_ins", label: "Sign ins" },
+];
 const time = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" }).format(new Date(iso));
 
-export default async function AdminAudit({ searchParams }: { searchParams: Promise<{ action?: string }> }) {
+export default async function AdminAudit({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   const staff = await requireAdmin("audit");
-  const { action } = await searchParams;
-  const filter = ACTIONS.includes(action ?? "") ? action : undefined;
-  const rows = await listAudit(staff, filter);
+  const { show } = await searchParams;
+  const kind = KINDS.find((k) => k.id === show)?.id ?? "actions";
+  const rows = await listAudit(staff, kind);
 
   return (
     <>
-      <PageHeader title="Audit log" intro="Every staff view of personal data and every change, newest first. Entries can't be edited or deleted from the app." />
-      <nav aria-label="Filter by action" className="no-scrollbar flex gap-2 overflow-x-auto">
-        {[undefined, ...ACTIONS].map((a) => (
+      <PageHeader title="Audit log" intro="What the team did in the back office, newest first: who, what and to whom. Views of personal data are recorded too; see them under Views. Entries can't be edited or deleted." />
+      <nav aria-label="Show" className="no-scrollbar flex gap-1.5 overflow-x-auto">
+        {KINDS.map((k) => (
           <Link
-            key={a ?? "all"}
-            href={a ? `/admin/audit?action=${a}` : "/admin/audit"}
-            aria-current={filter === a ? "page" : undefined}
-            className={`inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-medium ${filter === a ? "bg-brand-900 text-white" : "bg-white text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"}`}
+            key={k.id}
+            href={k.id === "actions" ? "/admin/audit" : `/admin/audit?show=${k.id}`}
+            aria-current={kind === k.id ? "page" : undefined}
+            className={`inline-flex min-h-10 shrink-0 items-center rounded-full px-3.5 text-sm font-medium transition-colors ${kind === k.id ? "bg-brand-900 text-white" : "bg-white text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"}`}
           >
-            {a ? a.replace("_", " ") : "All"}
+            {k.label}
           </Link>
         ))}
       </nav>
       <Panel>
-        <Table caption="Audit log" head={["When", "Who", "Action", "What"]}>
+        <Table caption="Audit log" head={["When", "Who", "Did", "To"]}>
           {rows.map((r) => (
             <tr key={r.id}>
               <Td className="whitespace-nowrap text-ink-500">{time(r.at)}</Td>
               <Td>
-                {r.actor}
-                {r.role ? <span className="block text-xs text-ink-500">{ROLE_LABELS[r.role as AdminRole]?.label ?? r.role}</span> : null}
+                <span className="flex items-center gap-2.5">
+                  <Avatar name={r.who} size={32} />
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-ink-900">{r.who}</span>
+                    <span className="block text-xs text-ink-500 [overflow-wrap:anywhere]">
+                      {[r.whoEmail !== r.who ? r.whoEmail : null, r.role ? (ROLE_LABELS[r.role as AdminRole]?.label ?? r.role) : null].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                </span>
               </Td>
-              <Td className="font-medium capitalize">{r.action.replace("_", " ")}</Td>
-              <Td className="font-mono text-[0.8125rem] text-ink-600">
-                {r.entity}
-                {r.entityId ? ` · ${r.entityId}` : ""}
-              </Td>
+              <Td className="font-medium text-ink-900">{r.action}</Td>
+              <Td className="text-ink-600 [overflow-wrap:anywhere]">{r.target ?? <span className="text-ink-400">None</span>}</Td>
             </tr>
           ))}
         </Table>
+        {rows.length === 0 ? <p className="p-6 text-center text-sm text-ink-500">Nothing here yet.</p> : null}
       </Panel>
     </>
   );

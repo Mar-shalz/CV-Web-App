@@ -16,3 +16,15 @@ export function lastSeen(iso: string | null): string {
   const days = Math.round(hours / 24);
   return days < 14 ? `${days} days ago` : formatDate(iso);
 }
+
+const REGIONS = new Intl.DisplayNames(["en"], { type: "region" });
+
+/** "NG" to "Nigeria". Unknown or missing codes read as "Not known yet". */
+export function countryName(code: string | null | undefined): string {
+  if (!code) return "Not known yet";
+  try {
+    return REGIONS.of(code) ?? code;
+  } catch {
+    return code;
+  }
+}

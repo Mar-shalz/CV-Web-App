@@ -6,7 +6,7 @@ import { KpiCard, PageHeader, Panel, StatusPill } from "@/components/admin/ui";
 import { BarChart } from "@/components/admin/bar-chart";
 import { TickCircle, MinusCircle, Clock, ArrowRight2, TaskSquare, Card, Judge } from "@/components/icons";
 
-export const metadata = { title: "Overview" };
+export const metadata = { title: { absolute: "Overview · Back Office" } };
 
 export default async function AdminOverview() {
   const staff = await requireAdmin("overview");
@@ -43,7 +43,7 @@ export default async function AdminOverview() {
         ))}
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <Panel title="New accounts per day, last 14 days">
           <BarChart data={o.signups} label="new accounts" />
         </Panel>

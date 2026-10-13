@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { MODAL_PATHS } from "@/components/ui/modal-routes";
 
 const START = "rcpt:nav-start";
 
@@ -41,6 +42,8 @@ export function NavProgress() {
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin) return;
       if (url.pathname === location.pathname && url.search === location.search) return;
+      // Modal screens open their own frame at once, so no bar for them.
+      if (MODAL_PATHS.includes(url.pathname)) return;
       start();
     };
     document.addEventListener("click", onClick, true);

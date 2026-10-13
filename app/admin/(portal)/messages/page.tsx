@@ -6,7 +6,7 @@ import { SendUpdateForm } from "@/components/admin/forms";
 import { formatDate } from "@/lib/format";
 import { PendingButton } from "@/components/ui/pending-button";
 
-export const metadata = { title: "Messages to users" };
+export const metadata = { title: "Messages to Users" };
 
 const AUDIENCE: Record<string, string> = { everyone: "Everyone", trial: "Free trial", pass: "Pass holders", no_pass: "No pass" };
 

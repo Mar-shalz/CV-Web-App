@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { after } from "next/server";
 import { recordVisit } from "@/lib/activity";
 import { Mark } from "@/components/brand/logo";
@@ -18,9 +18,10 @@ import { APP_NAME, MARKETS } from "@/lib/config";
 
 export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const viewer = await requireReadyViewer();
+  const [jar, head, checkIns, inbox] = await Promise.all([cookies(), headers(), getCheckIns(viewer), getInbox(viewer)]);
   // Counts the day as active for the back office, after the page is sent.
-  if (!viewer.preview) after(() => recordVisit(viewer.id));
-  const [jar, checkIns, inbox] = await Promise.all([cookies(), getCheckIns(viewer), getInbox(viewer)]);
+  const country = head.get("x-vercel-ip-country");
+  if (!viewer.preview) after(() => recordVisit(viewer.id, country));
   const access = accessState({
     trialStartedAt: viewer.trial.startedAt,
     trialEndsAt: viewer.trial.endsAt,

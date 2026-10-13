@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin, logAdminAction } from "@/lib/admin/auth";
 import { can } from "@/lib/admin/permissions";
 import { listUsers, type UserFilter } from "@/lib/admin/users";
-import { PlanPill, lastSeen } from "@/components/admin/user-bits";
+import { PlanPill, lastSeen, countryName } from "@/components/admin/user-bits";
 import { PageHeader, Panel, Table, Td } from "@/components/admin/ui";
 import { formatDate, formatNaira } from "@/lib/format";
 import { SearchNormal1, Lock1, ArrowRight2, TickCircle } from "@/components/icons";
@@ -85,12 +85,13 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
           </nav>
           {note ? <p className="text-xs text-care-700">{note}</p> : null}
         </div>
-        <Table caption="Users" head={["Person", "Plan", "Paid", "Active days (30)", "Last active", "Joined", ""]}>
+        <Table caption="Users" head={["Person", "Plan", "Paid", "Active days (30)", "Last active", "Country", "Joined", ""]}>
           {rows.map((u) => (
-            <tr key={u.id} className={u.suspended ? "bg-flag-50/40" : undefined}>
-              <Td>
-                <Link href={`/admin/users/${u.id}`} className="block min-w-0 rounded-lg hover:text-brand-700">
-                  <span className="block font-medium text-ink-900 [overflow-wrap:anywhere]">{u.email}</span>
+            // The whole row opens the person: the link's hit area stretches over the row.
+            <tr key={u.id} className={`group relative cursor-pointer transition-colors hover:bg-brand-50/50 ${u.suspended ? "bg-flag-50/40" : ""}`}>
+              <Td className="min-w-[250px]">
+                <Link href={`/admin/users/${u.id}`} className="block min-w-0 rounded-lg outline-offset-4 after:absolute after:inset-0 after:content-[''] group-hover:text-brand-700">
+                  <span className="block break-words font-medium text-ink-900 group-hover:text-brand-700">{u.email}</span>
                   <span className="block text-xs text-ink-500">
                     {u.name ?? "No name yet"}
                     {u.suspended ? " · Paused" : !u.setup ? " · Setup not finished" : ""}
@@ -100,14 +101,15 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
               <Td>
                 <PlanPill plan={u.plan} />
               </Td>
-              <Td className="tabular-nums">{u.paidKobo ? formatNaira(u.paidKobo) : <span className="text-ink-400">None</span>}</Td>
+              <Td className="whitespace-nowrap tabular-nums">{u.paidKobo ? formatNaira(u.paidKobo) : <span className="text-ink-400">None</span>}</Td>
               <Td className="tabular-nums">{u.activeDays30}</Td>
-              <Td className="text-ink-600">{lastSeen(u.lastActive)}</Td>
-              <Td className="text-ink-500">{formatDate(u.joined)}</Td>
+              <Td className="whitespace-nowrap text-ink-600">{lastSeen(u.lastActive)}</Td>
+              <Td className="text-ink-600">{u.country ? countryName(u.country) : <span className="text-ink-400">Not known yet</span>}</Td>
+              <Td className="whitespace-nowrap text-ink-500">{formatDate(u.joined)}</Td>
               <Td>
-                <Link href={`/admin/users/${u.id}`} aria-label={`Open ${u.email}`} className="grid size-10 place-items-center rounded-lg text-ink-500 hover:bg-ink-75 hover:text-brand-700">
+                <span aria-hidden="true" className="grid size-9 place-items-center rounded-lg text-ink-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700">
                   <ArrowRight2 size={18} />
-                </Link>
+                </span>
               </Td>
             </tr>
           ))}

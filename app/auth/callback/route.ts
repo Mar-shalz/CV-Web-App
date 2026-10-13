@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const method = searchParams.get("method") === "email" ? "email" : "google";
   const admin = searchParams.get("dest") === "admin";
-  const failed = `${origin}${admin ? "/admin/sign-in" : "/sign-in"}?error=${method === "email" ? "link" : "google"}`;
+  const failed = `${origin}/sign-in?error=${method === "email" ? "link" : "google"}${admin ? "&to=admin" : ""}`;
   const code = searchParams.get("code");
   if (!code) return NextResponse.redirect(failed);
 

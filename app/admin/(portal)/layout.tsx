@@ -9,11 +9,11 @@ import { getStaff } from "@/lib/admin/auth";
 import { PERMISSIONS, can, ROLE_LABELS } from "@/lib/admin/permissions";
 import { ShieldTick, Logout } from "@/components/icons";
 
-export const metadata: Metadata = { title: { default: "Back office", template: "%s · Back office" }, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: { default: "Back Office", template: "%s · Back Office" }, robots: { index: false, follow: false } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const staff = await getStaff();
-  // Signed in but not on the team: a plain 404. Signed out visits go to /admin/sign-in (proxy.ts).
+  // Signed in but not on the team: a plain 404. Signed out visits go to the normal sign in (proxy.ts).
   if (!staff) notFound();
   const allowed = PERMISSIONS.filter((p) => can(staff.role, p));
 
@@ -25,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Logo tone="onDark" />
         </div>
         <div className="mx-6 mb-4 shrink-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 [@media(max-height:700px)]:hidden">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-300">Back office</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-300">Back Office</p>
           <p className="mt-0.5 text-xs text-white/60">Staff only. Every view is logged.</p>
         </div>
         {staff.mfa ? <AdminNav allowed={allowed} /> : <div className="flex-1" />}
@@ -39,7 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="flex h-16 items-center justify-between gap-3 px-4 lg:h-[76px] lg:px-8">
             <div className="flex items-center gap-3 lg:hidden">
               <Logo collapsed />
-              <span className="text-sm font-semibold text-brand-900">Back office</span>
+              <span className="text-sm font-semibold text-brand-900">Back Office</span>
             </div>
             <span className="hidden items-center gap-2 rounded-full bg-proof-50 px-3 py-1.5 text-xs font-semibold text-proof-700 lg:inline-flex">
               <ShieldTick size={16} variant="bulk" />
@@ -61,7 +61,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           {staff.mfa ? <AdminMobileNav allowed={allowed} /> : null}
         </header>
-        <main id="main" className="w-full max-w-[1480px] flex-1 space-y-6 px-4 py-6 lg:px-8 lg:py-8">
+        <main id="main" className="w-full max-w-[1480px] space-y-4 px-4 pb-8 pt-5 lg:px-8 lg:pt-6">
           {children}
         </main>
       </div>

@@ -30,6 +30,8 @@ export type UserRow = {
   paidKobo: number;
   activeDays30: number;
   lastActive: string | null;
+  /** Country of the latest visit (two letter code), from the host's IP lookup. */
+  country: string | null;
   suspended: boolean;
 };
 
@@ -37,7 +39,6 @@ export type UserStats = { total: number; paying: number; active7: number; new7: 
 
 export type UserDetail = UserRow & {
   phone: string | null;
-  place: string | null;
   provider: string;
   lastSignIn: string | null;
   suspendedReason: string | null;
@@ -75,11 +76,11 @@ const paidTotal = (passes: Pass[]) => passes.filter((p) => p.type !== "trial_3d"
 // Preview samples (fictional people)
 // ---------------------------------------------------------------------------
 const SAMPLE: (Omit<UserRow, "email"> & { rawEmail: string })[] = [
-  { id: "u1", rawEmail: "tolu.adebayo@gmail.com", name: "Tolu Adebayo", stage: stageLabel("nysc"), markets: "Nigeria and abroad", joined: ago(0, 3), setup: true, plan: { kind: "paid", label: "Pass", until: ago(-24) }, paidKobo: 500000, activeDays30: 14, lastActive: ago(0, 1), suspended: false },
-  { id: "u2", rawEmail: "chidi.okafor@yahoo.com", name: "Chidi Okafor", stage: stageLabel("graduate_0_3"), markets: "Nigeria", joined: ago(1), setup: true, plan: { kind: "trial", label: "Trial", until: ago(-2) }, paidKobo: 0, activeDays30: 2, lastActive: ago(0, 5), suspended: false },
-  { id: "u3", rawEmail: "amaka.eze@outlook.com", name: "Amaka Eze", stage: stageLabel("experienced_3_plus"), markets: "Abroad", joined: ago(9), setup: true, plan: { kind: "free_access", label: "Free access", until: null }, paidKobo: 0, activeDays30: 6, lastActive: ago(2), suspended: false },
-  { id: "u4", rawEmail: "ife.bello@gmail.com", name: null, stage: stageLabel(null), markets: "", joined: ago(2, 5), setup: false, plan: { kind: "none", label: "No pass", until: null }, paidKobo: 0, activeDays30: 1, lastActive: ago(2, 5), suspended: false },
-  { id: "u5", rawEmail: "kunle.ade@gmail.com", name: "Kunle Ade", stage: stageLabel("final_year"), markets: "Nigeria", joined: ago(20), setup: true, plan: { kind: "trial_ended", label: "Trial ended", until: ago(17) }, paidKobo: 650000, activeDays30: 0, lastActive: ago(12), suspended: true },
+  { id: "u1", rawEmail: "tolu.adebayo@gmail.com", name: "Tolu Adebayo", stage: stageLabel("nysc"), markets: "Nigeria and abroad", joined: ago(0, 3), setup: true, plan: { kind: "paid", label: "Pass", until: ago(-24) }, paidKobo: 500000, activeDays30: 14, lastActive: ago(0, 1), country: "NG", suspended: false },
+  { id: "u2", rawEmail: "chidi.okafor@yahoo.com", name: "Chidi Okafor", stage: stageLabel("graduate_0_3"), markets: "Nigeria", joined: ago(1), setup: true, plan: { kind: "trial", label: "Trial", until: ago(-2) }, paidKobo: 0, activeDays30: 2, lastActive: ago(0, 5), country: "NG", suspended: false },
+  { id: "u3", rawEmail: "amaka.eze@outlook.com", name: "Amaka Eze", stage: stageLabel("experienced_3_plus"), markets: "Abroad", joined: ago(9), setup: true, plan: { kind: "free_access", label: "Free access", until: null }, paidKobo: 0, activeDays30: 6, lastActive: ago(2), country: "GB", suspended: false },
+  { id: "u4", rawEmail: "ife.bello@gmail.com", name: null, stage: stageLabel(null), markets: "", joined: ago(2, 5), setup: false, plan: { kind: "none", label: "No pass", until: null }, paidKobo: 0, activeDays30: 1, lastActive: ago(2, 5), country: "NG", suspended: false },
+  { id: "u5", rawEmail: "kunle.ade@gmail.com", name: "Kunle Ade", stage: stageLabel("final_year"), markets: "Nigeria", joined: ago(20), setup: true, plan: { kind: "trial_ended", label: "Trial ended", until: ago(17) }, paidKobo: 650000, activeDays30: 0, lastActive: ago(12), country: null, suspended: true },
 ];
 
 function previewRows(full: boolean, q: string | undefined, filter: UserFilter): UserRow[] {
@@ -135,7 +136,7 @@ export async function listUsers(staff: Staff, opts: { q?: string; filter: UserFi
         db.from("passes").select("id, user_id, type, status, amount_kobo, ends_at, starts_at, created_at, paystack_reference").in("user_id", userIds),
         db.from("usage_counters").select("user_id, trial_started_at, trial_ends_at").in("user_id", userIds),
         db.from("free_access").select("email, ends_at, note").is("revoked_at", null).in("email", emails),
-        db.from("user_activity").select("user_id, day, last_at").in("user_id", userIds).gte("day", since30),
+        db.from("user_activity").select("*").in("user_id", userIds).gte("day", since30),
         db.from("profiles").select("user_id, full_name").in("user_id", userIds),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
@@ -148,7 +149,7 @@ export async function listUsers(staff: Staff, opts: { q?: string; filter: UserFi
   const passMap = byUser(passes.data as Pass[] | null);
   const usageMap = new Map(((usage.data ?? []) as Usage[]).map((u) => [u.user_id, u]));
   const freeMap = new Map(((free.data ?? []) as Free[]).map((f) => [f.email.toLowerCase(), f]));
-  const actMap = byUser(activity.data as { user_id: string; day: string; last_at: string }[] | null);
+  const actMap = byUser(activity.data as { user_id: string; day: string; last_at: string; country?: string | null }[] | null);
   const nameMap = new Map(((profiles.data ?? []) as { user_id: string; full_name: string | null }[]).map((p) => [p.user_id, p.full_name]));
 
   const rows: UserRow[] = list.map((u) => {
@@ -168,6 +169,7 @@ export async function listUsers(staff: Staff, opts: { q?: string; filter: UserFi
       paidKobo: paidTotal(myPasses),
       activeDays30: acts.length,
       lastActive: acts.map((a) => a.last_at).sort().at(-1) ?? null,
+      country: latestCountry(acts),
       suspended: Boolean(u.suspended_at),
     };
   });
@@ -189,6 +191,10 @@ async function stats(db: ReturnType<typeof createAdminClient>, since7: string): 
   };
 }
 
+function latestCountry(acts: { last_at: string; country?: string | null }[]): string | null {
+  return [...acts].sort((a, b) => b.last_at.localeCompare(a.last_at)).find((a) => a.country)?.country ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // One person
 // ---------------------------------------------------------------------------
@@ -206,12 +212,17 @@ export async function getUserDetail(staff: Staff, id: string, full: boolean): Pr
     const s = SAMPLE.find((u) => u.id === id);
     if (!s) return null;
     const { rawEmail, ...r } = s;
-    const acts = Array.from({ length: 30 }, (_, i) => ({ day: lagosDay(new Date(Date.now() - (29 - i) * DAY)), views: [0, 0, 3, 5, 0, 2, 8, 0, 1, 4, 0, 0, 6, 2, 0, 3, 7, 0, 0, 2, 5, 1, 0, 4, 9, 0, 2, 3, 0, 6][i] ?? 0 })).filter((a) => a.views > 0 && r.activeDays30 > 0);
+    // Sample visits that agree with the sample's active day count.
+    const pattern = [3, 5, 2, 8, 1, 4, 6, 2, 3, 7, 2, 5, 1, 4, 9, 2, 3, 6, 4, 2];
+    let left = r.activeDays30;
+    const acts = Array.from({ length: 30 }, (_, i) => ({ day: lagosDay(new Date(Date.now() - (29 - i) * DAY)), views: i % 2 === 1 || i > 26 ? (pattern[i % pattern.length] ?? 1) : 0 }))
+      .reverse()
+      .filter((a) => a.views > 0 && left-- > 0)
+      .reverse();
     return {
       ...r,
       email: full ? rawEmail : maskEmail(rawEmail),
       phone: full ? "+234 8031234567" : null,
-      place: "Yaba, Lagos",
       provider: "email",
       lastSignIn: r.lastActive,
       suspendedReason: r.suspended ? "Shared one account with several people" : null,
@@ -233,11 +244,11 @@ export async function getUserDetail(staff: Staff, id: string, full: boolean): Pr
   const since7 = lagosDay(new Date(Date.now() - 6 * DAY));
   const head = { count: "exact", head: true } as const;
   const [profile, passes, usage, free, activity, auth, staffRow, roles, items, confirmed, cvs, apps, interviews, offers] = await Promise.all([
-    db.from("profiles").select("full_name, phone, city, state").eq("user_id", id).maybeSingle(),
+    db.from("profiles").select("full_name, phone").eq("user_id", id).maybeSingle(),
     db.from("passes").select("id, user_id, type, status, amount_kobo, ends_at, starts_at, created_at, paystack_reference").eq("user_id", id).order("created_at", { ascending: false }),
     db.from("usage_counters").select("user_id, trial_started_at, trial_ends_at").eq("user_id", id).maybeSingle(),
     db.from("free_access").select("email, ends_at, note").is("revoked_at", null).eq("email", email.toLowerCase()).maybeSingle(),
-    db.from("user_activity").select("day, views, last_at").eq("user_id", id).gte("day", since30),
+    db.from("user_activity").select("*").eq("user_id", id).gte("day", since30),
     db.auth.admin.getUserById(id),
     db.from("admin_members").select("user_id").eq("user_id", id).is("revoked_at", null).maybeSingle(),
     db.from("vault_roles").select("id", head).eq("user_id", id),
@@ -249,8 +260,8 @@ export async function getUserDetail(staff: Staff, id: string, full: boolean): Pr
     db.from("applications").select("id", head).eq("user_id", id).in("status", ["offer", "accepted"]),
   ]);
   const myPasses = (passes.data ?? []) as Pass[];
-  const acts = (activity.data ?? []) as { day: string; views: number; last_at: string }[];
-  const p = profile.data as { full_name: string | null; phone: string | null; city: string | null; state: string | null } | null;
+  const acts = (activity.data ?? []) as { day: string; views: number; last_at: string; country?: string | null }[];
+  const p = profile.data as { full_name: string | null; phone: string | null } | null;
   return {
     id,
     email: full ? email : maskEmail(email),
@@ -263,10 +274,10 @@ export async function getUserDetail(staff: Staff, id: string, full: boolean): Pr
     paidKobo: paidTotal(myPasses),
     activeDays30: acts.length,
     lastActive: acts.map((a) => a.last_at).sort().at(-1) ?? null,
+    country: latestCountry(acts),
     suspended: Boolean(u.suspended_at),
     // Contact details only for the owner view.
     phone: full ? (p?.phone ?? null) : null,
-    place: [p?.city, p?.state].filter(Boolean).join(", ") || null,
     provider: u.auth_provider ?? "email",
     lastSignIn: auth.data?.user?.last_sign_in_at ?? null,
     suspendedReason: (u.suspended_reason as string | null) ?? null,

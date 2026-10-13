@@ -9,7 +9,10 @@ import { ModalHeader } from "./modal-header";
  * element, so focus is trapped and Escape closes it. Closing goes back, which restores
  * the page underneath and its URL. On phones it rises as a bottom sheet.
  */
-export function RouteModal({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+// The loading frame opens first; the real screen then takes its place without a second pop.
+let frameShownFor: string | null = null;
+
+export function RouteModal({ title, description, children, frame = false }: { title: string; description?: string; children: ReactNode; frame?: boolean }) {
   const router = useRouter();
   const ref = useRef<HTMLDialogElement>(null);
   // Next keeps a parallel slot's last screen on other pages, so the modal hides itself
@@ -18,16 +21,19 @@ export function RouteModal({ title, description, children }: { title: string; de
   const path = usePathname();
   const [openedOn] = useState(path);
   const active = path === openedOn;
+  // Read once on mount: true when the loading frame for this screen was just on show.
+  const [settled] = useState(() => !frame && frameShownFor === path);
 
   useEffect(() => {
     if (!active) return;
+    frameShownFor = frame ? path : null;
     const d = ref.current;
     if (d && !d.open) d.showModal();
     document.documentElement.style.overflow = "hidden";
     return () => {
       document.documentElement.style.overflow = "";
     };
-  }, [active]);
+  }, [active, frame, path]);
 
   if (!active) return null;
 
@@ -46,6 +52,7 @@ export function RouteModal({ title, description, children }: { title: string; de
         // A click on the backdrop lands on the dialog element itself.
         if (e.target === e.currentTarget) router.back();
       }}
+      data-settled={settled || undefined}
       className="route-modal m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:w-[calc(100%-3rem)] sm:max-w-4xl sm:rounded-[var(--radius-panel)]"
     >
       <div className="flex max-h-[92dvh] flex-col">
@@ -54,5 +61,32 @@ export function RouteModal({ title, description, children }: { title: string; de
         <div className="overflow-y-auto overscroll-contain px-5 py-5 sm:px-7">{children}</div>
       </div>
     </dialog>
+  );
+}
+
+/**
+ * Shown the instant a modal link is tapped (the route's loading.tsx), so the screen opens
+ * straight away and fills in when the server is done.
+ */
+export function ModalLoading({ title, description }: { title: string; description?: string }) {
+  return (
+    <RouteModal title={title} description={description} frame>
+      <div role="status" className="animate-pulse space-y-4">
+        <span className="sr-only">Loading</span>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-3.5 w-32 rounded bg-ink-100" />
+              <div className="h-12 rounded-2xl bg-ink-75" />
+            </div>
+          ))}
+        </div>
+        <div className="space-y-2">
+          <div className="h-3.5 w-40 rounded bg-ink-100" />
+          <div className="h-28 rounded-2xl bg-ink-75" />
+        </div>
+        <div className="h-12 w-40 rounded-2xl bg-ink-100" />
+      </div>
+    </RouteModal>
   );
 }

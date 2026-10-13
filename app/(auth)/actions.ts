@@ -15,7 +15,7 @@ export type FormState = { error?: string; fieldErrors?: Record<string, string>; 
 // The email between "send code" and "enter code" lives in a short lived httpOnly
 // cookie, never in the URL (D-003).
 const OTP_COOKIE = "rcpt_otp_email";
-// Set when sign in starts on the back office page, so the code or link lands on /admin.
+// Set when sign in starts from the back office (/sign-in?to=admin), so it returns to /admin.
 const DEST_COOKIE = "rcpt_dest";
 const isAdminDest = (formData?: FormData | null) => formData?.get("dest") === "admin";
 
@@ -78,7 +78,7 @@ export async function sendEmailCode(_prev: FormState, formData: FormData): Promi
   const jar = await cookies();
   if (admin) jar.set(DEST_COOKIE, "admin", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: LIMITS.auth.otp_cookie_minutes * 60 });
   else jar.delete(DEST_COOKIE);
-  redirect(admin ? "/admin/sign-in/verify" : "/sign-in/verify");
+  redirect("/sign-in/verify");
 }
 
 async function linkTarget(admin: boolean): Promise<string> {
@@ -89,7 +89,7 @@ export async function resendEmailCode(): Promise<FormState> {
   const jar = await cookies();
   const email = jar.get(OTP_COOKIE)?.value;
   const admin = jar.get(DEST_COOKIE)?.value === "admin";
-  if (!email) redirect(admin ? "/admin/sign-in" : "/sign-in");
+  if (!email) redirect(admin ? "/sign-in?to=admin" : "/sign-in");
   if (isPreviewMode()) return { ok: true };
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: await linkTarget(admin) } });

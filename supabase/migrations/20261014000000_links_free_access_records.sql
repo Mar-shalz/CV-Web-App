@@ -45,24 +45,32 @@ alter table public.vault_roles add column if not exists employment_type text che
 alter table public.users add column if not exists suspended_at timestamptz;
 alter table public.users add column if not exists suspended_reason text check (char_length(suspended_reason) <= 200);
 
--- 7. How often people use the app: one row per person per day (Lagos time) with a page
--- view count. No pages, content or devices are stored. Written by the server only.
+-- 7. How often people use the app: one row per person per day (Lagos time) with a visit
+-- count and the country the visit came from (from the host's IP lookup; no IP address,
+-- city, pages, content or device is stored). Written by the server only.
 create table if not exists public.user_activity (
   user_id uuid not null references public.users (id) on delete cascade,
   day date not null,
   views int not null default 1,
   last_at timestamptz not null default now(),
+  country text check (country is null or country ~ '^[A-Z]{2}$'),
   primary key (user_id, day)
 );
+alter table public.user_activity add column if not exists country text check (country is null or country ~ '^[A-Z]{2}$');
 create index if not exists user_activity_day_idx on public.user_activity (day);
 alter table public.user_activity enable row level security;
 revoke all on public.user_activity from anon, authenticated;
 
-create or replace function public.touch_activity(p_user uuid) returns void
+drop function if exists public.touch_activity(uuid);
+create or replace function public.touch_activity(p_user uuid, p_country text default null) returns void
 language sql security definer set search_path = '' as $$
-  insert into public.user_activity (user_id, day, views, last_at)
-  values (p_user, (now() at time zone 'Africa/Lagos')::date, 1, now())
-  on conflict (user_id, day) do update set views = public.user_activity.views + 1, last_at = now();
+  insert into public.user_activity (user_id, day, views, last_at, country)
+  values (p_user, (now() at time zone 'Africa/Lagos')::date, 1, now(), p_country)
+  on conflict (user_id, day) do update
+    set views = public.user_activity.views + 1, last_at = now(), country = coalesce(excluded.country, public.user_activity.country);
 $$;
-revoke all on function public.touch_activity(uuid) from public, anon, authenticated;
-grant execute on function public.touch_activity(uuid) to service_role;
+revoke all on function public.touch_activity(uuid, text) from public, anon, authenticated;
+grant execute on function public.touch_activity(uuid, text) to service_role;
+
+-- 8. Team members can be paused (no back office access until reactivated).
+alter table public.admin_members add column if not exists paused_at timestamptz;

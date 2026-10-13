@@ -3,6 +3,7 @@ import { requireReadyViewer } from "@/lib/auth/viewer";
 import { interviewRoles } from "@/lib/vault/interview-roles";
 import { voiceEnabled } from "@/lib/speech";
 import { RouteModal } from "@/components/ui/route-modal";
+import { MODAL_ROUTES } from "@/components/ui/modal-routes";
 import { InterviewFlow } from "@/components/vault/interview-flow";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -13,7 +14,7 @@ export default async function InterviewModal({ searchParams }: { searchParams: P
   const { role } = await searchParams;
   const roles = await interviewRoles(viewer);
   return (
-    <RouteModal title="Let's find the wins your CV forgot" description="One question at a time about one role. Talk or type, like you're telling a friend. Stop whenever you like.">
+    <RouteModal {...MODAL_ROUTES["/vault/interview"]}>
       {roles.length ? (
         <InterviewFlow roles={roles} voice={voiceEnabled()} initialRoleId={role} />
       ) : (

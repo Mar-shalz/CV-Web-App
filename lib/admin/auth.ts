@@ -18,8 +18,9 @@ export const getStaff = cache(async (): Promise<Staff | null> => {
   if (viewer.preview) return { id: "preview", email: viewer.email, name: viewer.fullName, role: "owner", mfa: true, preview: true };
 
   const admin = createAdminClient();
-  const { data: member } = await admin.from("admin_members").select("role, revoked_at").eq("user_id", viewer.id).maybeSingle();
-  if (!member || member.revoked_at) return null;
+  // "*" so a new column (paused_at) never locks the team out before its migration runs.
+  const { data: member } = await admin.from("admin_members").select("*").eq("user_id", viewer.id).maybeSingle();
+  if (!member || member.revoked_at || member.paused_at) return null;
 
   const supabase = await createClient();
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();

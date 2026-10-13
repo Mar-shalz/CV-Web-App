@@ -51,17 +51,21 @@ export function BarChart({ data, label }: { data: { date: string; count: number 
         <span>{fmt(data[0]?.date ?? new Date().toISOString())}</span>
         <span>{fmt(data[data.length - 1]?.date ?? new Date().toISOString())}</span>
       </div>
-      <table className="sr-only">
-        <caption>{label} per day</caption>
-        <tbody>
-          {data.map((d) => (
-            <tr key={d.date}>
-              <th scope="row">{fmt(d.date)}</th>
-              <td>{d.count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Screen reader table. The wrapper is visually hidden: a table ignores sr-only's
+          1px size and would stretch the page below the content. */}
+      <div className="sr-only">
+        <table>
+          <caption>{label} per day</caption>
+          <tbody>
+            {data.map((d) => (
+              <tr key={d.date}>
+                <th scope="row">{fmt(d.date)}</th>
+                <td>{d.count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

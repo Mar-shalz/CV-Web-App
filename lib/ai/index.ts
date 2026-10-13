@@ -3,7 +3,9 @@ import * as Sentry from "@sentry/nextjs";
 import type { z } from "zod";
 import { pseudonymousId } from "@/lib/analytics/server";
 import { chainProvider } from "./chain";
-import { consoleLogger } from "./log";
+import { after } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { consoleLogger, type AiCallLog } from "./log";
 import { runAiTask, type AiDeps } from "./run";
 import { TASKS, type TaskName } from "./tasks";
 import type { AiResult, AiTask } from "./types";
@@ -13,10 +15,35 @@ export type { TaskName } from "./tasks";
 
 // No shared result cache yet. Tasks with a cache key (parse_cv, parse_job and others)
 // arrive with their slices, and so does the store behind them.
+/**
+ * Every call also goes to ai_call_logs (no prompt or answer text), so the back office
+ * shows cost, failures and which model answered. Written after the response when
+ * possible; a logging failure never affects the user.
+ */
+function persist(record: AiCallLog) {
+  const { event: _event, ...row } = record;
+  void _event;
+  const write = async () => {
+    try {
+      await createAdminClient().from("ai_call_logs").insert(row);
+    } catch {
+      // No secret key here (local preview) or the table is missing: stdout still has it.
+    }
+  };
+  try {
+    after(write);
+  } catch {
+    void write();
+  }
+}
+
 const deps: AiDeps = {
   // Gemini first while testing on its free tier, then Anthropic (D-068).
   provider: chainProvider,
-  log: consoleLogger,
+  log: (record) => {
+    consoleLogger(record);
+    persist(record);
+  },
   cache: null,
   reportError: (error, context) => {
     Sentry.captureException(error, { tags: context });

@@ -4,6 +4,7 @@ import { requireReadyViewer } from "@/lib/auth/viewer";
 import { countConfirmedItems } from "@/lib/home-data";
 import { LIMITS } from "@/lib/config";
 import { RouteModal } from "@/components/ui/route-modal";
+import { MODAL_ROUTES } from "@/components/ui/modal-routes";
 import { CaptureForm } from "@/components/flow/capture-form";
 import { Danger, ShieldSearch, Magicpen, Send2 } from "@/components/icons";
 
@@ -18,7 +19,7 @@ export default async function TailorModal({ searchParams }: { searchParams: Prom
   const initial = via === "link" || via === "file" || via === "screenshot" ? via : "paste";
 
   return (
-    <RouteModal title="Tailor your CV to a job" description="Start with the job description. The more complete it is, the better your CV will match.">
+    <RouteModal {...MODAL_ROUTES["/jobs/new"]}>
       {confirmed < target ? (
         <p className="mb-4 flex items-start gap-2 rounded-2xl bg-care-50 p-3.5 text-[0.8125rem] leading-5 text-care-700">
           <Danger size={18} variant="bulk" className="mt-px shrink-0" />

@@ -226,3 +226,19 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-089 Gemini busy fallback.** Google's free tier often answers 503 "high demand" for its newest model. Each call now tries the next Gemini model (`GEMINI_FALLBACK_MODELS`, default gemini-3.5-flash then gemini-3.5-flash-lite) on 429, 5xx or a retired model name, before falling through to Claude.
 
 **D-090 Account deletion covers sub folders.** Deleting an account (by the user or the owner) now removes files in sub folders too (`incoming/`, `sent/`). Before, only top level files were removed.
+
+## Founder feedback round 11 (13 Oct 2026)
+
+**D-091 Modals open over a still page.** The app wide skeleton screen from D-081 (`app/(app)/loading.tsx`) made Next re-draw the page underneath every time a modal opened (Tailor my CV, Add a role, Upload your CV), so the page flashed and eased in again before the modal appeared. It is removed. Instead each modal route has its own `loading.tsx` that opens the modal frame at once, with its title and a placeholder, and the form fills in; the filled modal replaces the frame without a second pop. Modal links don't run the top bar. The top bar and busy buttons from D-081 stay; the back office keeps its skeleton (it has no modals).
+
+**D-092 Back office sign in reverted.** D-086 is undone at the founder's request: no separate back office sign in page. Signed out visits to `/admin` go to the normal sign in page as before; the only change is that it returns to `/admin` afterwards (`/sign-in?to=admin`, a fixed value, never a caller supplied URL). Signed in accounts not on the team still get a plain 404. The 404 the founder saw was a second Google account that isn't on the team.
+
+**D-093 Users list and country of use.** A whole row opens the person, not only the arrow. "Lives in" is removed from a person's details. "Using the app from" shows the country of their latest visit, from the host's IP lookup (`x-vercel-ip-country` on Vercel). Only the two letter country code is stored, per day, in `user_activity`; no IP address or city. Locally it reads "Not known yet".
+
+**D-094 Audit log shows what staff did.** Each entry says who (name, email and role), what in plain words ("Paused an account", "Gave free access") and to whom (the account's email, a payment reference or a rules version). Views of personal data are still recorded, because the Build pack requires it, but they sit under their own "Views of personal data" tab, as do two factor sign ins; the default tab is Actions.
+
+**D-095 Team and access controls.** Each team member can be paused (no back office access until reactivated), reactivated, or deleted from the team (their app account stays). Nobody can change their own access, and the last active owner can't be paused or deleted. `admin_members.paused_at` is new; reads use "*" so the back office still opens before the migration runs.
+
+**D-096 Back office headings and spacing.** Page, panel and column headings use Title Case with short joining words kept small (and, of, or, the, plus a, an, to, in, on, for, by, at), and so do the menu and tab titles. Gaps between blocks went from 24px to 16px and table rows are tighter. The empty space under long pages came from the chart's screen reader table: a table ignores the 1px "visually hidden" size, so it stretched the page; it now sits in a hidden wrapper.
+
+**D-097 AI calls are logged for the back office.** Every model call now also writes a row to `ai_call_logs` (task, model, outcome, tokens, cost, time; never prompt or answer text). AI Cost and Quality shows which AI keys this server has, in the order they're tried, and the latest failed calls, so a failing CV upload can be traced to a missing key on Vercel in one look.
