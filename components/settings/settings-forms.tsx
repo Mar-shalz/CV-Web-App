@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState, useTransition, type ReactNode } from "react";
 import { saveProfile, setLowData, removeSensitive, setConsent, deleteAccount, type SettingsState } from "@/app/(app)/settings/actions";
 import { Field, TextInput } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -50,11 +50,12 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
   );
 }
 
-export function DataSaverSwitch({ initial }: { initial: boolean }) {
+export function DataSaverSwitch({ initial, icon }: { initial: boolean; icon?: ReactNode }) {
   const [on, setOn] = useState(initial);
   const [, start] = useTransition();
   return (
-    <label className="flex min-h-[76px] cursor-pointer items-center gap-3.5 rounded-2xl px-3 py-3 hover:bg-ink-50">
+    <label className="flex min-h-[76px] cursor-pointer items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors hover:bg-ink-50">
+      {icon ? <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">{icon}</span> : null}
       <span className="min-w-0 flex-1">
         <span className="block text-[0.9375rem] font-semibold text-ink-900">Data saver</span>
         <span className="block text-[0.8125rem] leading-5 text-ink-500">{on ? "On. No animations, phone fonts, lighter pages." : "Off. Turn on to use less data."}</span>

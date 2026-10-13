@@ -17,7 +17,7 @@ export default async function JobReviewPage({ params }: { params: Promise<{ id: 
   const manual = job.parseStatus === "manual";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <FlowSteps current="add" hrefs={{}} />
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">
@@ -30,7 +30,7 @@ export default async function JobReviewPage({ params }: { params: Promise<{ id: 
         </p>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-7">
           {manual ? (
             <p className="mb-5 flex items-start gap-2 rounded-2xl bg-care-50 p-3.5 text-sm text-care-700">
@@ -51,7 +51,7 @@ export default async function JobReviewPage({ params }: { params: Promise<{ id: 
           />
         </section>
 
-        <aside className="space-y-4 xl:sticky xl:top-28 xl:self-start">
+        <aside className="space-y-3 xl:sticky xl:top-28 xl:self-start">
           <section className="torn-edge rounded-t-[var(--radius-card)] bg-paper p-5 shadow-card">
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-500">
               <DocumentText size={16} />

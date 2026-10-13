@@ -25,8 +25,12 @@ export type CvRoleBlock = {
   bullets: CvBullet[];
 };
 
+/** A qualification or record line: title and dates on one line, where and detail below. */
+export type CvEntry = { title: string; subtitle: string | null; dates: string | null; detail: string | null };
+
 export type CvSection =
   | { key: string; heading: string; kind: "roles"; roles: CvRoleBlock[] }
+  | { key: string; heading: string; kind: "entries"; entries: CvEntry[] }
   | { key: string; heading: string; kind: "lines"; lines: string[] };
 
 export type CvDoc = {

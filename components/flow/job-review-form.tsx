@@ -150,7 +150,7 @@ export function JobReviewForm({
           <label htmlFor="channel" className={l}>
             They want applications
           </label>
-          <select id="channel" name="channel" value={channel} onChange={(e) => setChannel(e.target.value as typeof channel)} className={`${inputClass} appearance-none`}>
+          <select id="channel" name="channel" value={channel} onChange={(e) => setChannel(e.target.value as typeof channel)} className={inputClass}>
             {Object.entries(CHANNEL_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}

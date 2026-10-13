@@ -11,7 +11,7 @@ import { accessState } from "@/lib/entitlements";
 import { getCheckIns } from "@/lib/home-data";
 import { getInbox } from "@/lib/notifications/data";
 import { UpdatesDrawer } from "@/components/shell/updates-drawer";
-import { CheckInItem } from "@/components/home/check-in-card";
+import { CheckInItem } from "@/components/home/check-in-item";
 import { APP_NAME, MARKETS } from "@/lib/config";
 
 export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {

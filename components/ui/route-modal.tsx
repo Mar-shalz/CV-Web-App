@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Add } from "@/components/icons";
+import { ModalHeader } from "./modal-header";
 
 /**
  * A screen shown over the current page (an intercepted route). Uses the native dialog
@@ -37,6 +37,8 @@ export function RouteModal({ title, description, children }: { title: string; de
       aria-labelledby="modal-title"
       aria-describedby={description ? "modal-desc" : undefined}
       onCancel={(e) => {
+        // A file picker's "cancel" bubbles up to here: only Escape on the dialog itself closes it.
+        if (e.target !== e.currentTarget) return;
         e.preventDefault();
         router.back();
       }}
@@ -47,27 +49,8 @@ export function RouteModal({ title, description, children }: { title: string; de
       className="route-modal m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:w-[calc(100%-3rem)] sm:max-w-4xl sm:rounded-[var(--radius-panel)]"
     >
       <div className="flex max-h-[92dvh] flex-col">
-        <header className="border-b border-ink-100 px-5 pb-4 pt-3 sm:px-7 sm:pt-4">
-          <span aria-hidden="true" className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-ink-200 sm:hidden" />
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="grid size-10 place-items-center rounded-lg border border-ink-150 bg-white text-ink-600 transition-colors hover:border-ink-300 hover:bg-ink-50 hover:text-ink-900"
-              aria-label="Close"
-            >
-              <Add size={22} className="rotate-45" />
-            </button>
-          </div>
-          <h2 id="modal-title" className="mt-1 font-display text-xl font-semibold tracking-[-0.02em] text-ink-900 sm:text-[1.5rem]">
-            {title}
-          </h2>
-          {description ? (
-            <p id="modal-desc" className="mt-1 text-[0.875rem] leading-5 text-ink-600 sm:text-[0.9375rem] sm:leading-6">
-              {description}
-            </p>
-          ) : null}
-        </header>
+        <span aria-hidden="true" className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-ink-200 sm:hidden" />
+        <ModalHeader id="modal-title" title={title} description={description ? <p id="modal-desc">{description}</p> : undefined} onClose={() => router.back()} size="lg" />
         <div className="overflow-y-auto overscroll-contain px-5 py-5 sm:px-7">{children}</div>
       </div>
     </dialog>

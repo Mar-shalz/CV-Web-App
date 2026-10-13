@@ -26,19 +26,19 @@ export default async function CaptureJobPage({ searchParams }: { searchParams: P
   const initial = via === "link" || via === "file" || via === "screenshot" ? via : "paste";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <FlowSteps current="add" />
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Tailor your CV to a job</h1>
         <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Start with the job description. The more complete it is, the better your CV will match.</p>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-7">
           <CaptureForm initialMode={initial} initialError={initialError} />
         </section>
 
-        <aside className="space-y-5">
+        <aside className="space-y-3">
           {short ? (
             <div className="rounded-[var(--radius-card)] border border-care-100 bg-care-50 p-5">
               <p className="flex items-center gap-2 font-semibold text-care-700">

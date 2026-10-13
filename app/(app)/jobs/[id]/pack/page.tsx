@@ -31,7 +31,7 @@ export default async function PackPage({ params }: { params: Promise<{ id: strin
   const channel = app.pack.channel;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <FlowSteps current="send" hrefs={{ add: `/jobs/${job.id}`, check: `/jobs/${job.id}/check`, cv: `/jobs/${job.id}/cv` }} />
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Ready to send</h1>

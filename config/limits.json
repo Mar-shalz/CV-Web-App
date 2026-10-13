@@ -22,7 +22,10 @@
   },
   "files": {
     "signed_url_seconds": 600,
-    "cv_pdf_max_kb": 150
+    "cv_pdf_max_kb": 150,
+    "upload_max_mb": 10,
+    "inline_max_mb": 4,
+    "note": "Uploads above inline_max_mb go straight to storage (the host caps request bodies near 4.5MB), then are read and deleted."
   },
   "data": {
     "first_load_kb": 300,

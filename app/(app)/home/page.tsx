@@ -6,7 +6,6 @@ import { accessState } from "@/lib/entitlements";
 import { firstName, formatDate, greeting } from "@/lib/format";
 import { LIMITS } from "@/lib/config";
 import { StatCard } from "@/components/home/stat-card";
-import { CheckInCard } from "@/components/home/check-in-card";
 import { TailorHero } from "@/components/home/tailor-hero";
 import { RecentApplications } from "@/components/home/recent-applications";
 import { VaultCard } from "@/components/home/vault-card";
@@ -56,25 +55,19 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       ) : (
         <ul style={{ "--i": 1 } as CSSProperties} className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Your numbers">
           <li>
-            <StatCard label="Applications sent" value={data.stats.sent} icon={<Send2 size={22} variant="bulk" />} tint="brand" hint="Quality over quantity" />
+            <StatCard href="/applications" label="Applications sent" value={data.stats.sent} icon={<Send2 size={22} variant="bulk" />} tint="brand" hint="Quality over quantity" />
           </li>
           <li>
-            <StatCard label="Interview invites" value={data.stats.invites} icon={<TickCircle size={22} variant="bulk" />} tint="proof" hint="From employers who replied" />
+            <StatCard href="/applications?status=invited" label="Interview invites" value={data.stats.invites} icon={<TickCircle size={22} variant="bulk" />} tint="proof" hint="From employers who replied" />
           </li>
           <li>
-            <StatCard label="Waiting to hear back" value={data.stats.awaiting} icon={<Clock size={22} variant="bulk" />} tint="care" hint="Sent in the last 30 days" />
+            <StatCard href="/applications?status=waiting" label="Waiting to hear back" value={data.stats.awaiting} icon={<Clock size={22} variant="bulk" />} tint="care" hint="Sent in the last 30 days" />
           </li>
           <li>
-            <StatCard label="Experience items" value={data.stats.vaultConfirmed} icon={<Briefcase size={22} variant="bulk" />} tint="sky" hint="Confirmed by you" />
+            <StatCard href="/vault" label="Experience items" value={data.stats.vaultConfirmed} icon={<Briefcase size={22} variant="bulk" />} tint="sky" hint="Confirmed by you" />
           </li>
         </ul>
       )}
-
-      {data.checkIns.length ? (
-        <div style={{ "--i": 2 } as CSSProperties}>
-          <CheckInCard items={data.checkIns} />
-        </div>
-      ) : null}
 
       <div style={{ "--i": 3 } as CSSProperties}>
         <TailorHero trialReady={access.kind === "trial_ready"} />
@@ -95,14 +88,19 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </div>
           <VaultCard confirmed={data.stats.vaultConfirmed} />
           <section aria-labelledby="promise-title" className="flex-1 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
-            <h2 id="promise-title" className="flex items-center gap-2 text-[0.9375rem] font-semibold text-ink-900">
-              <ShieldTick size={20} variant="bulk" className="text-proof-600" />
+            <h2 id="promise-title" className="flex items-center gap-3 font-display text-lg font-semibold tracking-[-0.01em] text-ink-900">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+                <ShieldTick size={22} variant="bulk" />
+              </span>
               Our promise to you
             </h2>
             <ul className="mt-4 space-y-3.5">
               {PROMISES.map((p) => (
                 <li key={p.title} className="flex gap-3">
-                  <TickCircle size={20} variant="bulk" className="mt-0.5 shrink-0 text-proof-600" />
+                  {/* A small plain tick, so the list doesn't compete with the shield above. */}
+                  <span aria-hidden="true" className="mt-1.5 grid size-4 shrink-0 place-items-center rounded-full bg-ink-75">
+                    <span className="block h-1.5 w-2.5 -translate-y-px rotate-[-45deg] border-b-2 border-l-2 border-brand-700" />
+                  </span>
                   <span>
                     <span className="block text-sm font-semibold text-ink-900">{p.title}</span>
                     <span className="block text-[0.8125rem] leading-5 text-ink-600">{p.body}</span>

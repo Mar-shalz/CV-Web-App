@@ -49,7 +49,7 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
   const left = p.deadline ? daysUntil(p.deadline) : null;
 
   return (
-    <div className="space-y-6 pb-24 lg:pb-0">
+    <div className="space-y-3 pb-24 lg:pb-0">
       <FlowSteps current="check" hrefs={{ add: `/jobs/${job.id}` }} />
 
       <section className="animate-rise rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-6">
@@ -89,14 +89,14 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
         <VerdictHero promise={verdictPromise} viewer={viewer} job={job} />
       </Suspense>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-6">
           <EligibilityCard eligibility={eligibility} job={job} />
           <Suspense fallback={<div className="skeleton h-64 rounded-[var(--radius-card)]" />}>
             <MatchList promise={verdictPromise} vault={vault} />
           </Suspense>
         </div>
-        <div className="space-y-6">
+        <div className="space-y-3">
           <ScamCheck jobId={job.id} initial={quick} />
           <Suspense fallback={null}>
             <Gaps promise={verdictPromise} />

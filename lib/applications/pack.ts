@@ -43,8 +43,9 @@ export async function ensurePack(viewer: Viewer, job: JobView, cv: CvRecord, gap
   const name = contact.fullName ?? viewer.fullName ?? "Applicant";
   const role = job.parsed.title ?? "the role";
   const phone = formatPhone(contact.phone);
-  const course = cv.doc.sections.find((s) => s.key === "education" && s.kind === "lines");
-  const courseTitle = course && course.kind === "lines" ? course.lines[0]?.split(" · ")[0]?.replace(/^(BSc|BA|BEng|HND|B\.Sc|MSc)\s+/i, "") ?? null : null;
+  const course = cv.doc.sections.find((s) => s.key === "education");
+  const firstQualification = course?.kind === "entries" ? course.entries[0]?.title : course?.kind === "lines" ? course.lines[0]?.split(" · ")[0] : undefined;
+  const courseTitle = firstQualification?.replace(/^(BSc|BA|BEng|HND|B\.Sc\.?|MSc|B\.A\.?)\s+/i, "").replace(/\s*\(.*\)$/, "") ?? null;
   const proof = [
     cv.doc.summary.text,
     ...cv.doc.sections.flatMap((s) => (s.kind === "roles" ? s.roles.flatMap((r) => r.bullets.filter((b) => !b.flags.some((f) => f.status === "open")).map((b) => b.text)) : [])),

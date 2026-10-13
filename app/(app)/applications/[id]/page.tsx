@@ -9,7 +9,7 @@ import { nextStatuses } from "@/lib/rules/status-flow";
 import { CHANNEL_LABELS } from "@/lib/jobs/labels";
 import { formatDate } from "@/lib/format";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { CopyButton } from "@/components/ui/copy-button";
+import { CopyField } from "@/components/ui/copy-button";
 import { StatusUpdate } from "@/components/applications/status-update";
 import { Timeline } from "@/components/applications/timeline";
 import { LateReply } from "@/components/applications/late-reply";
@@ -32,7 +32,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
   const bulletCount = cv ? cv.doc.sections.reduce((n, s) => n + (s.kind === "roles" ? s.roles.reduce((m, r) => m + r.bullets.length, 0) : 0), 0) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <Link href="/applications" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl pr-3 text-sm font-semibold text-ink-600 hover:text-ink-900">
         <ArrowLeft2 size={16} />
         Applications
@@ -66,8 +66,8 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
         <Banner tone="ink" icon={<MessageQuestion size={24} variant="bulk" />} title="How did the interview go?" body="Two minutes, voice or text. Note the questions they asked while you still remember them." href={`/applications/${app.id}/debrief`} cta="Add interview notes" />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-3">
           <section aria-labelledby="cv-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <div className="flex items-center gap-3">
@@ -120,14 +120,11 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
                 <ArrowRight size={18} className="text-ink-400 transition-transform group-open:rotate-90" />
               </summary>
               <div className="space-y-3 border-t border-ink-100 p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm">
-                    <span className="text-ink-500">To </span>
-                    <span className="font-medium text-ink-900">{app.pack.toEmail ?? "Not stated"}</span>
-                  </p>
-                  <CopyButton value={app.pack.body} label="message" />
-                </div>
-                <p className="whitespace-pre-line rounded-2xl bg-ink-50 p-4 text-sm leading-6 text-ink-800">{app.pack.body}</p>
+                <p className="text-sm">
+                  <span className="text-ink-500">To </span>
+                  <span className="font-medium text-ink-900">{app.pack.toEmail ?? "Not stated"}</span>
+                </p>
+                <CopyField value={app.pack.body} label="message" />
               </div>
             </details>
           ) : null}
@@ -181,7 +178,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
           </section>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="space-y-3">
           {!notSent ? <StatusUpdate applicationId={app.id} next={nextStatuses(app.status)} /> : null}
           <Timeline events={app.timeline} />
           <p className="flex items-start gap-2 px-1 text-xs leading-5 text-ink-500">

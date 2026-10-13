@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { InboxItem, InboxKind } from "@/lib/notifications/data";
 import { markUpdatesRead } from "@/lib/notifications/actions";
-import { Notification, Add, Messages2, Card, Crown1, Clock, Send2, InfoCircle, ArrowRight2 } from "@/components/icons";
+import { ModalHeader } from "@/components/ui/modal-header";
+import { Notification, Messages2, Card, Crown1, Clock, Send2, InfoCircle, ArrowRight2 } from "@/components/icons";
 
 const KIND: Record<InboxKind, { icon: typeof Notification; tint: string; label: string }> = {
   announcement: { icon: Messages2, tint: "bg-brand-50 text-brand-700", label: "From the team" },
@@ -71,9 +72,11 @@ export function UpdatesDrawer({ checkInCount, checkIns, items }: { checkInCount:
         aria-label={badge ? `Updates: ${badge} new` : "Updates"}
         aria-haspopup="dialog"
       >
-        <Notification size={22} />
+        <span className={badge ? "bell-ring" : undefined}>
+          <Notification size={22} />
+        </span>
         {badge ? (
-          <span className="absolute right-2 top-2 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-flag-600 px-1 text-[0.6875rem] font-semibold text-white ring-2 ring-white" aria-hidden="true">
+          <span className="absolute right-2 top-2 grid h-[18px] min-w-[18px] animate-pop place-items-center rounded-full bg-flag-600 px-1 text-[0.6875rem] font-semibold text-white ring-2 ring-white" aria-hidden="true">
             {badge > 9 ? "9+" : badge}
           </span>
         ) : null}
@@ -91,22 +94,7 @@ export function UpdatesDrawer({ checkInCount, checkIns, items }: { checkInCount:
         className="side-sheet m-0 ml-auto h-dvh max-h-none w-full max-w-[420px] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/40 backdrop:backdrop-blur-[2px]"
       >
         <div className="flex h-full flex-col">
-          <header className="border-b border-ink-100 px-5 pb-4 pt-4">
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={hide}
-                className="grid size-10 place-items-center rounded-lg border border-ink-150 bg-white text-ink-600 transition-colors hover:border-ink-300 hover:bg-ink-50 hover:text-ink-900"
-                aria-label="Close updates"
-              >
-                <Add size={22} className="rotate-45" />
-              </button>
-            </div>
-            <h2 id="updates-title" className="mt-1 font-display text-xl font-semibold tracking-[-0.02em] text-ink-900">
-              Updates
-            </h2>
-            <p className="mt-1 text-sm leading-5 text-ink-600">Messages from us, payment receipts and reminders, all in one place.</p>
-          </header>
+          <ModalHeader id="updates-title" title="Updates" description="Messages from us, payment receipts and reminders, all in one place." onClose={hide} closeLabel="Close updates" />
 
           <div className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-5">
             {checkInCount ? (
@@ -124,8 +112,8 @@ export function UpdatesDrawer({ checkInCount, checkIns, items }: { checkInCount:
                 <h3 id="latest-title" className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">
                   Latest
                 </h3>
-                <ul className="mt-2 divide-y divide-ink-100">
-                  {items.map((n) => {
+                <ul className="stagger mt-2 divide-y divide-ink-100">
+                  {items.map((n, i) => {
                     const k = KIND[n.kind];
                     const Icon = k.icon;
                     const inner = (
@@ -154,7 +142,7 @@ export function UpdatesDrawer({ checkInCount, checkIns, items }: { checkInCount:
                       </>
                     );
                     return (
-                      <li key={n.id}>
+                      <li key={n.id} style={{ ["--i" as string]: i }}>
                         {n.link ? (
                           <Link href={n.link} className="-mx-2 flex gap-3 rounded-xl px-2 py-3.5 hover:bg-ink-50">
                             {inner}

@@ -13,8 +13,8 @@ export function VaultActions() {
   return (
     <div className="grid gap-2.5 sm:grid-cols-3">
       {ACTIONS.map(({ href, icon: Icon, tint, title, hint }) => (
-        <Link key={href} href={href} className="lift flex min-h-16 items-center gap-3 rounded-2xl border border-ink-150 bg-white px-4 py-3 shadow-card">
-          <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${tint}`}>
+        <Link key={href} href={href} className="lift group flex min-h-16 items-center gap-3 rounded-2xl border border-ink-150 bg-white px-4 py-3 shadow-card">
+          <span className={`grid size-10 shrink-0 place-items-center rounded-xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 ${tint}`}>
             <Icon size={22} variant="bulk" />
           </span>
           <span className="min-w-0">
@@ -40,7 +40,9 @@ export function ReadinessMeter({ vault }: { vault: Vault }) {
       </div>
       <ol className="mt-3 flex gap-1.5" aria-label={`${vault.confirmedItems} of ${target} needed achievements confirmed`}>
         {Array.from({ length: target }, (_, i) => (
-          <li key={i} className={`h-2 flex-1 rounded-full transition-colors duration-700 ${i < shown ? "bg-proof-600" : "bg-ink-150"}`} />
+          <li key={i} className="relative h-2 flex-1 overflow-hidden rounded-full bg-ink-150">
+            {i < shown ? <span className="meter-fill absolute inset-0 rounded-full bg-proof-600" style={{ ["--i" as string]: i }} /> : null}
+          </li>
         ))}
       </ol>
     </div>

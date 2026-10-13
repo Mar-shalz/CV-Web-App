@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-With no Supabase keys the app runs in preview mode: sample data and a click through sign in, marked by a banner. Add `/home?preview=new` to see a new user's Home.
+`npm run dev:preview` (port 3001) always runs on sample data, even with real keys in `.env.local`, so screens can be reviewed without signing in. With no Supabase keys, `npm run dev` also runs in preview mode: sample data and a click through sign in, marked by a banner. Add `/home?preview=new` to see a new user's Home.
 
 ## Connect Supabase
 
@@ -31,6 +31,7 @@ With no Supabase keys the app runs in preview mode: sample data and a click thro
 - `20261013000000_app_schema.sql`: everything the app needs (baseline, applied 13 Oct 2026).
 - `20261013000100_back_office.sql`: staff roles, truth reports, AI call log, audit extras (baseline).
 - `20261013000200_notifications.sql`: the Updates panel (personal notifications and back office announcements).
+- `20261013000300_uploads_10mb.sql`: uploads up to 10MB, Word and text files allowed.
 
 Run each file once, in order (SQL editor or `supabase db push`). Every later change is a new file with a later date; never edit an applied file.
 

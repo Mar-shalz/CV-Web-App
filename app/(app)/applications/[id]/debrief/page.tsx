@@ -18,7 +18,7 @@ export default async function DebriefPage({ params }: { params: Promise<{ id: st
   const existing = await getDebrief(viewer, app.id);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-3">
       <Link href={`/applications/${app.id}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl pr-3 text-sm font-semibold text-ink-600 hover:text-ink-900">
         <ArrowLeft2 size={16} />
         {app.title}

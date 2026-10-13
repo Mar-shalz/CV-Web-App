@@ -7,7 +7,7 @@ import { findingSeverity, scamState, type Finding, type ScamState } from "@/lib/
 import type { ParsedJob } from "@/lib/jobs/schema";
 import freeEmail from "@/config/lists/free_email_domains.json";
 import { LIMITS } from "@/lib/config";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { track } from "@/lib/analytics/server";
 
@@ -92,7 +92,7 @@ export async function fullCheck(
   // 1. This user's cached check, then anyone's check of the same post.
   const { data: own } = await supabase.from("legitimacy_checks").select("lookup_findings, created_at, cached_until").eq("job_id", jobId).gt("cached_until", now.toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (own) return view(layer, own.lookup_findings as Finding[], true, own.created_at);
-  if (isSupabaseConfigured() && (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+  if (isSupabaseConfigured() && !isPreviewMode() && (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)) {
     const admin = createAdminClient();
     const { data: same } = await admin.from("jobs").select("id").eq("post_hash", postHash).neq("id", jobId).limit(20);
     if (same?.length) {

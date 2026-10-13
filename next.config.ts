@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
   // Cache Components is off: almost every screen reads the signed in user, and the
   // simpler request time model keeps auth code easy to audit. See D-001.
   cacheComponents: false,
+  // `npm run dev:preview` builds into its own folder so it can run beside `npm run dev`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   // Prompt files are read at run time by lib/ai, so they ship with every server function.
   outputFileTracingIncludes: {

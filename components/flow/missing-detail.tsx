@@ -150,7 +150,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
             <label htmlFor="lic-status" className={label}>
               Status
             </label>
-            <select id="lic-status" name="status" className={`${inputClass} appearance-none`}>
+            <select id="lic-status" name="status" className={inputClass}>
               <option value="qualified">Fully qualified</option>
               <option value="in progress">In progress</option>
               <option value="part qualified">Part qualified</option>
@@ -162,7 +162,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
       {need === "olevel" ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <select name="exam" aria-label="Exam" className={`${inputClass} appearance-none`}>
+            <select name="exam" aria-label="Exam" className={inputClass}>
               <option value="WAEC">WAEC</option>
               <option value="NECO">NECO</option>
               <option value="GCE">GCE</option>
@@ -172,7 +172,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
           {Array.from({ length: rows }, (_, i) => (
             <div key={i} className="grid grid-cols-[1fr_96px] gap-2">
               <input name="subject" placeholder={["English Language", "Mathematics", "Economics", "Biology", "Government"][i] ?? "Subject"} aria-label={`Subject ${i + 1}`} className={inputClass} />
-              <select name="grade" aria-label={`Grade ${i + 1}`} className={`${inputClass} appearance-none`} defaultValue="">
+              <select name="grade" aria-label={`Grade ${i + 1}`} className={inputClass} defaultValue="">
                 <option value="">Grade</option>
                 {["A1", "B2", "B3", "C4", "C5", "C6", "D7", "E8", "F9"].map((g) => (
                   <option key={g}>{g}</option>

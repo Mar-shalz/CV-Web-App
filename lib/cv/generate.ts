@@ -155,28 +155,30 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
       const blocks = expRoles.filter((r) => kinds.includes(r.kind)).sort(sortRecent).map(blockFor).filter((b): b is CvRoleBlock => Boolean(b && b.bullets.length));
       if (blocks.length) sections.push({ key, heading, kind: "roles", roles: blocks });
     } else if (key === "education") {
-      const lines = roles
+      const entries = roles
         .filter((r) => r.kind === "education")
         .sort(sortRecent)
-        .map((r) => [r.title, r.organisation, r.grade, rangeLabel(r.start, r.end, r.isCurrent)].filter(Boolean).join(" · "))
-        .map((l) => (profile.id === "uk" && /\bhnd\b/i.test(l) && "hnd_explainer" in profile ? `${l} (${profile.hnd_explainer})` : l));
-      if (lines.length) sections.push({ key, heading, kind: "lines", lines });
+        .map((r) => {
+          const title = profile.id === "uk" && /\bhnd\b/i.test(r.title ?? "") && "hnd_explainer" in profile ? `${r.title} (${profile.hnd_explainer})` : (r.title ?? "Qualification");
+          return { title, subtitle: [r.organisation, r.location].filter(Boolean).join(", ") || null, dates: rangeLabel(r.start, r.end, r.isCurrent) || null, detail: r.grade ? `Class of degree: ${r.grade}` : null };
+        });
+      if (entries.length) sections.push({ key, heading, kind: "entries", entries });
     } else if (key === "nysc") {
       const n = roles.find((r) => r.kind === "nysc_ppa");
       if (n) {
-        const status = n.isCurrent ? `Serving, ends ${monthLabel(n.end) ?? "this year"}` : `Completed, ${monthLabel(n.end) ?? ""}`.trim();
-        const line =
-          profile.id === "uk" && "nysc_explainer" in profile
-            ? `National Youth Service Corps (${profile.nysc_explainer}). ${status}, ${n.organisation ?? ""}`.replace(/, $/, "")
-            : `${status} · ${n.organisation ?? "Place of primary assignment"}`;
-        sections.push({ key, heading, kind: "lines", lines: [line] });
+        const status = n.isCurrent ? `Serving, ends ${monthLabel(n.end) ?? "this year"}` : `Completed ${monthLabel(n.end) ?? ""}`.trim();
+        const title = profile.id === "uk" && "nysc_explainer" in profile ? `National Youth Service Corps (${profile.nysc_explainer})` : "National Youth Service Corps (NYSC)";
+        sections.push({ key, heading, kind: "entries", entries: [{ title, subtitle: [n.organisation ? `Place of primary assignment: ${n.organisation}` : null, n.location].filter(Boolean).join(", ") || null, dates: rangeLabel(n.start, n.end, n.isCurrent) || null, detail: status }] });
       }
     } else if (key === "skills") {
-      const lines = [skills.tools.length ? `Tools: ${skills.tools.join(", ")}` : null, skills.professional.length ? `Professional: ${skills.professional.join(", ")}` : null, skills.languages.length ? `Languages: ${skills.languages.join(", ")}` : null].filter((l): l is string => Boolean(l));
+      const lines = [skills.professional.length ? `Core skills: ${skills.professional.join(", ")}` : null, skills.tools.length ? `Tools and software: ${skills.tools.join(", ")}` : null, skills.languages.length ? `Languages: ${skills.languages.join(", ")}` : null].filter((l): l is string => Boolean(l));
       if (lines.length) sections.push({ key, heading, kind: "lines", lines });
     } else if (key === "certifications") {
-      const lines = roles.filter((r) => r.kind === "certification" || r.kind === "licence").map((r) => [r.title, r.organisation, r.grade].filter(Boolean).join(", "));
-      if (lines.length) sections.push({ key, heading, kind: "lines", lines });
+      const entries = roles
+        .filter((r) => r.kind === "certification" || r.kind === "licence")
+        .sort(sortRecent)
+        .map((r) => ({ title: r.title ?? "Certificate", subtitle: r.organisation, dates: r.end ? monthLabel(r.end) : r.start ? monthLabel(r.start) : null, detail: r.grade }));
+      if (entries.length) sections.push({ key, heading, kind: "entries", entries });
     } else if (key === "referees") {
       if (profile.referees !== "left_out") sections.push({ key, heading, kind: "lines", lines: ["Available on request"] });
     }

@@ -16,7 +16,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
   const done = totalChecks - vault.unchecked;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-3">
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Check what we found</h1>
         <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">Read each one. Confirm what&apos;s right, fix what isn&apos;t. Nothing goes on a CV until you confirm it.</p>
@@ -40,7 +40,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
       ) : null}
 
       {toCheck.length ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {toCheck.map((r) => (
             <RoleCard key={r.id} role={r} mode="review" />
           ))}

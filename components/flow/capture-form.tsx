@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { compressImage } from "@/lib/client/compress-image";
-import { DocumentText, DocumentUpload, Link21, Gallery, ArrowRight, CloseCircle, TickCircle } from "@/components/icons";
+import { DocumentText, DocumentUpload, Link21, Gallery, ArrowRight, TickCircle, Trash } from "@/components/icons";
+import { attachFile } from "@/lib/client/upload";
+import { UPLOAD_MAX_BYTES, sizeLabel, tooBigMessage } from "@/lib/uploads/limits";
+import { LIMITS } from "@/lib/config";
 import { Field, FieldError, inputClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/auth/form-error";
@@ -33,6 +36,7 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
   const [file, setFile] = useState<File | null>(null);
   const [tried, setTried] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [sizeError, setSizeError] = useState<string | undefined>();
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Never lose input: the draft lives on this phone until the job is saved. It is
@@ -64,7 +68,7 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
           ? "Enter a full link, starting with https://"
           : "Choose a file first."
       : undefined;
-  const fieldError = local;
+  const fieldError = sizeError ?? local;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -80,7 +84,15 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
     body.append("mode", mode);
     if (mode === "paste") body.append("text", text);
     if (mode === "link") body.append("url", url);
-    if ((mode === "file" || mode === "screenshot") && file) body.append("file", mode === "screenshot" ? await compressImage(file) : file);
+    if ((mode === "file" || mode === "screenshot") && file) {
+      const attached = await attachFile(body, mode === "screenshot" ? await compressImage(file) : file);
+      if (!attached.ok) {
+        clearInterval(timer);
+        setBusy(false);
+        setError(attached.error);
+        return;
+      }
+    }
     try {
       const res = await fetch("/api/jobs/capture", { method: "POST", body });
       const data = (await res.json()) as { ok: boolean; jobId?: string; error?: string; fallback?: Mode };
@@ -104,13 +116,14 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
 
   const accept = mode === "file" ? ".pdf,.doc,.docx,.txt" : "image/*";
   function pick(f: File | undefined | null) {
+    // Cancelling the file picker gives no file: keep whatever was there.
     if (!f) return;
-    const max = (mode === "file" ? 5 : 8) * 1024 * 1024;
-    if (f.size > max) {
+    if (f.size > UPLOAD_MAX_BYTES) {
       setFile(null);
-      setTried(true);
+      setSizeError(tooBigMessage(f.size, mode === "file" ? "paste the text instead" : "take a smaller screenshot"));
       return;
     }
+    setSizeError(undefined);
     setFile(f);
   }
   function onDrop(e: DragEvent) {
@@ -142,6 +155,7 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
                   checked={on}
                   onChange={() => {
                     setMode(id);
+                    setSizeError(undefined);
                     setTried(false);
                     setFile(null);
                   }}
@@ -205,22 +219,27 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
               }`}
             >
               {file ? (
-                <div className="flex items-center justify-center gap-3 text-left">
-                  <span className="grid size-12 place-items-center rounded-2xl bg-white text-proof-600 shadow-card">
-                    <TickCircle size={24} variant="bulk" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold text-ink-900">{file.name}</span>
-                    <span className="text-[0.8125rem] text-ink-500">{(file.size / 1024).toFixed(0)}KB · ready</span>
-                  </span>
+                <div className="relative animate-pop">
                   <button
                     type="button"
-                    onClick={() => setFile(null)}
-                    className="ml-2 grid size-12 place-items-center rounded-xl text-ink-500 hover:bg-white hover:text-ink-900"
+                    onClick={() => {
+                      setFile(null);
+                      if (fileRef.current) fileRef.current.value = "";
+                    }}
+                    className="absolute -right-3 -top-3 grid size-10 place-items-center rounded-lg bg-flag-50 text-flag-600 ring-1 ring-flag-100 transition-colors hover:bg-flag-100 hover:text-flag-700"
                     aria-label={`Remove ${file.name}`}
                   >
-                    <CloseCircle size={22} />
+                    <Trash size={20} />
                   </button>
+                  <div className="flex items-center justify-center gap-3 pr-8 text-left">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white text-proof-600 shadow-card">
+                      <TickCircle size={24} variant="bulk" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-ink-900">{file.name}</span>
+                      <span className="text-[0.8125rem] text-ink-500">{sizeLabel(file.size)} · ready</span>
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -229,7 +248,7 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
                   </span>
                   <p className="mt-3 font-semibold text-ink-900">{mode === "file" ? "Drop the job description here" : "Drop a screenshot here"}</p>
                   <p className="mt-1 text-[0.8125rem] text-ink-500">
-                    {mode === "file" ? "PDF, Word or text file, up to 5MB" : "WhatsApp and Instagram flyers work. Make sure the text is readable."}
+                    {mode === "file" ? `PDF, Word or text file, up to ${LIMITS.files.upload_max_mb}MB` : `WhatsApp and Instagram flyers work, up to ${LIMITS.files.upload_max_mb}MB. Make sure the text is readable.`}
                   </p>
                   <button
                     type="button"

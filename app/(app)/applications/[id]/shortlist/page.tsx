@@ -34,7 +34,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
     const boost = PRICES.products.interview_boost;
     const pass = PRICES.products.job_hunt_30d;
     return (
-      <div className="mx-auto max-w-2xl space-y-6">
+      <div className="mx-auto max-w-2xl space-y-3">
         {back}
         <section className="animate-rise overflow-hidden rounded-[var(--radius-panel)] border border-ink-150 bg-white shadow-card">
           <div className="brand-gradient p-6 text-white">
@@ -75,7 +75,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   const days = daysUntil(view.invite.date);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {back}
       <header className="animate-rise">
         <p className="inline-flex items-center gap-1.5 rounded-full bg-proof-50 px-3 py-1 text-[0.8125rem] font-semibold text-proof-700">
@@ -86,7 +86,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
         <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Everything here comes from the job post you saved and the exact CV you sent. Nothing new to memorise, only your own proof to explain well.</p>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="order-2 min-w-0 xl:order-1">
           <Drill applicationId={app.id} initial={view.questions} attempts={view.attempts} voice={voiceEnabled()} />
           {!view.lines.length ? (
@@ -96,7 +96,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
             </p>
           ) : null}
         </div>
-        <aside className="order-1 space-y-5 xl:order-2">
+        <aside className="order-1 space-y-3 xl:order-2">
           <InviteCard applicationId={app.id} invite={view.invite} days={days} />
           <Logistics applicationId={app.id} items={logisticsFor(view.invite.format)} done={view.invite.logisticsDone} />
         </aside>

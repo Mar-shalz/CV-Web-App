@@ -8,12 +8,12 @@ export type Profile = (typeof PROFILES)[ProfileId];
 
 export const SECTION_HEADINGS: Record<string, string> = {
   profile: "Profile",
-  experience: "Experience",
+  experience: "Work experience",
   education: "Education",
   nysc: "NYSC",
   leadership: "Leadership and activities",
   skills: "Skills",
-  certifications: "Certifications",
+  certifications: "Certifications and licences",
   referees: "Referees",
 };
 

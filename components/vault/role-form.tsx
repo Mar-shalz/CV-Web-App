@@ -40,7 +40,7 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
         <label htmlFor="kind" className={label}>
           Type
         </label>
-        <select id="kind" name="kind" value={kind} onChange={(e) => setKind(e.target.value as RoleKind)} className={`${inputClass} appearance-none`}>
+        <select id="kind" name="kind" value={kind} onChange={(e) => setKind(e.target.value as RoleKind)} className={inputClass}>
           {ROLE_KINDS.map((k) => (
             <option key={k} value={k}>
               {ROLE_KIND_LABELS[k]}

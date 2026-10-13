@@ -43,7 +43,7 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
           : "Keep your job hunt moving";
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className="mx-auto max-w-5xl space-y-6">
       <header className="animate-rise text-center">
         <span className="mx-auto grid size-14 place-items-center rounded-3xl bg-brand-50 text-brand-700">
           <Crown1 size={28} variant="bulk" />
@@ -64,7 +64,7 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
           </ButtonLink>
         </div>
       ) : (
-        <div className={`grid gap-5 ${wantsBoost ? "lg:grid-cols-2" : "mx-auto max-w-xl"}`}>
+        <div className={`grid gap-3 ${wantsBoost ? "lg:grid-cols-2" : "mx-auto max-w-xl"}`}>
           <section aria-labelledby="pass-title" className="relative flex flex-col overflow-hidden rounded-[var(--radius-panel)] border-2 border-brand-500 bg-white p-6 shadow-raised">
             <span className="absolute right-5 top-5 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Best value</span>
             <h2 id="pass-title" className="text-sm font-semibold text-brand-700">
@@ -106,7 +106,7 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <section aria-labelledby="free-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
           <h2 id="free-title" className="text-[0.9375rem] font-semibold text-ink-900">
             Free forever, pass or no pass

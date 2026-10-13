@@ -154,3 +154,19 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-057 Modal slot fix.** The catch all page in the `@modal` slot (D-041) made every page outside the `(app)` group unreachable in Next 16: sign in, onboarding, legal, offline and the back office returned 404 ("page files do not match any complete route"). It is removed; the modal now hides itself when the address changes. CI's build step would have caught it; the build passes again.
 
 **D-058 Research review.** A product and UX research review with ranked bets is published as an artifact (Receipts Retention Playbook). Its figures are hypotheses for the research plan, not measured results.
+
+## Founder feedback round 7 (13 Oct 2026)
+
+**D-059 Check ins live in the Updates panel only.** The home card is gone; the bell is the one place to answer them.
+
+**D-060 One modal header.** `components/ui/modal-header.tsx` gives every modal, sheet and panel the same header: a square close button (8px radius, bordered) on its own row, then the title and description. A file picker's "cancel" event bubbles to the dialog; the route modal now closes only on its own Escape, so cancelling the picker keeps the modal open.
+
+**D-061 Uploads up to 10MB.** The host caps request bodies near 4.5MB, so files over 4MB go straight from the browser to the person's own `incoming/` folder in the private `job-uploads` bucket through a one time signed URL; the server reads each file once and deletes it. That also applies to CV import: the CV file is held only for the seconds it takes to read, then deleted, so D-024 still holds in substance. Too big files get a plain message with the actual size. Migration `20261013000300_uploads_10mb.sql` raises the bucket limit and allows Word and text files.
+
+**D-062 Standard CV layout.** PDF and Word now follow a standard professional layout: name in letter spaced capitals, the title line, contact details separated by bars, a rule; Profile summary; role title and dates on one line with employer and location in italics below; hanging bullets; Education, NYSC and Certifications as structured entries (title and dates, institution, class of degree); skills with bold labels; Referees; "Name · CV · Page x of n" footer. A new `entries` section kind carries the structure; older saved CVs with plain lines still render.
+
+**D-063 Settings layout.** The profile card has an Edit details button (to the personal details screen) and the separate row is gone. Section headings are gone; the two cards are "your job search and plan" (where you're applying, data saver, pass and payments) and "privacy and your data". The data saver row highlights as one piece, icon included.
+
+**D-064 Motion.** Every page eases in (template), the bell rings once when something new is waiting, progress segments fill in turn, overview cards are links that lift with a small icon tilt, arrows nudge on hover, lists stagger in. All of it stops with reduced motion and with data saver.
+
+**D-065 Preview server.** `npm run dev:preview` (port 3001, its own build folder) forces sample data even when real keys are in `.env.local`, so design reviews never need a sign in. It can never switch on in production.

@@ -30,15 +30,15 @@ export function RecentApplications({ items, title = "Recent applications", showA
         <span>Status</span>
         <span className="w-5" />
       </div>
-      <ul className="divide-y divide-ink-100 px-2 pb-2 lg:px-0">
-        {items.map((a) => {
+      <ul className="stagger divide-y divide-ink-100 px-2 pb-2 lg:px-0">
+        {items.map((a, i) => {
           const ch = a.channel ? CHANNEL[a.channel] : null;
           const Icon = ch?.icon ?? DocumentText;
           return (
-            <li key={a.id}>
+            <li key={a.id} style={{ ["--i" as string]: i }}>
               <Link
                 href={`/applications/${a.id}`}
-                className="grid min-h-[76px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors hover:bg-ink-50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-4 lg:rounded-none lg:px-5"
+                className="group grid min-h-[76px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors hover:bg-ink-50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-4 lg:rounded-none lg:px-5"
               >
                 <span className="flex min-w-0 items-center gap-3.5 max-lg:contents">
                   <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">
@@ -60,7 +60,7 @@ export function RecentApplications({ items, title = "Recent applications", showA
                 <span className="hidden lg:block">
                   <StatusBadge status={a.status} />
                 </span>
-                <ArrowRight2 size={18} className="text-ink-400" />
+                <ArrowRight2 size={18} className="nudge text-ink-400" />
               </Link>
             </li>
           );

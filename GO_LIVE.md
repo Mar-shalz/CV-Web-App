@@ -15,6 +15,7 @@ You ran the two baseline files, so the database matches `supabase/migrations/202
 
 - [x] App schema and back office (done 13 Oct 2026).
 - [ ] Run `supabase/migrations/20261013000200_notifications.sql` once in the SQL editor. It adds the Updates panel: messages from the back office, payment receipts, and pass and trial reminders. Until you run it, the panel shows only check ins.
+- [ ] Run `supabase/migrations/20261013000300_uploads_10mb.sql` once. It lets uploads go up to 10MB and accepts Word and text files.
 
 From now on every database change comes as one new file in that folder with a later date in its name. Run each new file once, in date order. Never re-run an old one: "already exists" errors mean it ran before.
 

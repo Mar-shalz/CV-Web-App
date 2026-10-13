@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import type { PackView } from "@/lib/applications/data";
 import { sentIt } from "@/app/(app)/jobs/[id]/pack/actions";
-import { CopyButton } from "@/components/ui/copy-button";
+import { CopyButton, CopyField } from "@/components/ui/copy-button";
 import { Button } from "@/components/ui/button";
 import { Sms, Send2, Share, TickCircle, TickSquare, ArrowRight, Paperclip2, ShieldTick, Global, DocumentDownload, Danger } from "@/components/icons";
 
@@ -79,7 +79,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="min-w-0 rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card">
         {pack.channel === "email" ? (
           <>
@@ -96,11 +96,10 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
               {pack.toEmail ? <Row label="To" value={pack.toEmail} /> : null}
               <Row label="Subject" value={pack.subject} note="Use this exactly. It follows the format the employer asked for." />
               <div className="px-5 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-xs font-medium text-ink-500">Message</dt>
-                  <CopyButton value={pack.body} label="message" />
-                </div>
-                <dd className="mt-2 whitespace-pre-line rounded-2xl bg-ink-50 p-4 text-sm leading-6 text-ink-800">{pack.body}</dd>
+                <dt className="text-xs font-medium text-ink-500">Message</dt>
+                <dd className="mt-2">
+                  <CopyField value={pack.body} label="message" />
+                </dd>
               </div>
               <div className="flex flex-wrap items-center gap-2 px-5 py-4">
                 <dt className="sr-only">Attachments</dt>
@@ -182,7 +181,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
         )}
       </section>
 
-      <aside className="space-y-5">
+      <aside className="space-y-3">
         <section aria-labelledby="checklist-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
           <h2 id="checklist-title" className="text-[0.9375rem] font-semibold text-ink-900">
             Before you press send

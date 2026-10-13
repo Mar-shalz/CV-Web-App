@@ -4,7 +4,7 @@ import { ArrowLeft2 } from "@/components/icons";
 
 export function SettingsShell({ title, intro, children }: { title: string; intro: string; children: ReactNode }) {
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-3">
       <Link href="/settings" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl pr-3 text-sm font-semibold text-ink-600 hover:text-ink-900">
         <ArrowLeft2 size={16} />
         Settings

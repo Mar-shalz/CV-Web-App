@@ -1,14 +1,25 @@
 import "server-only";
 import type { CaptureInput } from "./capture";
+import { UPLOAD_MAX_BYTES, tooBigMessage } from "@/lib/uploads/limits";
 
-const MAX_BYTES = 4 * 1024 * 1024;
+type Take = (path: string) => Promise<{ bytes: Buffer; type: string } | { error: string }>;
 
-/** Reads the capture form (paste, link, file or screenshot) into a CaptureInput, or an error to show. */
-export async function readCaptureForm(form: FormData): Promise<CaptureInput | { error: string }> {
+/**
+ * Reads the capture form (paste, link, file or screenshot) into a CaptureInput, or an
+ * error to show. Big files arrive as a storage path (see lib/client/upload.ts).
+ */
+export async function readCaptureForm(form: FormData, take?: Take): Promise<CaptureInput | { error: string }> {
   const mode = String(form.get("mode") ?? form.get("source_type") ?? "paste");
   const file = form.get("file");
+  const uploadPath = form.get("upload_path");
+  if ((mode === "file" || mode === "screenshot") && typeof uploadPath === "string" && uploadPath && take) {
+    const got = await take(uploadPath);
+    if ("error" in got) return got;
+    const name = String(form.get("upload_name") ?? "upload");
+    return mode === "screenshot" || got.type.startsWith("image/") ? { mode: "screenshot", bytes: got.bytes, type: got.type } : { mode: "file", bytes: got.bytes, name, type: got.type };
+  }
   if ((mode === "file" || mode === "screenshot") && file instanceof File && file.size > 0) {
-    if (file.size > MAX_BYTES) return { error: "That file is too big. Use one under 4MB, or paste the text instead." };
+    if (file.size > UPLOAD_MAX_BYTES) return { error: tooBigMessage(file.size) };
     const bytes = Buffer.from(await file.arrayBuffer());
     return mode === "screenshot" || file.type.startsWith("image/") ? { mode: "screenshot", bytes, type: file.type } : { mode: "file", bytes, name: file.name, type: file.type };
   }

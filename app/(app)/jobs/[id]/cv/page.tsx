@@ -21,7 +21,7 @@ export default async function CvPage({ params }: { params: Promise<{ id: string 
   const dobToggle = profile.personal_fields.date_of_birth !== "never" && jobAsksDob;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <FlowSteps current="cv" hrefs={{ add: `/jobs/${job.id}`, check: `/jobs/${job.id}/check` }} />
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Your tailored CV</h1>

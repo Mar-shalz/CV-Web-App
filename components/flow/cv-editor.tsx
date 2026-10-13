@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalHeader } from "@/components/ui/modal-header";
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { editCv, type CvOp } from "@/app/(app)/jobs/[id]/cv/actions";
@@ -7,7 +8,7 @@ import { answerSurvey } from "@/app/(app)/jobs/[id]/check/actions";
 import type { CvBullet, CvDoc } from "@/lib/cv/types";
 import { openFlags } from "@/lib/cv/types";
 import { findBullet, updateBullet } from "@/lib/cv/ops";
-import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, InfoCircle, CloseCircle, Magicpen, Warning2, Lock1 } from "@/components/icons";
+import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, InfoCircle, Magicpen, Warning2, Lock1 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 
@@ -72,16 +73,18 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
       <article aria-label="Your tailored CV" className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
-        <header className="border-b border-paper-edge pb-4 text-center">
-          <h2 className="text-[1.5rem] font-bold tracking-tight text-ink-900">{doc.name}</h2>
-          <p className="mt-1 text-[0.8125rem] text-ink-600">{doc.contactLine}</p>
+        <header className="border-b-2 border-brand-900 pb-4 text-center">
+          <h2 className="text-[1.75rem] font-bold uppercase tracking-[0.06em] text-ink-900">{doc.name}</h2>
+          {doc.titleLine ? (
+            <p className={`mt-1 inline-block rounded px-1 text-[0.9375rem] font-semibold text-brand-800 ${doc.titleFlags.some((f) => f.status === "open") ? "bg-care-100" : ""}`}>{doc.titleLine}</p>
+          ) : null}
+          <p className="mt-2 text-[0.8125rem] text-ink-600">{doc.contactLine.split(" · ").join("  |  ")}</p>
           {doc.include.date_of_birth ? <p className="text-[0.8125rem] text-ink-600">Date of birth: added at download</p> : null}
-          <p className={`mt-2 inline-block rounded px-1 text-sm font-semibold text-brand-800 ${doc.titleFlags.some((f) => f.status === "open") ? "bg-care-100" : ""}`}>{doc.titleLine}</p>
         </header>
         {doc.summary.text ? (
-          <CvSectionBlock title="Profile">
+          <CvSectionBlock title={doc.format === "uk" ? "Profile" : "Profile summary"}>
             <p className={`rounded px-1 text-sm leading-6 text-ink-800 ${doc.summary.flags.some((f) => f.status === "open") ? "bg-care-100/70" : ""}`}>{doc.summary.text}</p>
             {doc.summary.flags.filter((f) => f.status === "open").map((f) => (
               <p key={f.token} className="mt-1 px-1 font-[family-name:var(--font-sans)] text-xs text-care-700">
@@ -93,19 +96,44 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
         {doc.sections.map((s) => (
           <CvSectionBlock key={s.key} title={s.heading}>
             {s.kind === "lines" ? (
-              s.lines.map((l) => (
-                <p key={l} className="text-sm leading-6 text-ink-800">
-                  {l}
-                </p>
-              ))
+              <div className="space-y-1">
+                {s.lines.map((l) => {
+                  const at = l.indexOf(": ");
+                  return (
+                    <p key={l} className="text-sm leading-6 text-ink-800">
+                      {at > 0 && at < 30 ? (
+                        <>
+                          <span className="font-bold text-ink-900">{l.slice(0, at)}:</span> {l.slice(at + 2)}
+                        </>
+                      ) : (
+                        l
+                      )}
+                    </p>
+                  );
+                })}
+              </div>
+            ) : s.kind === "entries" ? (
+              <div className="space-y-3">
+                {s.entries.map((e) => (
+                  <div key={`${e.title}-${e.dates}`}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+                      <p className="text-sm font-bold text-ink-900">{e.title}</p>
+                      {e.dates ? <p className="text-[0.8125rem] text-ink-600">{e.dates}</p> : null}
+                    </div>
+                    {e.subtitle ? <p className="text-[0.8125rem] italic text-ink-600">{e.subtitle}</p> : null}
+                    {e.detail ? <p className="text-[0.8125rem] text-ink-800">{e.detail}</p> : null}
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="space-y-5">
                 {s.roles.map((r) => (
                   <div key={r.roleId}>
                     <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-                      <p className="text-sm font-bold text-ink-900">{[r.title, r.organisation].filter(Boolean).join(", ")}</p>
+                      <p className="text-sm font-bold text-ink-900">{r.title}</p>
                       <p className="text-[0.8125rem] text-ink-600">{r.dates}</p>
                     </div>
+                    {r.organisation || r.location ? <p className="text-[0.8125rem] italic text-ink-600">{[r.organisation, r.location].filter(Boolean).join(", ")}</p> : null}
                     <ul className="mt-2 space-y-1.5">
                       {r.bullets.map((b) => {
                         const isOpen = open === b.id;
@@ -197,7 +225,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
         ))}
       </article>
 
-      <aside className="space-y-5 xl:sticky xl:top-28 xl:self-start">
+      <aside className="space-y-3 xl:sticky xl:top-28 xl:self-start">
         {error ? (
           <p role="alert" className="rounded-2xl bg-flag-50 p-3 text-sm text-flag-700">
             {error}
@@ -322,17 +350,9 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
         </section>
       </aside>
 
-      <dialog ref={sheet} aria-labelledby="sheet-title" className="m-auto w-[min(92vw,480px)] rounded-[24px] p-0 shadow-raised backdrop:bg-brand-950/50 backdrop:backdrop-blur-sm open:animate-pop">
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-3">
-            <h2 id="sheet-title" className="text-lg font-semibold text-ink-900">
-              Check {flagged.length === 1 ? "this line" : "these lines"} first?
-            </h2>
-            <button type="button" onClick={() => sheet.current?.close()} className="grid size-11 place-items-center rounded-xl text-ink-500 hover:bg-ink-75" aria-label="Close">
-              <CloseCircle size={22} />
-            </button>
-          </div>
-          <p className="mt-1 text-sm text-ink-600">An interviewer could ask about any line. Make sure you can explain each one.</p>
+      <dialog ref={sheet} aria-labelledby="sheet-title" className="m-auto w-[min(92vw,520px)] rounded-[var(--radius-panel)] p-0 shadow-raised backdrop:bg-brand-950/50 backdrop:backdrop-blur-sm open:animate-pop">
+        <ModalHeader id="sheet-title" title={`Check ${flagged.length === 1 ? "this line" : "these lines"} first?`} description="An interviewer could ask about any line. Make sure you can explain each one." onClose={() => sheet.current?.close()} />
+        <div className="px-5 pb-6 sm:px-7">
           <ul className="mt-4 max-h-[50vh] space-y-2.5 overflow-y-auto">
             {flagged.map((b) => (
               <li key={b.id} className="rounded-2xl bg-care-50 p-3.5 text-[0.8125rem] leading-5 text-care-700">
@@ -370,7 +390,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
 function CvSectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-5">
-      <h3 className="mb-2 border-b border-paper-edge pb-1 text-xs font-bold uppercase tracking-[0.12em] text-ink-700">{title}</h3>
+      <h3 className="mb-2.5 border-b border-ink-300 pb-1 text-xs font-bold uppercase tracking-[0.14em] text-brand-900">{title}</h3>
       {children}
     </section>
   );

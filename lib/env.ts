@@ -12,6 +12,8 @@ export function isSupabaseConfigured(): boolean {
  */
 export function isPreviewMode(): boolean {
   if (process.env.NODE_ENV === "production") return false;
+  // `npm run dev:preview` forces sample data even when real keys are in .env.local.
+  if (process.env.RECEIPTS_PREVIEW === "1") return true;
   return !isSupabaseConfigured();
 }
 

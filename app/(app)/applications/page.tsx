@@ -30,7 +30,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   const items = rows.filter((a) => active.match(a.status)).filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <header className="flex flex-wrap items-end justify-between gap-3 animate-rise">
         <div>
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Applications</h1>

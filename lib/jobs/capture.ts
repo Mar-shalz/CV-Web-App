@@ -5,7 +5,7 @@ import { runTask } from "@/lib/ai";
 import { EMPTY_JOB, jobSchema, type ParsedJob } from "./schema";
 import { fetchJobLink } from "./fetch-link";
 import { detectDestination } from "@/lib/rules/destination";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { APP } from "@/lib/config";
 
@@ -26,7 +26,7 @@ const hash = (v: string | Buffer) => createHash("sha256").update(typeof v === "s
 
 /** A post already parsed for anyone is parsed once (Build pack: cache by post_hash). Job text holds no user data. */
 async function cachedParse(postHash: string): Promise<ParsedJob | null> {
-  if (!isSupabaseConfigured() || !(process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)) return null;
+  if (!isSupabaseConfigured() || isPreviewMode() || !(process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)) return null;
   const { data } = await createAdminClient()
     .from("jobs")
     .select("parsed, captured_at")

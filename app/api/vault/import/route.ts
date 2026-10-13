@@ -6,9 +6,11 @@ import { runTask } from "@/lib/ai";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 import { saveDraftRoles } from "@/lib/vault/save";
 import { track } from "@/lib/analytics/server";
+import { takeUpload } from "@/lib/uploads/take";
+import { INLINE_MAX_BYTES, UPLOAD_MAX_BYTES, tooBigMessage } from "@/lib/uploads/limits";
 
-// Our own body limit, under the host's 4.5MB cap. Photos are shrunk in the browser first.
-const MAX_BYTES = 4 * 1024 * 1024;
+// Files up to the inline limit come in the request (the host caps bodies near 4.5MB);
+// bigger ones, up to the upload limit, come as a storage path that is read and deleted.
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const IMAGES = ["image/jpeg", "image/png", "image/webp"] as const;
 
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest) {
   if (!(await allow("cv_import"))) return fail(RATE_LIMITED_MESSAGE, 429);
 
   const length = Number(request.headers.get("content-length") ?? 0);
-  if (length > MAX_BYTES + 64 * 1024) return fail("That file is too big. Use a file under 4MB, or paste the text instead.", 413);
+  if (length > INLINE_MAX_BYTES + 64 * 1024) return fail(tooBigMessage(length), 413);
 
   let form: FormData;
   try {
@@ -39,7 +41,14 @@ export async function POST(request: NextRequest) {
   }
 
   const text = form.get("text");
-  const file = form.get("file");
+  let file = form.get("file");
+  const uploadPath = form.get("upload_path");
+  if (typeof uploadPath === "string" && uploadPath) {
+    // Read once and deleted straight away: the CV file itself is still never kept (D-024).
+    const got = await takeUpload(await createClient(), viewer.id, uploadPath);
+    if ("error" in got) return fail(got.error);
+    file = new File([new Uint8Array(got.bytes)], String(form.get("upload_name") ?? "cv"), { type: got.type });
+  }
   let input:
     | { kind: "text"; text: string; fileHash: string }
     | { kind: "pdf"; base64: string; fileHash: string }
@@ -50,7 +59,7 @@ export async function POST(request: NextRequest) {
     if (t.length < 40) return fail("That's too short to be a CV. Paste the whole thing.");
     input = { kind: "text", text: t.slice(0, 60_000), fileHash: createHash("sha256").update(t).digest("hex") };
   } else if (file instanceof File && file.size > 0) {
-    if (file.size > MAX_BYTES) return fail("That file is too big. Use a file under 4MB, or paste the text instead.", 413);
+    if (file.size > UPLOAD_MAX_BYTES) return fail(tooBigMessage(file.size), 413);
     const bytes = Buffer.from(await file.arrayBuffer());
     const fileHash = createHash("sha256").update(bytes).digest("hex");
     const type = file.type || (file.name.toLowerCase().endsWith(".docx") ? DOCX : "");

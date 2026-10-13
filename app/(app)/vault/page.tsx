@@ -24,7 +24,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
 
   if (empty) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-3">
         <header className="animate-rise">
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Add your experience</h1>
           <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">
@@ -48,7 +48,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
   }
 
   return (
-    <div className="stagger space-y-6">
+    <div className="stagger space-y-3">
       <header style={{ "--i": 0 } as CSSProperties} className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">My experience</h1>
@@ -57,8 +57,8 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
       </header>
 
       <div style={{ "--i": 1 } as CSSProperties} className="grid gap-3">
-        <ReadinessMeter vault={vault} />
         <VaultActions />
+        <ReadinessMeter vault={vault} />
       </div>
 
       {vault.unchecked ? (
@@ -83,7 +83,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
             <h2 id={`g-${gi}`} className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-ink-500">
               {g.title}
             </h2>
-            <div className="grid gap-4 2xl:grid-cols-2">
+            <div className="grid gap-3 2xl:grid-cols-2">
               {roles.map((r) => (
                 <RoleCard key={r.id} role={r} />
               ))}

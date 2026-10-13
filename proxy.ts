@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { buildCsp, newNonce } from "@/lib/csp";
 
 const APP_PREFIXES = ["/home", "/jobs", "/applications", "/vault", "/settings", "/onboarding", "/pass", "/admin"];
@@ -21,7 +21,7 @@ export async function proxy(incoming: NextRequest) {
   };
 
   // Without Supabase there is no session to refresh (local preview only, see lib/env.ts).
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || isPreviewMode()) {
     if (process.env.NODE_ENV === "production") {
       return new NextResponse("Service not configured", { status: 503 });
     }

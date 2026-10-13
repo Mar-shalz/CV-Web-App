@@ -12,17 +12,17 @@ export function demoCvDoc(): CvDoc {
     titleFlags: [],
     summary: { text: DEMO_CV.summary, sourceItemIds: ["i3", "i1"], flags: [] },
     sections: [
-      { key: "education", heading: "Education", kind: "lines", lines: DEMO_CV.sections[0]!.lines },
-      { key: "nysc", heading: "NYSC", kind: "lines", lines: DEMO_CV.sections[1]!.lines },
+      { key: "education", heading: "Education", kind: "entries", entries: [{ title: "B.Sc. Accounting", subtitle: "University of Lagos, Akoka, Lagos", dates: "2019 to 2024", detail: "Class of degree: Second Class Upper" }] },
+      { key: "nysc", heading: "NYSC", kind: "entries", entries: [{ title: "National Youth Service Corps (NYSC)", subtitle: "Place of primary assignment: Finance Unit, Ministry of Works, Abeokuta, Ogun State", dates: "Nov 2025 to Oct 2026", detail: "Completed Oct 2026" }] },
       {
         key: "experience",
-        heading: "Experience",
+        heading: "Work experience",
         kind: "roles",
         roles: DEMO_CV.roles.map((r, ri) => ({
           roleId: `r${ri}`,
           title: r.title,
-          organisation: r.org,
-          location: null,
+          organisation: r.org.split(", ")[0] ?? r.org,
+          location: r.org.split(", ").slice(1).join(", ") || null,
           dates: r.dates,
           grade: null,
           bullets: r.bullets.map((b) => ({
@@ -36,7 +36,7 @@ export function demoCvDoc(): CvDoc {
           })),
         })),
       },
-      { key: "skills", heading: "Skills", kind: "lines", lines: DEMO_CV.skills.split(" · ") },
+      { key: "skills", heading: "Skills", kind: "lines", lines: ["Core skills: reconciliation, customer onboarding, financial reporting support", "Tools and software: Excel (macros, pivot tables), Sage 50", "Languages: English, Yoruba"] },
       { key: "referees", heading: "Referees", kind: "lines", lines: ["Available on request"] },
     ],
     include: { date_of_birth: false, gender: false, state_of_origin: false },

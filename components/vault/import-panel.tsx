@@ -4,6 +4,9 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DocumentUpload, Camera, DocumentText, TickCircle, Danger, ArrowRight, Edit2 } from "./icons";
 import { compressImage } from "@/lib/client/compress-image";
+import { attachFile } from "@/lib/client/upload";
+import { UPLOAD_MAX_BYTES, tooBigMessage } from "@/lib/uploads/limits";
+import { LIMITS } from "@/lib/config";
 import { inputClass } from "@/components/ui/field";
 import { Button, ButtonLink } from "@/components/ui/button";
 
@@ -43,12 +46,16 @@ export function ImportPanel() {
   async function onFile(file: File | undefined, photo: boolean) {
     if (!file) return;
     const ready = photo ? await compressImage(file) : file;
-    if (ready.size > 4 * 1024 * 1024) {
-      setPhase({ kind: "error", message: "That file is too big. Use one under 4MB, or paste the text instead.", manual: false });
+    if (ready.size > UPLOAD_MAX_BYTES) {
+      setPhase({ kind: "error", message: tooBigMessage(ready.size), manual: false });
       return;
     }
     const body = new FormData();
-    body.append("file", ready);
+    const attached = await attachFile(body, ready);
+    if (!attached.ok) {
+      setPhase({ kind: "error", message: attached.error, manual: false });
+      return;
+    }
     await send(body);
   }
 
@@ -151,7 +158,7 @@ export function ImportPanel() {
             </span>
             <span className="mt-4 text-base font-semibold text-ink-900">{mode === "file" ? "Choose your CV file" : "Take or choose a photo"}</span>
             <span className="mt-1 text-[0.8125rem] text-ink-500">
-              {mode === "file" ? "PDF or Word (.docx), up to 4MB" : "One page per photo, flat and well lit. We shrink it to save your data."}
+              {mode === "file" ? `PDF or Word (.docx), up to ${LIMITS.files.upload_max_mb}MB` : "One page per photo, flat and well lit. We shrink it to save your data."}
             </span>
           </button>
         )}
