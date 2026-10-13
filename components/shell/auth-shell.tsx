@@ -27,9 +27,10 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-dvh bg-white p-3 lg:grid lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] lg:gap-4 lg:p-4">
+    <div className="min-h-dvh bg-white p-3 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-center lg:gap-6 lg:px-8 lg:py-10">
       {/* Brand panel */}
-      <aside className="aurora flex flex-col items-center rounded-[24px] px-5 pb-6 pt-5 text-center text-white lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:min-h-[640px] lg:rounded-[28px] lg:p-10 xl:p-14">
+      {/* The whole panel sits in the middle of the screen, with space above and below. */}
+      <aside className="aurora flex flex-col rounded-[24px] px-5 pb-6 pt-5 text-white lg:h-[min(780px,calc(100dvh-5rem))] lg:min-h-[600px] lg:rounded-[28px] lg:p-10 xl:p-14">
         <div className="aurora-floor" aria-hidden="true" />
         <Link href="/" className="inline-flex rounded-xl" aria-label={`${APP_NAME} home`}>
           <Logo tone="onDark" />
@@ -37,22 +38,22 @@ export function AuthShell({
 
         <FloatingProof />
 
-        <div className="mt-5 flex flex-col items-center lg:mt-auto">
+        <div className="mt-5 lg:mt-auto">
           <p className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-[0.8125rem] font-medium">
             <span className="lg:hidden">
               Step {step} of 3 · {STEPS[step - 1].label}
             </span>
-            <span className="hidden lg:inline">Built for NYSC members and new graduates</span>
+            <span className="hidden lg:inline">For anyone looking for their next job</span>
           </p>
           <h1 className="mt-3 font-display text-[1.875rem] font-semibold leading-[1.1] tracking-[-0.03em] lg:mt-6 lg:text-[3.5rem] xl:text-[4rem]">
             {APP.tagline}
           </h1>
-          <p className="mx-auto mt-2 max-w-md text-[0.9375rem] leading-6 text-white/85 lg:mt-4 lg:text-lg lg:leading-7">
+          <p className="mt-2 max-w-xl text-[0.9375rem] leading-6 text-white/85 lg:mt-4 lg:text-lg lg:leading-7">
             Three quick steps to set up your account.
           </p>
         </div>
 
-        <ol className="stagger mt-10 hidden w-full max-w-[640px] grid-cols-3 gap-3 text-left lg:grid xl:gap-4" aria-label="Account setup steps">
+        <ol className="stagger mt-10 hidden w-full grid-cols-3 gap-3 lg:grid xl:gap-4" aria-label="Account setup steps">
           {STEPS.map((s, i) => {
             const state = s.n < step ? "done" : s.n === step ? "current" : "next";
             return (

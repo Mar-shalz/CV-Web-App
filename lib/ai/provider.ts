@@ -49,6 +49,10 @@ export type ProviderResponse = {
   stopReason: StopReason;
   usage: TokenUsage;
   requestId: string | null;
+  /** The model that actually answered, when a provider maps ours to its own. */
+  servedModel?: string;
+  /** Set when the provider knows the price better than our table (a free tier is 0). */
+  costUsd?: number;
 };
 
 /**

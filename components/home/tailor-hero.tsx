@@ -53,7 +53,7 @@ export function TailorHero({ trialReady }: { trialReady: boolean }) {
         </div>
 
         {/* A sample result, drawn in HTML: shows what you get before you start */}
-        <div aria-hidden="true" className="relative hidden xl:block">
+        <div aria-hidden="true" data-decorative="" className="relative hidden xl:block">
           <div className="absolute -inset-3 rotate-[-4deg] rounded-[26px] bg-white/10" />
           <div className="relative animate-float rounded-[22px] bg-white p-4 text-ink-900 shadow-[0_30px_60px_-30px_rgb(11_24_56/0.8)]">
             <div className="flex items-center justify-between gap-2">

@@ -13,40 +13,52 @@ import { track } from "@/lib/analytics/server";
 export type SettingsState = { ok?: boolean; error?: string; fieldErrors?: Record<string, string> } | undefined;
 
 const opt = (max: number) => z.string().trim().max(max).transform((v) => v || null);
+const link = (max: number, message: string) => opt(max).refine((v) => !v || /^https?:\/\/[^\s.]+\.[^\s]+$/i.test(v), message);
 const profileSchema = z.object({
   full_name: z.string().trim().min(2, "Add your full name as it should appear on your CV.").max(120),
-  phone: opt(20).refine((v) => !v || /^\+?[0-9 ]{7,20}$/.test(v), "Use digits only, for example 0803 000 0000."),
+  phone_code: z.string().regex(/^\+\d{1,4}$/).default("+234"),
+  phone: opt(20).refine((v) => !v || /^[0-9 ]{6,16}$/.test(v), "Use digits only, for example 803 000 0000."),
   contact_email: opt(160).refine((v) => !v || z.email().safeParse(v).success, "Check the email address."),
   city: opt(80),
   state: opt(80),
-  linkedin_url: opt(200).refine((v) => !v || /^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/[A-Za-z0-9_-]+\/?$/.test(v), "Paste your full LinkedIn profile link."),
+  linkedin_url: opt(200).refine((v) => !v || /^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/[A-Za-z0-9_%-]+\/?$/.test(v), "Paste your full LinkedIn profile link."),
+  portfolio_url: link(200, "Paste the full link, starting with https://"),
+  website_url: link(200, "Paste the full link, starting with https://"),
 });
 
 /** Personal details as they appear at the top of every CV. */
 export async function saveProfile(_prev: SettingsState, formData: FormData): Promise<SettingsState> {
   const viewer = await getViewer();
   if (!viewer) redirect("/sign-in");
-  const parsed = profileSchema.safeParse(Object.fromEntries(["full_name", "phone", "contact_email", "city", "state", "linkedin_url"].map((k) => [k, String(formData.get(k) ?? "")])));
+  const keys = ["full_name", "phone_code", "phone", "contact_email", "city", "state", "linkedin_url", "portfolio_url", "website_url"];
+  const parsed = profileSchema.safeParse(Object.fromEntries(keys.map((k) => [k, String(formData.get(k) ?? "")])));
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
     for (const i of parsed.error.issues) fieldErrors[String(i.path[0])] ??= i.message;
     return { fieldErrors };
   }
   if (viewer.preview) return { ok: true };
+  const { phone_code, phone, ...rest } = parsed.data;
+  // Stored with its dialling code, without the local leading 0: "+234 8030000000".
+  const full = phone ? `${phone_code} ${phone.replace(/\s+/g, "").replace(/^0/, "")}` : null;
   const supabase = await createClient();
-  const { error } = await supabase.from("profiles").upsert({ user_id: viewer.id, ...parsed.data, updated_at: new Date().toISOString() });
+  const { error } = await supabase.from("profiles").update({ ...rest, phone: full }).eq("user_id", viewer.id);
   if (error) return { error: "We couldn't save your details. Try again." };
   revalidatePath("/settings");
   return { ok: true };
 }
 
 /** Data saver: no animations, system fonts, lighter pages. */
-export async function setLowData(on: boolean): Promise<void> {
+export async function setLowData(on: boolean): Promise<boolean> {
   const viewer = await getViewer();
-  if (!viewer || viewer.preview) return;
+  if (!viewer) return false;
+  if (viewer.preview) return true;
   const supabase = await createClient();
-  await supabase.from("users").update({ low_data_mode: Boolean(on), updated_at: new Date().toISOString() }).eq("id", viewer.id);
+  // Only low_data_mode: people may update a few user columns, not updated_at (a trigger sets it).
+  const { error } = await supabase.from("users").update({ low_data_mode: Boolean(on) }).eq("id", viewer.id);
+  if (error) return false;
   revalidatePath("/", "layout");
+  return true;
 }
 
 const FIELDS = ["date_of_birth", "gender", "state_of_origin", "nysc_status", "nysc_start", "nysc_end"] as const;

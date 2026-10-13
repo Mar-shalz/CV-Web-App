@@ -9,6 +9,8 @@ function describe(state: AccessState) {
   const days = PRICES.products.job_hunt_30d.days;
   switch (state.kind) {
     case "pass":
+      if (state.passType === "free_access")
+        return { title: "Free access", line: state.daysLeft > 3650 ? "No end date" : `${state.daysLeft} ${state.daysLeft === 1 ? "day" : "days"} left`, body: "Everything is open for you.", cta: null, meter: null };
       return { title: "Job hunt pass", line: `${state.daysLeft} ${state.daysLeft === 1 ? "day" : "days"} left`, body: "Unlimited tailored CVs, emails and interview prep.", cta: null, meter: null };
     case "trial":
       return {

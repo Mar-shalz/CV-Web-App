@@ -92,13 +92,17 @@ export async function POST(request: NextRequest) {
 
   // Fill empty profile fields only; never overwrite what the user typed.
   const p = result.data.person;
-  const { data: profile } = await supabase.from("profiles").select("full_name, phone, city, state, linkedin_url").eq("user_id", viewer.id).maybeSingle();
+  const { data: profileRow } = await supabase.from("profiles").select("*").eq("user_id", viewer.id).maybeSingle();
+  const profile = (profileRow ?? {}) as Record<string, string | null>;
   const patch: Record<string, string> = {};
   if (!profile?.full_name && p.full_name) patch.full_name = p.full_name;
   if (!profile?.phone && p.phone) patch.phone = p.phone;
   if (!profile?.city && p.city) patch.city = p.city;
   if (!profile?.state && p.state) patch.state = p.state;
   if (!profile?.linkedin_url && p.linkedin_url) patch.linkedin_url = p.linkedin_url;
+  const web = (u: string | null) => (u && /^https?:\/\/\S+\.\S+$/i.test(u) ? u : null);
+  if ("portfolio_url" in profile && !profile.portfolio_url && web(p.portfolio_url)) patch.portfolio_url = web(p.portfolio_url)!;
+  if ("website_url" in profile && !profile.website_url && web(p.website_url)) patch.website_url = web(p.website_url)!;
   if (Object.keys(patch).length) await supabase.from("profiles").update(patch).eq("user_id", viewer.id);
 
   await track("vault_import_completed", { source_type: input.kind, roles_count: roleCount, items_count: itemCount }, viewer.id);

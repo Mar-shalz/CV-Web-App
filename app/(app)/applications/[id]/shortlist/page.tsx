@@ -11,6 +11,7 @@ import { formatNaira } from "@/lib/format";
 import { InviteCard } from "@/components/shortlist/invite-card";
 import { Logistics } from "@/components/shortlist/logistics";
 import { Drill } from "@/components/shortlist/drill";
+import { WebQuestions } from "@/components/shortlist/web-questions";
 import { ButtonLink } from "@/components/ui/button";
 import { ArrowLeft2, Teacher, TickCircle, Crown1, DocumentText } from "@/components/icons";
 
@@ -92,12 +93,13 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
           {!view.lines.length ? (
             <p className="mt-4 flex items-start gap-2 rounded-2xl bg-ink-50 p-4 text-sm text-ink-600">
               <DocumentText size={18} className="mt-0.5 shrink-0" />
-              We couldn&apos;t find the CV for this application, so we can&apos;t link questions to it.
+              {app.externalCv ? "You sent a CV made elsewhere, so we can't link questions to its lines. Use the questions from real interviews to practise." : "We couldn't find the CV for this application, so we can't link questions to it."}
             </p>
           ) : null}
         </div>
         <aside className="order-1 space-y-3 xl:order-2">
           <InviteCard applicationId={app.id} invite={view.invite} days={days} />
+          <WebQuestions applicationId={app.id} employer={app.employer} initial={view.webQuestions} />
           <Logistics applicationId={app.id} items={logisticsFor(view.invite.format)} done={view.invite.logisticsDone} />
         </aside>
       </div>

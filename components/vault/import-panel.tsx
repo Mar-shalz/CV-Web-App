@@ -16,6 +16,7 @@ type Phase = { kind: "idle" } | { kind: "working"; step: number } | { kind: "err
 const STEPS = ["Uploading", "Reading every page", "Finding your roles and achievements", "Getting them ready for you to check"];
 
 export function ImportPanel() {
+  const [dragging, setDragging] = useState(false);
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("file");
   const [text, setText] = useState("");
@@ -151,12 +152,23 @@ export function ImportPanel() {
           <button
             type="button"
             onClick={() => (mode === "file" ? fileRef : photoRef).current?.click()}
-            className="group flex w-full flex-col items-center rounded-[22px] border-2 border-dashed border-ink-200 bg-ink-50 p-8 text-center transition-all duration-200 hover:border-brand-400 hover:bg-brand-50"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) void onFile(f, f.type.startsWith("image/"));
+            }}
+            className={`group flex w-full flex-col items-center rounded-[22px] border-2 border-dashed p-8 text-center transition-all duration-200 ${dragging ? "scale-[1.01] border-brand-500 bg-brand-50" : "border-ink-200 bg-ink-50 hover:border-brand-400 hover:bg-brand-50"}`}
           >
             <span className="grid size-16 place-items-center rounded-2xl bg-white text-brand-600 shadow-card transition-transform duration-300 group-hover:-translate-y-1">
               {mode === "file" ? <DocumentUpload size={32} variant="bulk" /> : <Camera size={32} variant="bulk" />}
             </span>
-            <span className="mt-4 text-base font-semibold text-ink-900">{mode === "file" ? "Choose your CV file" : "Take or choose a photo"}</span>
+            <span className="mt-4 text-base font-semibold text-ink-900">{dragging ? "Drop it here" : mode === "file" ? "Drag your CV here, or choose a file" : "Take or choose a photo, or drag it here"}</span>
             <span className="mt-1 text-[0.8125rem] text-ink-500">
               {mode === "file" ? `PDF or Word (.docx), up to ${LIMITS.files.upload_max_mb}MB` : "One page per photo, flat and well lit. We shrink it to save your data."}
             </span>

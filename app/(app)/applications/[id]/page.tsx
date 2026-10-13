@@ -93,7 +93,18 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
                 </div>
               ) : null}
             </div>
-            {cv ? (
+            {!cv && app.externalCv ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+                <p className="min-w-0 text-sm text-ink-700">
+                  <span className="block font-semibold text-ink-900 [overflow-wrap:anywhere]">{app.externalCv.name}</span>
+                  The CV you made elsewhere and sent with this application.
+                </p>
+                <a href={`/api/applications/${app.id}/cv`} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 text-sm font-semibold text-white hover:bg-brand-700">
+                  <DocumentDownload size={18} />
+                  Open it
+                </a>
+              </div>
+            ) : cv ? (
               <div className="torn-edge mx-5 my-5 rounded-t-2xl bg-paper p-5 shadow-card">
                 <p className="font-display text-lg font-semibold text-ink-900">{cv.doc.name}</p>
                 <p className="text-[0.8125rem] text-ink-500">{cv.doc.titleLine}</p>
@@ -103,7 +114,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
                 </p>
               </div>
             ) : (
-              <p className="p-5 text-sm text-ink-600">We couldn&apos;t find the CV for this application.</p>
+              <p className="p-5 text-sm text-ink-600">No CV file saved with this application.</p>
             )}
           </section>
 

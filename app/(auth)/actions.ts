@@ -53,7 +53,9 @@ export async function sendEmailCode(_prev: FormState, formData: FormData): Promi
 
   if (!isPreviewMode()) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    // The email carries a 6 digit code when the template has {{ .Token }}, and a sign in
+    // link either way; the link lands on /auth/callback (D-069).
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: `${await origin()}/auth/callback?method=email` } });
     if (error) {
       if (error.status === 429) return { error: "Too many codes asked for. Wait a minute, then try again." };
       return { error: GENERIC_AUTH_ERROR };
@@ -75,7 +77,7 @@ export async function resendEmailCode(): Promise<FormState> {
   if (!email) redirect("/sign-in");
   if (isPreviewMode()) return { ok: true };
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: `${await origin()}/auth/callback?method=email` } });
   if (error) {
     if (error.status === 429) return { error: "Please wait a little before asking for another code." };
     return { error: GENERIC_AUTH_ERROR };

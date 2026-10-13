@@ -9,7 +9,7 @@ export default async function NewRoleModal() {
   await requireReadyViewer();
   return (
     <RouteModal title="Add a role" description="A job, SIWES, NYSC, a campus role, a project, a degree or a certificate. Then add what you did there.">
-      <RoleFormPage />
+      <RoleFormPage inModal />
     </RouteModal>
   );
 }

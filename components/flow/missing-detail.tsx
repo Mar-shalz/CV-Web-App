@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
+import { DayMonthYearField, MonthYearField } from "@/components/ui/date-fields";
 import { saveDetail, type DetailState } from "@/app/(app)/jobs/[id]/check/actions";
 import type { MissingDetail } from "@/lib/rules/eligibility/types";
 import { inputClass } from "@/components/ui/field";
@@ -51,12 +52,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
       <FormError message={state?.error} />
 
       {need === "date_of_birth" ? (
-        <div className="space-y-1.5">
-          <label htmlFor="dob" className={label}>
-            Date of birth
-          </label>
-          <input id="dob" name="date_of_birth" type="date" className={inputClass} max={new Date().toISOString().slice(0, 10)} />
-        </div>
+        <DayMonthYearField id="dob" name="date_of_birth" label="Date of birth" />
       ) : null}
 
       {need === "gender" ? (
@@ -85,12 +81,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
             ))}
           </div>
           {nysc === "serving" ? (
-            <div className="space-y-1.5">
-              <label htmlFor="nysc_end" className={label}>
-                Your service ends in
-              </label>
-              <input id="nysc_end" name="nysc_end" type="month" className={inputClass} />
-            </div>
+            <MonthYearField id="nysc_end" name="nysc_end" label="Your service ends in" minYear={new Date().getFullYear() - 1} maxYear={new Date().getFullYear() + 2} />
           ) : null}
         </div>
       ) : null}

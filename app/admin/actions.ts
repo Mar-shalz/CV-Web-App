@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction, requireAdmin } from "@/lib/admin/auth";
 import { ADMIN_ROLES } from "@/lib/admin/permissions";
+import { notify } from "@/lib/notifications/data";
 
 export type AdminActionState = { ok?: string; error?: string } | undefined;
 
@@ -137,4 +138,44 @@ export async function endAnnouncement(formData: FormData): Promise<void> {
   await createAdminClient().from("announcements").update({ ends_at: new Date().toISOString() }).eq("id", id.data);
   await logAdminAction(staff, "end_announcement", "announcements", id.data);
   revalidatePath("/admin/messages");
+}
+
+const freeSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email({ message: "Enter their email address." })),
+  days: z.enum(["30", "90", "365", "forever"]),
+  note: z.string().trim().max(120).optional(),
+});
+
+/**
+ * Free access for family and testers: everything a paid pass gives, at no cost. Matched on
+ * the email they sign in with, so it works before they sign up. Owner and finance only.
+ */
+export async function grantFreeAccess(_prev: AdminActionState, formData: FormData): Promise<AdminActionState> {
+  const staff = await requireAdmin("payments");
+  const parsed = freeSchema.safeParse({ email: formData.get("email"), days: formData.get("days"), note: formData.get("note") || undefined });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  if (staff.preview) return { ok: "Preview: nothing changed." };
+  const { email, days, note } = parsed.data;
+  const ends = days === "forever" ? null : new Date(Date.now() + Number(days) * 86_400_000).toISOString();
+  const db = createAdminClient();
+  // One live grant per email: end the old one first.
+  await db.from("free_access").update({ revoked_at: new Date().toISOString() }).eq("email", email).is("revoked_at", null);
+  const { data, error } = await db.from("free_access").insert({ email, ends_at: ends, note: note ?? null, created_by: staff.id }).select("id").single();
+  if (error || !data) return { error: "Couldn't save that. Run the latest database file first." };
+  await logAdminAction(staff, "grant_free_access", "free_access", data.id, { days });
+  const { data: user } = await db.from("users").select("id").eq("email", email).maybeSingle();
+  if (user) {
+    await notify(user.id, { kind: "pass", title: "You have free access", body: ends ? `Everything is open for you until ${new Date(ends).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. Enjoy it.` : "Everything is open for you. Enjoy it.", link: "/home", dedupeKey: `free_access:${data.id}` }).catch(() => {});
+  }
+  revalidatePath("/admin/payments");
+  return { ok: user ? "Done. They have full access now." : "Done. It switches on when they sign up with that email." };
+}
+
+export async function revokeFreeAccess(formData: FormData): Promise<void> {
+  const staff = await requireAdmin("payments");
+  const id = uuid.safeParse(formData.get("id"));
+  if (staff.preview || !id.success) return;
+  await createAdminClient().from("free_access").update({ revoked_at: new Date().toISOString() }).eq("id", id.data);
+  await logAdminAction(staff, "revoke_free_access", "free_access", id.data);
+  revalidatePath("/admin/payments");
 }

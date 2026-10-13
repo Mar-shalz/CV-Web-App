@@ -100,11 +100,34 @@ export async function saveRole(_prev: VaultActionState, formData: FormData): Pro
     grade: r.grade,
     confirmed: true,
   };
+  // What they did there, added one at a time in the same form: their own words, so confirmed.
+  const things = formData
+    .getAll("items")
+    .map((v) => String(v).trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  for (const t of things) {
+    if (t.length < 8 || t.length > 400) return { error: "Each thing you did needs a short sentence, under 400 characters." };
+    const banned = lintCopy(t).filter((i) => i.kind === "phrase");
+    if (banned.length) return { error: `Try plainer words than "${banned[0]?.match}". Say what you did and what changed.` };
+  }
   const roleId = id.safeParse(formData.get("role_id"));
-  const { error } = roleId.success
-    ? await supabase.from("vault_roles").update(row).eq("id", roleId.data).eq("user_id", viewer.id)
-    : await supabase.from("vault_roles").insert({ ...row, user_id: viewer.id, source: "text" });
-  if (error) return { error: "We couldn't save that. Check your connection and try again." };
+  let savedId: string | null = roleId.success ? roleId.data : null;
+  if (roleId.success) {
+    const { error } = await supabase.from("vault_roles").update(row).eq("id", roleId.data).eq("user_id", viewer.id);
+    if (error) return { error: "We couldn't save that. Check your connection and try again." };
+  } else {
+    const { data, error } = await supabase.from("vault_roles").insert({ ...row, user_id: viewer.id, source: "text" }).select("id").single();
+    if (error || !data) return { error: "We couldn't save that. Check your connection and try again." };
+    savedId = data.id;
+  }
+  if (savedId && things.length) {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("vault_items")
+      .insert(things.map((t) => ({ user_id: viewer.id, role_id: savedId, text: t, ownership: "did", metrics: extractMetrics(t), confirmed_at: now, source_type: "text", source_quote: t, skills: [] })));
+    if (error) return { error: "The role is saved, but we couldn't save what you did. Add it from the role card." };
+  }
   return done();
 }
 

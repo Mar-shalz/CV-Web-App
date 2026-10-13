@@ -2,22 +2,39 @@
 
 import { useActionState, useState } from "react";
 import { saveRole, type VaultActionState } from "@/app/(app)/vault/actions";
-import { ROLE_KINDS, ROLE_KIND_LABELS, type RoleKind } from "@/lib/vault/schema";
+import { ROLE_KINDS, type RoleKind } from "@/lib/vault/schema";
 import { inputClass } from "@/components/ui/field";
+import { MonthYearField } from "@/components/ui/date-fields";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { FormError } from "@/components/auth/form-error";
+import { Add, Trash, TickCircle } from "@/components/icons";
 import type { VaultRole } from "@/lib/vault/data";
 
-const LABELS: Record<RoleKind, { title: string; org: string; grade?: string }> = {
-  job: { title: "Job title", org: "Employer" },
-  internship_siwes: { title: "Title", org: "Company or organisation" },
-  nysc_ppa: { title: "Your role at your PPA", org: "Place of primary assignment" },
-  volunteer: { title: "Role", org: "Organisation, club or community" },
-  project: { title: "Project name", org: "Where (school, company, personal)" },
-  education: { title: "Degree or certificate (for example BSc Accounting)", org: "School", grade: "Class of degree or CGPA, as written (for example Second Class Upper, or 3.62/5.00)" },
-  certification: { title: "Certification", org: "Awarding body", grade: "Status (for example qualified, or in progress)" },
-  licence: { title: "Licence or membership", org: "Awarding body", grade: "Status or membership number" },
+// Words people use on CVs: "Work experience" rather than "Job".
+const OPTION_LABELS: Record<RoleKind, string> = {
+  job: "Work experience (full time, part time or contract)",
+  internship_siwes: "Internship or SIWES",
+  nysc_ppa: "NYSC (your place of primary assignment)",
+  volunteer: "Volunteering, leadership or a campus role",
+  project: "Project",
+  education: "Education (degree, HND, OND)",
+  certification: "Professional certificate (for example ICAN, ACCA)",
+  licence: "Licence or professional membership",
 };
+
+const LABELS: Record<RoleKind, { title: string; titleHint: string; org: string; grade?: string }> = {
+  job: { title: "Your job title", titleHint: "For example Accounts Officer", org: "Company or organisation" },
+  internship_siwes: { title: "Your title", titleHint: "For example Audit Intern", org: "Company or organisation" },
+  nysc_ppa: { title: "Your role at your PPA", titleHint: "For example Finance Assistant", org: "Place of primary assignment" },
+  volunteer: { title: "Your role", titleHint: "For example Class Representative", org: "Organisation, club or community" },
+  project: { title: "Project name", titleHint: "For example Final year project", org: "Where (school, company, personal)" },
+  education: { title: "Degree or certificate", titleHint: "For example BSc Accounting", org: "School", grade: "Class of degree or CGPA, as written (for example Second Class Upper, or 3.62/5.00)" },
+  certification: { title: "Certificate", titleHint: "For example ICAN Skills level", org: "Awarding body", grade: "Status (for example qualified, or in progress)" },
+  licence: { title: "Licence or membership", titleHint: "For example COREN", org: "Awarding body", grade: "Status or membership number" },
+};
+
+// Roles where "what you did" makes CV lines. Education and certificates don't need it.
+const HAS_WORK: RoleKind[] = ["job", "internship_siwes", "nysc_ppa", "volunteer", "project"];
 
 /** Add or edit a role. Employer, title, dates and grade are facts the CV can never change. */
 export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRole; defaultKind?: RoleKind; onDone?: () => void }) {
@@ -28,9 +45,18 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
   }, undefined);
   const [kind, setKind] = useState<RoleKind>(role?.kind ?? defaultKind);
   const [current, setCurrent] = useState(role?.isCurrent ?? false);
+  const [things, setThings] = useState<string[]>([]);
+  const [draft, setDraft] = useState("");
   const l = LABELS[kind];
   const field = "space-y-1.5";
   const label = "block text-sm font-semibold text-ink-900";
+  const canAddThing = draft.trim().length >= 8;
+
+  function addThing() {
+    if (!canAddThing) return;
+    setThings((t) => [...t, draft.trim()]);
+    setDraft("");
+  }
 
   return (
     <form action={action} className="space-y-4" noValidate>
@@ -38,12 +64,12 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
       {role ? <input type="hidden" name="role_id" value={role.id} /> : null}
       <div className={field}>
         <label htmlFor="kind" className={label}>
-          Type
+          What kind of role is this?
         </label>
         <select id="kind" name="kind" value={kind} onChange={(e) => setKind(e.target.value as RoleKind)} className={inputClass}>
           {ROLE_KINDS.map((k) => (
             <option key={k} value={k}>
-              {ROLE_KIND_LABELS[k]}
+              {OPTION_LABELS[k]}
             </option>
           ))}
         </select>
@@ -53,7 +79,7 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
           <label htmlFor="title" className={label}>
             {l.title}
           </label>
-          <input id="title" name="title" defaultValue={role?.title ?? ""} className={inputClass} />
+          <input id="title" name="title" defaultValue={role?.title ?? ""} placeholder={l.titleHint} className={inputClass} />
         </div>
         <div className={field}>
           <label htmlFor="organisation" className={label}>
@@ -63,18 +89,8 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className={field}>
-          <label htmlFor="start" className={label}>
-            Started
-          </label>
-          <input id="start" name="start" type="month" defaultValue={role?.start ?? ""} className={inputClass} />
-        </div>
-        <div className={field}>
-          <label htmlFor="end" className={label}>
-            Finished
-          </label>
-          <input id="end" name="end" type="month" defaultValue={role?.end ?? ""} disabled={current} className={`${inputClass} disabled:opacity-50`} />
-        </div>
+        <MonthYearField id="start" name="start" label="Started" defaultValue={role?.start} />
+        <MonthYearField id="end" name="end" label="Finished" defaultValue={role?.end} disabled={current} />
       </div>
       <label className="flex min-h-12 cursor-pointer items-center gap-3 text-sm font-medium text-ink-800">
         <input type="checkbox" name="is_current" checked={current} onChange={(e) => setCurrent(e.target.checked)} className="size-5 accent-brand-600" />
@@ -95,8 +111,58 @@ export function RoleForm({ role, defaultKind = "job", onDone }: { role?: VaultRo
           <p className="text-xs text-ink-500">Write it exactly as it is on your certificate. We never change it.</p>
         </div>
       ) : null}
+
+      {!role && HAS_WORK.includes(kind) ? (
+        <section aria-labelledby="did-title" className="rounded-2xl border border-ink-150 bg-ink-50 p-4">
+          <h3 id="did-title" className="text-sm font-semibold text-ink-900">
+            What did you do there? <span className="font-normal text-ink-500">(optional, you can add more later)</span>
+          </h3>
+          <p className="mt-1 text-[0.8125rem] leading-5 text-ink-600">Add one thing at a time. Each one becomes one line on your CV. Say what you did and, if you can, how many or how often.</p>
+          {things.length ? (
+            <ol className="mt-3 space-y-2">
+              {things.map((t, i) => (
+                <li key={`${i}-${t}`} className="flex animate-pop items-start gap-2.5 rounded-xl bg-white p-3 text-sm text-ink-800 shadow-card">
+                  <TickCircle size={18} variant="bulk" className="mt-0.5 shrink-0 text-proof-600" />
+                  <span className="flex-1">{t}</span>
+                  <input type="hidden" name="items" value={t} />
+                  <button type="button" onClick={() => setThings((all) => all.filter((_, j) => j !== i))} aria-label={`Remove: ${t}`} className="grid size-9 shrink-0 place-items-center rounded-lg text-flag-600 hover:bg-flag-50">
+                    <Trash size={16} />
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+          <label htmlFor="thing" className="mt-3 block text-[0.8125rem] font-semibold text-ink-800">
+            {things.length ? `Thing ${things.length + 1}` : "Thing 1"}
+          </label>
+          <textarea
+            id="thing"
+            rows={2}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                addThing();
+              }
+            }}
+            placeholder="For example: Reconciled about 40 customer accounts each day with the bank statement."
+            className={`${inputClass} mt-1.5 resize-y py-3 leading-6`}
+          />
+          <button
+            type="button"
+            onClick={addThing}
+            aria-disabled={!canAddThing || undefined}
+            className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-3.5 text-sm font-semibold text-brand-700 ring-1 ring-ink-150 hover:bg-brand-50 aria-disabled:cursor-not-allowed aria-disabled:text-ink-400"
+          >
+            <Add size={18} />
+            {things.length ? "Add this one too" : "Add this one"}
+          </button>
+        </section>
+      ) : null}
+
       <SubmitButton className="w-full sm:w-auto" pendingLabel="Saving">
-        {role ? "Save and confirm" : "Add this"}
+        {role ? "Save and confirm" : things.length ? `Save role and ${things.length} ${things.length === 1 ? "thing" : "things"} you did` : "Save role"}
       </SubmitButton>
     </form>
   );

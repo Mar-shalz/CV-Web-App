@@ -71,3 +71,34 @@ export const drillFeedback = defineTask({
   cache: null,
   manualStep: "self_review",
 });
+
+/**
+ * interview_research, structuring step: web research notes into questions to practise.
+ * Sources are cited by number from the list the search returned, so no URL is invented.
+ */
+export const interviewResearch = defineTask({
+  name: "interview_research",
+  model: "claude-haiku-5-5",
+  promptVersion: "v1",
+  input: z.object({
+    employer: z.string().max(160),
+    role: z.string().max(160),
+    sources: z.array(z.object({ url: z.string(), title: z.string() })).max(30),
+    notes: z.string().max(12_000),
+  }),
+  output: z.object({
+    questions: z
+      .array(z.object({ question: z.string().min(8).max(240), why: z.string().max(200), about_employer: z.boolean(), source_index: z.number().int().min(1) }))
+      .max(6),
+  }),
+  maxTokens: 2500,
+  timeoutMs: 25_000,
+  effort: "low",
+  render: (i) => [
+    trusted(`Interview for ${i.role} at ${i.employer}.`),
+    trusted(`Sources:\n${i.sources.map((s, n) => `${n + 1}. ${s.url} (${s.title.slice(0, 80)})`).join("\n") || "none"}`),
+    untrusted("research_notes", i.notes),
+  ],
+  cache: null,
+  manualStep: "none",
+});

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getViewer } from "@/lib/auth/viewer";
 import { getApplication } from "@/lib/applications/data";
-import { getShortlist, generateQuestions, drillAnswer, saveInvite, updateShortlist, shortlistAccess, type DrillAttempt } from "@/lib/shortlist/data";
+import { getShortlist, generateQuestions, drillAnswer, saveInvite, updateShortlist, shortlistAccess, findWebQuestions, type DrillAttempt, type WebQuestion } from "@/lib/shortlist/data";
 import type { ShortlistQuestion } from "@/lib/shortlist/questions";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 
@@ -66,4 +66,14 @@ export async function toggleLogistic(applicationId: string, index: number, done:
   if (done) set.add(index);
   else set.delete(index);
   await updateShortlist(ctx.viewer, view.id, { invite_details: { ...view.invite, logisticsDone: [...set].filter((n) => Number.isInteger(n) && n >= 0 && n < 20) } });
+}
+
+/** Questions reported from real interviews, found on the web with their sources. */
+export async function searchWebQuestions(applicationId: string): Promise<{ ok: true; questions: WebQuestion[] } | { ok: false; error: string }> {
+  const ctx = await load(applicationId);
+  if ("error" in ctx) return { ok: false, error: ctx.error ?? "" };
+  if (!(await allow("shortlist"))) return { ok: false, error: RATE_LIMITED_MESSAGE };
+  const view = await getShortlist(ctx.viewer, ctx.app);
+  const questions = await findWebQuestions(ctx.viewer, ctx.app, view);
+  return questions.length ? { ok: true, questions } : { ok: false, error: "We couldn't find reported questions for this one right now. Practise the ones from your CV, and try again later." };
 }

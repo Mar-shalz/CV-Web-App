@@ -16,6 +16,7 @@ You ran the two baseline files, so the database matches `supabase/migrations/202
 - [x] App schema and back office (done 13 Oct 2026).
 - [ ] Run `supabase/migrations/20261013000200_notifications.sql` once in the SQL editor. It adds the Updates panel: messages from the back office, payment receipts, and pass and trial reminders. Until you run it, the panel shows only check ins.
 - [ ] Run `supabase/migrations/20261013000300_uploads_10mb.sql` once. It lets uploads go up to 10MB and accepts Word and text files.
+- [ ] Run `supabase/migrations/20261014000000_links_free_access_records.sql` once. It adds the portfolio and website fields, free access for family and testers, saving applications sent with a CV made elsewhere, and interview questions found on the web. Until you run it, those features fail to save.
 
 From now on every database change comes as one new file in that folder with a later date in its name. Run each new file once, in date order. Never re-run an old one: "already exists" errors mean it ran before.
 
@@ -42,15 +43,14 @@ You already have a project. These steps finish its set up.
 - [ ] **Project Settings > Data API**: note the **Project URL** (looks like `https://abcd.supabase.co`).
 You'll paste these in step 3.
 
-### Email sign in codes
+### Email sign in
 - [ ] **Authentication > Sign In / Providers > Email**: make sure Email is on. Save.
-- [ ] **Authentication > Emails > Templates**. Open **Magic Link**. Replace the message body with:
+- [ ] Nothing else is needed to start. Every sign in email has a link that signs people straight in, using Supabase's standard template. The app tells them to tap it.
+- [ ] Later, when your own email sender is set up (next step), you can also show a 6 digit code in the email. On new free projects Supabase locks the templates until custom SMTP is on, which is why the template box would not save. Once custom SMTP is on: **Authentication > Emails > Templates** > **Magic Link**, and add this line to the body, keeping the link that's already there:
   ```html
-  <h2>Your sign in code</h2>
-  <p>Enter this code to sign in: <strong>{{ .Token }}</strong></p>
-  <p>It expires in 10 minutes. If you didn't ask for it, ignore this email.</p>
+  <p>Or enter this code: <strong>{{ .Token }}</strong></p>
   ```
-  Save. Do the same for the **Confirm signup** template (new users get that one).
+  Save. Do the same for **Confirm signup**.
 
 ### Your own email sender (needed before real users)
 Supabase's built in sender only allows a few emails an hour.
@@ -80,7 +80,8 @@ Supabase's built in sender only allows a few emails an hour.
   It creates a private file `.env.local` and fills in three secrets for you (the encryption key, the cron secret and the analytics salt) without showing them.
 - [ ] Open `.env.local` in a text editor and fill in:
   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`: from step 2.
-  - `ANTHROPIC_API_KEY`: console.anthropic.com > **API Keys** > Create key. Also go to **Billing** and set a monthly spend limit.
+  - `GEMINI_API_KEY`: aistudio.google.com/apikey > **Create API key**. This runs every AI feature for free while you test. The free tier has daily limits and Google may use what's sent to improve its products, so test with your own CV or made up details, not real users' CVs.
+  - `ANTHROPIC_API_KEY` (when you have funds): console.anthropic.com > **API Keys** > Create key, and set a monthly spend limit under **Billing**. With both keys in, Gemini runs first and Claude takes over if Gemini fails. To make Claude first, set `AI_PROVIDERS=anthropic,gemini`.
   - `PAYSTACK_SECRET_KEY`: from step 6 (start with the `sk_test_` key).
 - [ ] Save a copy of `SENSITIVE_DATA_KEY_V1` in your password manager. **If it's lost, encrypted personal details can never be read again.**
 
@@ -97,17 +98,22 @@ Supabase's built in sender only allows a few emails an hour.
 - [ ] Optional now, needed for launch: **Settings > Domains** > add your domain and follow the DNS steps. Then change `APP_URL` and the Supabase Site URL to it.
 - [ ] **Settings > Cron Jobs** should list `/api/cron/outcomes` (it marks No reply after 30 days, once a day).
 
+### Error alerts with Sentry (optional, free)
+Sentry tells you when the app breaks for someone: which screen, which step, on which phone, and how many people it hit, so you can fix it before people complain. It never sees CV text or personal details: the app strips them before sending. The free Developer plan is enough for the beta.
+- [ ] Sign up at sentry.io and choose the EU data region. Create a **Next.js** project.
+- [ ] Copy the **DSN** it shows into Vercel as both `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN`, then redeploy. With no DSN, error tracking stays off and nothing else changes.
+
 ---
 
-## 5. Make yourself the owner of the back office (5 minutes)
+## 5. The back office (5 minutes)
 
-- [ ] Open your live app and sign in once.
-- [ ] Supabase > SQL Editor, run (with your email):
+- [x] You are the owner (done 13 Oct 2026). To add another owner later, they sign in once, then run in the SQL Editor:
   ```sql
   insert into public.admin_members (user_id, role)
-  select id, 'owner' from public.users where email = 'YOUR EMAIL HERE';
+  select id, 'owner' from public.users where email = 'THEIR EMAIL HERE';
   ```
-- [ ] Open `https://YOUR-ADDRESS/admin/mfa` and scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator). The back office at `/admin` opens after that.
+- [ ] There is no separate back office password. Open `https://YOUR-ADDRESS/admin`, sign in with your normal email, then set up two factor at `/admin/mfa` by scanning the code with an authenticator app (Google Authenticator or Microsoft Authenticator). Every visit after that asks for the 6 digit code from the app.
+- [ ] Free access for family and testers: **Back office > Payments > Free access for family and testers**. Type their email, choose how long, press **Give free access**. They get everything a pass gives the next time they sign in with that email.
 
 ---
 

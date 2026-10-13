@@ -34,6 +34,8 @@ export type ApplicationView = {
   snapshot: { parsed: ParsedJob; rawText: string | null; sourceUrl: string | null; imagePath: string | null; capturedAt: string } | null;
   pack: PackView | null;
   timeline: TimelineEvent[];
+  /** Applications logged with a CV made elsewhere: the file they sent. */
+  externalCv: { name: string } | null;
 };
 
 type Row = {
@@ -47,10 +49,13 @@ type Row = {
   next_check_in_at: string | null;
   job_snapshot: ApplicationView["snapshot"] | null;
   jobs: { parsed: ParsedJob } | null;
+  external_cv_path?: string | null;
+  external_cv_name?: string | null;
   application_packs: { id: string; channel: PackView["channel"]; to_email: string | null; subject: string | null; body: string | null; attachment_names: string[]; checklist: PackView["checklist"]; form_fields: PackView["formFields"] | null; portal_steps: string[]; apply_url: string | null } | null;
 };
 
-const SELECT = "id, job_id, cv_version_id, status, status_verified, sent_at, created_at, next_check_in_at, job_snapshot, jobs(parsed), application_packs(id, channel, to_email, subject, body, attachment_names, checklist, form_fields, portal_steps, apply_url)";
+// "*" so new columns (external CV) never break reads before their migration runs.
+const SELECT = "*, jobs(parsed), application_packs(id, channel, to_email, subject, body, attachment_names, checklist, form_fields, portal_steps, apply_url)";
 
 function toView(r: Row, timeline: TimelineEvent[] = []): ApplicationView {
   const parsed = r.job_snapshot?.parsed ?? r.jobs?.parsed ?? null;
@@ -71,6 +76,7 @@ function toView(r: Row, timeline: TimelineEvent[] = []): ApplicationView {
       ? { id: p.id, channel: p.channel, toEmail: p.to_email, subject: p.subject ?? "", body: p.body ?? "", attachmentNames: p.attachment_names ?? [], checklist: p.checklist ?? [], formFields: p.form_fields ?? [], portalSteps: p.portal_steps ?? [], applyUrl: p.apply_url }
       : null,
     timeline,
+    externalCv: r.external_cv_path ? { name: r.external_cv_name ?? "Your CV" } : null,
   };
 }
 
@@ -87,6 +93,7 @@ const DEMO_APP: ApplicationView = {
   employer: DEMO_PARSED.employer_name ?? "",
   snapshot: { parsed: DEMO_PARSED, rawText: "Graduate Trainee, Finance. Northbridge Bank is recruiting graduates... (sample)", sourceUrl: null, imagePath: null, capturedAt: new Date(Date.now() - 9 * 86_400_000).toISOString() },
   pack: { id: "demo-pack", channel: "email", toEmail: DEMO_PACK.to, subject: DEMO_PACK.subject, body: DEMO_PACK.body, attachmentNames: [DEMO_PACK.attachment], checklist: DEMO_PACK.checklist.map((c) => ({ item: c.item, required: true })), formFields: [], portalSteps: [], applyUrl: null },
+  externalCv: null,
   timeline: [
     { from: null, to: "draft", source: "tap", at: new Date(Date.now() - 9 * 86_400_000).toISOString(), evidence: null },
     { from: "draft", to: "packed", source: "tap", at: new Date(Date.now() - 9 * 86_400_000).toISOString(), evidence: null },

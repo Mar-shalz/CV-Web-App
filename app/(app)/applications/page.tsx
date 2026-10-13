@@ -5,7 +5,7 @@ import { listApplications } from "@/lib/applications/data";
 import type { HomeApplication } from "@/lib/home-data";
 import { RecentApplications } from "@/components/home/recent-applications";
 import { ButtonLink } from "@/components/ui/button";
-import { Magicpen, SearchNormal1, Receipt21, InfoCircle } from "@/components/icons";
+import { Magicpen, SearchNormal1, Receipt21, InfoCircle, AddCircle } from "@/components/icons";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 
 export const metadata: Metadata = { title: "Applications" };
@@ -36,6 +36,10 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Applications</h1>
           <p className="mt-1 text-[0.9375rem] text-ink-600">Every job you applied to, with the exact CV you sent and a copy of the post.</p>
         </div>
+        <ButtonLink href="/applications/new" variant="secondary">
+          <AddCircle size={20} />
+          Add one you already sent
+        </ButtonLink>
       </header>
 
       {rows.length ? (
@@ -104,10 +108,15 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           <p className="mx-auto mt-2 max-w-sm text-[0.9375rem] leading-6 text-ink-600">
             Each one keeps the job post and the exact CV you sent, so when they call you weeks later you know what they&apos;re looking at.
           </p>
-          <ButtonLink href="/jobs/new" className="mt-6">
-            <Magicpen size={20} variant="bulk" />
-            Tailor my CV for a job
-          </ButtonLink>
+          <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+            <ButtonLink href="/jobs/new">
+              <Magicpen size={20} variant="bulk" />
+              Tailor my CV for a job
+            </ButtonLink>
+            <ButtonLink href="/applications/new" variant="secondary">
+              Add one you already sent
+            </ButtonLink>
+          </div>
         </section>
       )}
     </div>

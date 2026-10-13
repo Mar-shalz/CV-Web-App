@@ -181,7 +181,21 @@ async function VerdictHero({ promise, viewer, job }: { promise: Promise<FinalVer
           </div>
         ) : (
           <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-            {save}
+            {canTailor ? (
+              <form action={setJobState}>
+                <input type="hidden" name="job_id" value={job.id} />
+                <input type="hidden" name="state" value="applying" />
+                <input type="hidden" name="override" value="1" />
+                <button className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>
+                  <Magicpen size={20} />
+                  Build my closest CV anyway
+                </button>
+              </form>
+            ) : (
+              <Link href="/pass?from=tailor" className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>
+                Get the pass to tailor your CV
+              </Link>
+            )}
             <Link href="/jobs/new" className={buttonClass("primary", "lg", "w-full sm:w-auto")}>
               Check another job
               <ArrowRight size={18} />
@@ -190,22 +204,9 @@ async function VerdictHero({ promise, viewer, job }: { promise: Promise<FinalVer
         )}
       </div>
       {v.verdict === "skip" ? (
-        <details className="mt-4 rounded-2xl bg-white/70 p-4 text-sm">
-          <summary className="flex min-h-10 cursor-pointer items-center font-semibold text-ink-800">Still want to apply?</summary>
-          <p className="mt-1 text-ink-600">Your call. We&apos;ll build it honestly, and we won&apos;t hide the gap.</p>
-          {canTailor ? (
-            <form action={setJobState} className="mt-3">
-              <input type="hidden" name="job_id" value={job.id} />
-              <input type="hidden" name="state" value="applying" />
-              <input type="hidden" name="override" value="1" />
-              <button className={buttonClass("secondary", "md")}>Build my CV anyway</button>
-            </form>
-          ) : (
-            <Link href="/pass?from=tailor" className={buttonClass("secondary", "md", "mt-3")}>
-              Get the pass to tailor your CV
-            </Link>
-          )}
-        </details>
+        <p className="mt-4 rounded-2xl bg-white/70 p-4 text-[0.8125rem] leading-5 text-ink-700">
+          Still want to apply? Your call. We&apos;ll build the closest honest CV from what you&apos;ve told us, and we won&apos;t hide the gap.
+        </p>
       ) : null}
     </section>
   );

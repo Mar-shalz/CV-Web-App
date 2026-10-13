@@ -25,7 +25,7 @@ export default async function VerifyPage() {
       title="Check your email"
       subtitle={
         <>
-          Enter the {LIMITS.auth.otp_length} digit code we sent to <span className="font-semibold text-ink-900">{maskEmail(email)}</span>
+          We sent an email to <span className="font-semibold text-ink-900">{maskEmail(email)}</span>. Enter the {LIMITS.auth.otp_length} digit code from it, or tap the sign in link in that email on this device.
         </>
       }
     >

@@ -116,6 +116,7 @@ export async function runAiTask<I extends z.ZodType, O extends z.ZodType>(
   });
 
   let promptHash = "";
+  let servedModel: string | undefined;
   const record = (
     attempt: number,
     outcome: AiOutcome,
@@ -128,7 +129,7 @@ export async function runAiTask<I extends z.ZodType, O extends z.ZodType>(
     const line: AiCallLog = {
       event: "ai_call",
       task: task.name,
-      model: task.model,
+      model: servedModel ?? task.model,
       prompt_version: task.promptVersion,
       prompt_hash: promptHash,
       pricing_version: PRICING_VERSION,
@@ -219,7 +220,8 @@ export async function runAiTask<I extends z.ZodType, O extends z.ZodType>(
       continue;
     }
 
-    const cost = costUsd(task.model, response.usage);
+    servedModel = response.servedModel;
+    const cost = response.costUsd ?? costUsd(task.model, response.usage);
     totalCost += cost;
     const latency = now() - attemptStart;
 

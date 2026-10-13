@@ -2,7 +2,7 @@ import "server-only";
 import * as Sentry from "@sentry/nextjs";
 import type { z } from "zod";
 import { pseudonymousId } from "@/lib/analytics/server";
-import { anthropicProvider } from "./anthropic";
+import { chainProvider } from "./chain";
 import { consoleLogger } from "./log";
 import { runAiTask, type AiDeps } from "./run";
 import { TASKS, type TaskName } from "./tasks";
@@ -14,7 +14,8 @@ export type { TaskName } from "./tasks";
 // No shared result cache yet. Tasks with a cache key (parse_cv, parse_job and others)
 // arrive with their slices, and so does the store behind them.
 const deps: AiDeps = {
-  provider: anthropicProvider,
+  // Gemini first while testing on its free tier, then Anthropic (D-068).
+  provider: chainProvider,
   log: consoleLogger,
   cache: null,
   reportError: (error, context) => {

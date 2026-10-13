@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { addMember, markRefunded, sendUpdate, type AdminActionState } from "@/app/admin/actions";
+import { addMember, grantFreeAccess, markRefunded, sendUpdate, type AdminActionState } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { inputClass } from "@/components/ui/field";
 import { ADMIN_ROLES, ROLE_LABELS } from "@/lib/admin/permissions";
@@ -160,6 +160,46 @@ export function SendUpdateForm() {
           <p className="mt-0.5 text-sm font-semibold text-ink-900">{title || "Your title"}</p>
           <p className="mt-0.5 whitespace-pre-line text-[0.8125rem] leading-5 text-ink-600">{body || "Your message shows here."}</p>
         </div>
+      </div>
+    </form>
+  );
+}
+
+/** Free access for family and testers: full use of the app, no payment. */
+export function FreeAccessForm() {
+  const [state, action] = useActionState<AdminActionState, FormData>(grantFreeAccess, undefined);
+  const [email, setEmail] = useState("");
+  const ready = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+  return (
+    <form action={action} className="grid gap-4 p-5 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+      <div>
+        <label htmlFor="fa-email" className="text-sm font-semibold text-ink-900">
+          Their email
+        </label>
+        <input id="fa-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`${inputClass} mt-2`} placeholder="the email they sign in with" />
+      </div>
+      <div>
+        <label htmlFor="fa-days" className="text-sm font-semibold text-ink-900">
+          For how long
+        </label>
+        <select id="fa-days" name="days" defaultValue="90" className={`${inputClass} mt-2`}>
+          <option value="30">30 days</option>
+          <option value="90">90 days</option>
+          <option value="365">1 year</option>
+          <option value="forever">Until I remove it</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor="fa-note" className="text-sm font-semibold text-ink-900">
+          Note <span className="font-normal text-ink-500">(optional)</span>
+        </label>
+        <input id="fa-note" name="note" maxLength={120} className={`${inputClass} mt-2`} placeholder="Family, tester…" />
+      </div>
+      <SubmitButton pendingLabel="Saving" inactive={!ready}>
+        Give free access
+      </SubmitButton>
+      <div className="md:col-span-4">
+        <Result state={state} />
       </div>
     </form>
   );

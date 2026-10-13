@@ -6,13 +6,13 @@ export const ROLE_KINDS = ["job", "internship_siwes", "nysc_ppa", "volunteer", "
 export type RoleKind = (typeof ROLE_KINDS)[number];
 
 export const ROLE_KIND_LABELS: Record<RoleKind, string> = {
-  job: "Job",
+  job: "Work experience",
   internship_siwes: "Internship or SIWES",
-  nysc_ppa: "NYSC (PPA)",
+  nysc_ppa: "NYSC",
   volunteer: "Volunteering or campus role",
   project: "Project",
   education: "Education",
-  certification: "Certification",
+  certification: "Professional certificate",
   licence: "Licence or membership",
 };
 

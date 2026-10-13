@@ -52,7 +52,7 @@ export default function LandingPage() {
               <div className="animate-rise">
                 <p className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-[0.8125rem] font-medium">
                   <Verify size={16} variant="bulk" />
-                  Built for NYSC members and new graduates
+                  For anyone looking for their next job
                 </p>
                 <h1 className="mt-5 font-display text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.04em] lg:text-[4.75rem]">{APP.tagline}</h1>
                 <p className="mt-5 max-w-xl text-[1.0625rem] leading-7 text-white/90 lg:text-xl lg:leading-8">

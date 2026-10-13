@@ -1,45 +1,89 @@
 "use client";
 
-import { useActionState, useState, useTransition, type ReactNode } from "react";
+import { useActionState, useRef, useState, useTransition, type ReactNode } from "react";
 import { saveProfile, setLowData, removeSensitive, setConsent, deleteAccount, type SettingsState } from "@/app/(app)/settings/actions";
-import { Field, TextInput } from "@/components/ui/field";
+import { Field, TextInput, inputClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { TickCircle, Trash, DocumentDownload, Danger } from "@/components/icons";
 
-export type ProfileValues = { full_name: string; phone: string; contact_email: string; city: string; state: string; linkedin_url: string };
+export type ProfileValues = { full_name: string; phone: string; contact_email: string; city: string; state: string; linkedin_url: string; portfolio_url: string; website_url: string };
+type PhoneCode = { country: string; label: string; code: string };
 
-export function ProfileForm({ initial }: { initial: ProfileValues }) {
-  const [state, action, pending] = useActionState<SettingsState, FormData>(saveProfile, undefined);
-  const err = (k: keyof ProfileValues) => state?.fieldErrors?.[k];
-  const fields: { k: keyof ProfileValues; label: string; type?: string; hint?: string; optional?: boolean; auto?: string }[] = [
-    { k: "full_name", label: "Full name", hint: "As it should appear at the top of your CV.", auto: "name" },
-    { k: "phone", label: "Phone number", type: "tel", optional: true, auto: "tel" },
-    { k: "contact_email", label: "Email for employers", type: "email", hint: "Use a professional address. It can differ from your sign in email.", optional: true, auto: "email" },
-    { k: "city", label: "Town or city", optional: true, auto: "address-level2" },
-    { k: "state", label: "State", optional: true, auto: "address-level1" },
-    { k: "linkedin_url", label: "LinkedIn profile link", type: "url", optional: true },
-  ];
+/** "+234 8030000000" or "08030000000" into a dialling code and the rest. */
+function splitPhone(phone: string, codes: PhoneCode[]): { code: string; number: string } {
+  const p = phone.trim();
+  const match = [...codes].sort((a, b) => b.code.length - a.code.length).find((c) => p.startsWith(c.code));
+  if (match) return { code: match.code, number: p.slice(match.code.length).trim() };
+  return { code: codes[0]?.code ?? "+234", number: p };
+}
+
+export function ProfileForm({ initial, codes }: { initial: ProfileValues; codes: PhoneCode[] }) {
+  const start = splitPhone(initial.phone, codes);
+  const [values, setValues] = useState({ ...initial, phone_code: start.code, phone: start.number });
+  const [saved, setSaved] = useState(values);
+  const submitted = useRef(values);
+  const [state, action, pending] = useActionState<SettingsState, FormData>(async (prev, fd) => {
+    const res = await saveProfile(prev, fd);
+    if (res?.ok) setSaved(submitted.current);
+    return res;
+  }, undefined);
+  // Save stays inactive until something changes, and again after a successful save.
+  const dirty = JSON.stringify(values) !== JSON.stringify(saved);
+  const err = (k: string) => state?.fieldErrors?.[k];
+  const set = (k: keyof typeof values) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [k]: e.target.value }));
+
+  const text = (k: keyof ProfileValues, label: string, opts: { type?: string; hint?: string; optional?: boolean; auto?: string; placeholder?: string } = {}) => (
+    <Field id={k} label={label} hint={opts.hint} error={err(k)} optional={opts.optional}>
+      <TextInput id={k} name={k} type={opts.type ?? "text"} value={values[k]} onChange={set(k)} autoComplete={opts.auto} placeholder={opts.placeholder} invalid={Boolean(err(k))} describedBy={err(k) ? `${k}-error` : opts.hint ? `${k}-hint` : undefined} />
+    </Field>
+  );
+
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form
+      action={action}
+      onSubmit={() => {
+        submitted.current = values;
+      }}
+      className="space-y-5"
+      noValidate
+    >
+      {text("full_name", "Full name", { hint: "As it should appear at the top of your CV.", auto: "name" })}
+      {text("contact_email", "Email for employers", { type: "email", hint: "Use a professional address. It can be different from your sign in email.", optional: true, auto: "email" })}
+
+      <Field id="phone" label="Phone number" error={err("phone")} optional hint="Employers in Nigeria often call before they email.">
+        <div className="grid grid-cols-[minmax(0,10.5rem)_minmax(0,1fr)] gap-2">
+          <label htmlFor="phone_code" className="sr-only">
+            Country code
+          </label>
+          <select id="phone_code" name="phone_code" value={values.phone_code} onChange={set("phone_code")} className={inputClass} autoComplete="tel-country-code">
+            {codes.map((c) => (
+              <option key={c.country} value={c.code}>
+                {c.label} ({c.code})
+              </option>
+            ))}
+          </select>
+          <TextInput id="phone" name="phone" type="tel" inputMode="tel" value={values.phone} onChange={set("phone")} autoComplete="tel-national" placeholder="803 000 0000" invalid={Boolean(err("phone"))} />
+        </div>
+      </Field>
+
       <div className="grid gap-5 sm:grid-cols-2">
-        {fields.map((f) => (
-          <div key={f.k} className={f.k === "full_name" || f.k === "contact_email" || f.k === "linkedin_url" ? "sm:col-span-2" : ""}>
-            <Field id={f.k} label={f.label} hint={f.hint} error={err(f.k)} optional={f.optional}>
-              <TextInput id={f.k} name={f.k} type={f.type ?? "text"} defaultValue={initial[f.k]} autoComplete={f.auto} invalid={Boolean(err(f.k))} describedBy={err(f.k) ? `${f.k}-error` : f.hint ? `${f.k}-hint` : undefined} />
-            </Field>
-          </div>
-        ))}
+        {text("city", "Town or city", { optional: true, auto: "address-level2" })}
+        {text("state", "State or region", { optional: true, auto: "address-level1" })}
       </div>
+      {text("linkedin_url", "LinkedIn profile link", { type: "url", optional: true, placeholder: "https://www.linkedin.com/in/your-name" })}
+      {text("portfolio_url", "Portfolio link", { type: "url", optional: true, placeholder: "https://", hint: "Behance, GitHub, Dribbble or similar, if you have one." })}
+      {text("website_url", "Personal website", { type: "url", optional: true, placeholder: "https://" })}
+
       {state?.error ? (
         <p role="alert" className="text-sm text-flag-700">
           {state.error}
         </p>
       ) : null}
       <div className="flex items-center gap-3">
-        <Button type="submit" size="lg" disabled={pending}>
+        <Button type="submit" size="lg" disabled={pending || !dirty}>
           {pending ? "Saving…" : "Save details"}
         </Button>
-        {state?.ok ? (
+        {state?.ok && !dirty ? (
           <p role="status" className="flex animate-pop items-center gap-1.5 text-sm font-medium text-proof-700">
             <TickCircle size={18} variant="bulk" />
             Saved
@@ -67,7 +111,12 @@ export function DataSaverSwitch({ initial, icon }: { initial: boolean; icon?: Re
         onChange={(e) => {
           const next = e.target.checked;
           setOn(next);
-          start(() => setLowData(next));
+          start(async () => {
+            const ok = await setLowData(next);
+            if (!ok) setOn(!next);
+            // Apply at once on this page too, before the refresh arrives.
+            document.querySelector("[data-app-shell]")?.toggleAttribute("data-low-data", ok ? next : !next);
+          });
         }}
         className="peer sr-only"
       />

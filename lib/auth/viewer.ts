@@ -43,13 +43,16 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [{ data: row }, { data: profile }, { data: consents }, { data: usage }, { data: passes }] = await Promise.all([
+  const [{ data: row }, { data: profile }, { data: consents }, { data: usage }, { data: passes }, { data: free }] = await Promise.all([
     supabase.from("users").select("career_stage, target_markets, low_data_mode, age_confirmed_at, setup_completed_at").eq("id", user.id).maybeSingle(),
     supabase.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
     supabase.from("consents").select("type, version, granted_at, withdrawn_at").eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("usage_counters").select("trial_started_at, trial_ends_at, trial_cvs_used").eq("user_id", user.id).maybeSingle(),
     supabase.from("passes").select("type, ends_at").eq("user_id", user.id).eq("status", "active").neq("type", "interview_boost").gt("ends_at", new Date().toISOString()).order("ends_at", { ascending: false }).limit(1),
+    // Free access from the back office, matched on the sign in email (RLS shows only their own).
+    supabase.from("free_access").select("ends_at").is("revoked_at", null).limit(1).maybeSingle(),
   ]);
+  const freeLive = free && (!free.ends_at || new Date(free.ends_at) > new Date());
 
   // Latest record per type decides. Required consents must be granted at the current version.
   const latest = new Map<string, { version: string; granted_at: string | null; withdrawn_at: string | null }>();
@@ -73,7 +76,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
       endsAt: usage?.trial_ends_at ?? null,
       cvsUsed: usage?.trial_cvs_used ?? 0,
     },
-    activePass: passes?.[0] ? { type: passes[0].type, endsAt: passes[0].ends_at } : null,
+    activePass: passes?.[0] ? { type: passes[0].type, endsAt: passes[0].ends_at } : freeLive ? { type: "free_access", endsAt: free?.ends_at ?? "2099-12-31T00:00:00.000Z" } : null,
     preview: false,
   };
 });

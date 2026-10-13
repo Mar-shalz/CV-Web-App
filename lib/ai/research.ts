@@ -1,5 +1,5 @@
 import "server-only";
-import { anthropicProvider } from "./anthropic";
+import { chainProvider } from "./chain";
 import { consoleLogger } from "./log";
 import { costUsd, PRICING_VERSION } from "./cost";
 import { systemPrompt } from "./prompt";
@@ -18,9 +18,9 @@ export async function runResearch(input: { name: string; model: AiModel; user: s
   const opts = process.env.AI_BUDGET_MODE === "haiku" ? { ...input, model: "claude-haiku-5-5" as const, maxSearches: Math.min(input.maxSearches, 2) } : input;
   const sys = systemPrompt({ name: opts.name, promptVersion: "v1" });
   const started = Date.now();
-  if (!anthropicProvider.research) return { ok: false };
+  if (!chainProvider.research) return { ok: false };
   try {
-    const res = await anthropicProvider.research({ model: opts.model, system: sys.text, user: opts.user, maxTokens: 6000, timeoutMs: 45_000, maxSearches: opts.maxSearches });
+    const res = await chainProvider.research({ model: opts.model, system: sys.text, user: opts.user, maxTokens: 6000, timeoutMs: 45_000, maxSearches: opts.maxSearches });
     consoleLogger({
       event: "ai_call",
       task: opts.name,

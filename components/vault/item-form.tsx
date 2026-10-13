@@ -16,13 +16,22 @@ const OWN: { id: Ownership; label: string; hint: string }[] = [
 
 /** One achievement in the user's own words. The words are the source the CV is checked against. */
 export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: VaultItem; onDone?: () => void }) {
-  const [state, action] = useActionState<VaultActionState, FormData>(async (prev, fd) => {
-    const res = await saveItem(prev, fd);
-    if (res?.ok) onDone?.();
-    return res;
-  }, undefined);
+  const [added, setAdded] = useState(0);
   const [own, setOwn] = useState<Ownership>(item?.ownership ?? "did");
   const [text, setText] = useState(item?.text ?? "");
+  const [state, action] = useActionState<VaultActionState, FormData>(async (prev, fd) => {
+    const res = await saveItem(prev, fd);
+    if (res?.ok) {
+      // Editing closes; adding stays open for the next one, one at a time.
+      if (item) onDone?.();
+      else {
+        setAdded((n) => n + 1);
+        setText("");
+        setOwn("did");
+      }
+    }
+    return res;
+  }, undefined);
   const hasNumber = /\d/.test(text);
 
   return (
@@ -30,8 +39,13 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
       <FormError message={state?.error} />
       <input type="hidden" name="role_id" value={roleId} />
       {item ? <input type="hidden" name="item_id" value={item.id} /> : null}
+      {!item ? (
+        <p className="rounded-xl bg-brand-50 px-3 py-2 text-[0.8125rem] leading-5 text-brand-800">
+          {added ? `Added ${added}. Add the next one, or tap Done.` : "One achievement at a time. Each one becomes one line on your CV."}
+        </p>
+      ) : null}
       <label htmlFor={`t-${item?.id ?? roleId}`} className="block text-sm font-semibold text-ink-900">
-        What did you do, and what changed?
+        {item ? "What did you do, and what changed?" : `Achievement ${added + 1}: what did you do, and what changed?`}
       </label>
       <textarea
         id={`t-${item?.id ?? roleId}`}
@@ -60,9 +74,16 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
           ))}
         </div>
       </fieldset>
-      <SubmitButton size="sm" pendingLabel="Saving" inactive={text.trim().length < 8}>
-        {item ? "Save" : "Add achievement"}
-      </SubmitButton>
+      <div className="flex flex-wrap items-center gap-2">
+        <SubmitButton size="sm" pendingLabel="Saving" inactive={text.trim().length < 8}>
+          {item ? "Save" : added ? "Add this one too" : "Add achievement"}
+        </SubmitButton>
+        {!item && added ? (
+          <button type="button" onClick={() => onDone?.()} className="inline-flex min-h-12 items-center rounded-2xl px-4 text-sm font-semibold text-ink-700 hover:bg-ink-75">
+            Done
+          </button>
+        ) : null}
+      </div>
     </form>
   );
 }

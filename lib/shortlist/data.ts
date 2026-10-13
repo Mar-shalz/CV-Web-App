@@ -10,6 +10,7 @@ import type { ApplicationView } from "@/lib/applications/data";
 import type { InviteDetails } from "@/lib/applications/outcome";
 import { cvLines, linkQuestions, fallbackQuestions, answerContradictions, type ShortlistQuestion, type CvLine } from "./questions";
 import { daysUntil } from "./logistics";
+import { runResearch } from "@/lib/ai/research";
 
 export type DrillAttempt = {
   questionId: string;
@@ -22,12 +23,15 @@ export type DrillAttempt = {
   at: string;
 };
 
+export type WebQuestion = { question: string; why: string; aboutEmployer: boolean; source: { url: string; title: string } };
+
 export type ShortlistView = {
   id: string;
   invite: InviteDetails & { logisticsDone: number[] };
   questions: ShortlistQuestion[];
   attempts: DrillAttempt[];
   lines: CvLine[];
+  webQuestions: WebQuestion[];
 };
 
 export type ShortlistAccess = "pass" | "trial" | "boost" | "locked";
@@ -47,25 +51,25 @@ export async function shortlistAccess(viewer: Viewer, applicationId: string): Pr
 
 function demo(lines: CvLine[]): ShortlistView {
   const day = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" });
-  return { id: "demo-shortlist", invite: { date: day, time: "10:00", placeOrLink: "Plot 12, Adeola Odeku Street, Victoria Island, Lagos", format: "in_person", logisticsDone: [0] }, questions: fallbackQuestions(lines), attempts: [], lines };
+  return { id: "demo-shortlist", invite: { date: day, time: "10:00", placeOrLink: "Plot 12, Adeola Odeku Street, Victoria Island, Lagos", format: "in_person", logisticsDone: [0] }, questions: fallbackQuestions(lines), attempts: [], lines, webQuestions: [] };
 }
 
-type Row = { id: string; invite_details: Partial<ShortlistView["invite"]> | null; questions: ShortlistQuestion[] | null; drill_attempts: DrillAttempt[] | null };
+type Row = { id: string; invite_details: Partial<ShortlistView["invite"]> | null; questions: ShortlistQuestion[] | null; drill_attempts: DrillAttempt[] | null; web_questions?: WebQuestion[] | null };
 
 export async function getShortlist(viewer: Viewer, app: ApplicationView): Promise<ShortlistView> {
   const cv = app.cvId ? await getCvById(viewer, app.cvId) : null;
   const lines = cv ? cvLines(cv.doc) : [];
   if (viewer.preview) return demo(lines);
   const supabase = await createClient();
-  const { data } = await supabase.from("shortlist_sessions").select("id, invite_details, questions, drill_attempts").eq("application_id", app.id).eq("user_id", viewer.id).maybeSingle();
+  const { data } = await supabase.from("shortlist_sessions").select("*").eq("application_id", app.id).eq("user_id", viewer.id).maybeSingle();
   let row = data as Row | null;
   if (!row) {
-    const { data: created } = await supabase.from("shortlist_sessions").insert({ application_id: app.id, user_id: viewer.id, invite_details: EMPTY_INVITE }).select("id, invite_details, questions, drill_attempts").single();
+    const { data: created } = await supabase.from("shortlist_sessions").insert({ application_id: app.id, user_id: viewer.id, invite_details: EMPTY_INVITE }).select("*").single();
     row = created as Row | null;
     if (row) await track("shortlist_opened", { days_until_interview: -1 }, viewer.id);
   }
   if (!row) throw new Error("Could not open Shortlist mode");
-  return { id: row.id, invite: { ...EMPTY_INVITE, ...(row.invite_details ?? {}) }, questions: row.questions ?? [], attempts: row.drill_attempts ?? [], lines };
+  return { id: row.id, invite: { ...EMPTY_INVITE, ...(row.invite_details ?? {}) }, questions: row.questions ?? [], attempts: row.drill_attempts ?? [], lines, webQuestions: row.web_questions ?? [] };
 }
 
 /** Invite details from a pasted message or typed by hand. One Shortlist session per application. */
@@ -79,7 +83,7 @@ export async function saveInvite(viewer: Viewer, applicationId: string, invite: 
   await track("shortlist_opened", { days_until_interview: daysUntil(invite.date) ?? -1 }, viewer.id);
 }
 
-export async function updateShortlist(viewer: Viewer, sessionId: string, patch: { invite_details?: object; questions?: ShortlistQuestion[]; drill_attempts?: DrillAttempt[] }): Promise<void> {
+export async function updateShortlist(viewer: Viewer, sessionId: string, patch: { invite_details?: object; questions?: ShortlistQuestion[]; drill_attempts?: DrillAttempt[]; web_questions?: WebQuestion[] }): Promise<void> {
   if (viewer.preview) return;
   const supabase = await createClient();
   await supabase.from("shortlist_sessions").update(patch).eq("id", sessionId).eq("user_id", viewer.id);
@@ -143,4 +147,31 @@ export async function drillAnswer(viewer: Viewer, view: ShortlistView, questionI
   await updateShortlist(viewer, view.id, { drill_attempts: [...view.attempts, attempt].slice(-60) });
   await track("drill_answered", { mode }, viewer.id);
   return attempt;
+}
+
+const SAMPLE_WEB: WebQuestion[] = [
+  { question: "Tell us about a time you found an error in a set of figures. What did you do?", why: "Reported by past candidates for bank graduate programmes", aboutEmployer: false, source: { url: "https://example.com/graduate-interview-questions", title: "Graduate interview questions (sample)" } },
+  { question: "Why do you want to start your career in banking rather than in an audit firm?", why: "Asked at assessment centres for finance trainee roles", aboutEmployer: false, source: { url: "https://example.com/assessment-centre-guide", title: "Assessment centre guide (sample)" } },
+];
+
+/**
+ * Questions people report from real interviews for this employer or this kind of role,
+ * found on the web, each with the page it came from. Uses the same two step research as
+ * the scam check: search first, then a structuring step that can only cite real results.
+ */
+export async function findWebQuestions(viewer: Viewer, app: ApplicationView, view: ShortlistView): Promise<WebQuestion[]> {
+  if (viewer.preview) return SAMPLE_WEB;
+  const parsed = app.snapshot?.parsed;
+  const country = parsed?.location?.country ?? "Nigeria";
+  const brief = `Employer: ${app.employer}\nRole: ${app.title}\nCountry: ${country}\nLevel: ${parsed?.experience_level ?? "unknown"}\nInterview format: ${view.invite.format}`;
+  const research = await runResearch({ name: "interview_search", model: "claude-sonnet-5-5", user: brief, maxSearches: 3, userId: viewer.id });
+  if (!research.ok || !research.sources.length) return [];
+  const res = await runTask("interview_research", { employer: app.employer, role: app.title, sources: research.sources, notes: research.notes }, { userId: viewer.id });
+  if (!res.ok) return [];
+  const found: WebQuestion[] = res.data.questions
+    .map((q) => ({ q, src: research.sources[q.source_index - 1] }))
+    .filter((x): x is { q: (typeof res.data.questions)[number]; src: { url: string; title: string } } => Boolean(x.src) && !lintCopy(x.q.question).length)
+    .map(({ q, src }) => ({ question: q.question, why: q.why, aboutEmployer: q.about_employer, source: src }));
+  await updateShortlist(viewer, view.id, { web_questions: found });
+  return found;
 }

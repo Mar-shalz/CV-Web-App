@@ -35,7 +35,9 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
 
   const headline =
     state.kind === "pass"
-      ? "Your pass is on"
+      ? state.passType === "free_access"
+        ? "You have free access"
+        : "Your pass is on"
       : reason === "cv_cap" || (state.kind === "trial_ended" && state.reason === "cv_cap")
         ? `You've used your ${LIMITS.trial.tailored_cv_cap} free tailored CVs`
         : state.kind === "trial_ended"
@@ -51,7 +53,9 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
         <h1 className="mt-4 font-display text-[1.875rem] font-semibold leading-10 tracking-[-0.03em] text-ink-900 lg:text-[2.5rem] lg:leading-[3rem]">{headline}</h1>
         <p className="mx-auto mt-2 max-w-xl text-[0.9375rem] leading-6 text-ink-600">
           {state.kind === "pass"
-            ? `${state.daysLeft} ${state.daysLeft === 1 ? "day" : "days"} left. Tailor as many CVs as you need.`
+            ? state.passType === "free_access"
+              ? "Everything is open for you, with nothing to pay. Tailor as many CVs as you need."
+              : `${state.daysLeft} ${state.daysLeft === 1 ? "day" : "days"} left. Tailor as many CVs as you need.`
             : `One payment, ${pass.days} days, no auto renewal. Everything you've built stays yours either way.`}
         </p>
       </header>

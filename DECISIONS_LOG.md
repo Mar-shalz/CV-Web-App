@@ -176,3 +176,31 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-066 Centred sign in panel.** The blue panel on sign in, consent and setup centres its logo, heading and steps horizontally; the two floating proof cards sit one on each side so the centre stays clear.
 
 **D-067 AI budget mode.** `AI_BUDGET_MODE=haiku` runs every AI task, including the job research step (capped at 2 searches), on Claude Haiku, for testing on a small budget. Leave it empty in production: quality gates are measured on the models each task names. Switching to another provider's free tier was considered and not done: free tiers commonly allow the provider to use prompts to improve their products, and prompts here contain people's CVs.
+
+## Founder feedback round 9 (13 Oct 2026)
+
+**D-068 Gemini first, Claude second.** Founder decision: every AI task runs through a provider chain (`lib/ai/chain.ts`), Gemini first and Claude second, so the app can be tested on Gemini's free tier until there are funds for Claude. Order is set by `AI_PROVIDERS` (default `gemini,anthropic`); a provider without a key is skipped, and a failed call falls through to the next one. Gemini uses JSON mode with the task's schema written into the system text, so the zod check and one retry in `runTask` still apply; web research uses Google Search grounding and takes sources only from the grounding metadata. The free tier logs a cost of zero (`GEMINI_TIER=paid` restores real costs). This supersedes the "not done" part of D-067. Known trade off, accepted by the founder for testing: Google's free tier may use prompts to improve its products, so the go live guide says to test with the founder's own or made up CVs. Before real users, add the Claude key and set `AI_PROVIDERS=anthropic,gemini`, or move Gemini to the paid tier. Evals must be re-run on whichever model goes first.
+
+**D-069 Sign in link fallback.** New free Supabase projects lock the email templates until custom SMTP is on, so the 6 digit code can't be added yet. Every sign in email now also carries a link (`/auth/callback?method=email`) that signs the person in, and the screens say "code or sign in link". When custom SMTP is on, the founder adds `{{ .Token }}` to the template and both work.
+
+**D-070 Free access for family and testers.** The back office (Payments, needs the payments permission) can give an email free access for 30, 90 or 365 days or with no end date. A `free_access` table holds one live grant per lowercased email; users can read only their own row (matched on the email in their sign in token) and never write. The viewer treats a live grant as a pass of type `free_access`, so every entitlement check works unchanged and no fake payment is recorded. Granting and removing are audit logged.
+
+**D-071 Applications sent with a CV made elsewhere.** "Add one you already sent" saves the job (post or link, optional), the exact PDF or Word file the person sent (private `cv-exports` bucket), the date and the channel. The application is marked `source = logged`, starts at Sent, and gets check ins and interview prep like any other. The file opens only through a short lived signed link for its owner. Questions from the CV can't be linked to vault lines for these, so prep leans on web questions and the job post.
+
+**D-072 Interview questions from the web.** Interview prep can search the web for questions people report from real interviews for this employer or this kind of role. Same two step pattern as the scam check: a search step, then a structuring step that can only cite sources by number from the list the search returned, so no link is invented. Each question shows its source. Saved on the Shortlist session (`web_questions`).
+
+**D-073 Data saver fix.** The toggle silently failed: the update wrote `updated_at`, which is not in the column grant users have, so the whole update was refused. `updated_at` is set by the trigger, so it's removed from the update. The switch now waits for the save, flips back if it fails, and applies at once. With data saver on, a "Data saver on" chip shows in the header and decorative previews hide.
+
+**D-074 Date fields.** Month and year are picked with two dropdowns (Month, Year) instead of the browser's calendar, which made jumping to a year years back slow. Date of birth uses day, month and year dropdowns. The value sent is unchanged (YYYY-MM or YYYY-MM-DD). The "day you sent it" field keeps the calendar: it is almost always a recent date.
+
+**D-075 Adding a role.** Type labels say what they mean: "Work experience", "NYSC", "Professional certificate". When adding a role that has work in it, a "What did you do there?" builder takes one thing at a time; each becomes a confirmed vault item owned as "did". The modal closes as soon as the role is saved. Adding achievements keeps the form open and says "Added 2. Add the next one, or tap Done."
+
+**D-076 Personal details.** Phone has a country code picker (Nigeria +234 first, list in `config/lists/phone_codes.json`) and is stored as "+234 8030000000" with the leading 0 dropped. Portfolio and website are optional and appear in the CV contact line. Save stays disabled until something changes. The first CV import fills empty personal details only; it never overwrites what the person typed.
+
+**D-077 Home steps in order.** Step 2 and step 3 stay locked, with "Opens after step N", until the step before is done.
+
+**D-078 Skip verdict still builds.** When the check says skip, the page now also offers "Build my closest CV anyway" (the existing override, now visible), with an honest note that the CV can only use what is in their experience. Hard filters are still decided by code and still shown.
+
+**D-079 Sign in panel, take two.** D-066 is reverted: the panel's content is left aligned again. The whole blue panel is now vertically centred with space above and below, wider (about 56% of the screen), and the badge reads "For anyone looking for their next job" (the old badge said it was only for NYSC members and new graduates, which isn't true). The floating cards stay one on each side.
+
+**D-080 Settings on phones.** The initials circle is hidden under 640px so the name and email have room, and "Edit details" is an edit icon in the card's top right corner.

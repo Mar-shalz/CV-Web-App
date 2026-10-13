@@ -37,7 +37,7 @@ export function SignInForm({ initialError }: { initialError?: string }) {
       </div>
 
       <form action={emailAction} className="space-y-5" noValidate>
-        <Field id="email" label="Email address" error={emailError} hint="We'll send you a 6 digit code. No password needed.">
+        <Field id="email" label="Email address" error={emailError} hint="We'll email you a code and a sign in link. No password needed.">
           <TextInput
             id="email"
             name="email"

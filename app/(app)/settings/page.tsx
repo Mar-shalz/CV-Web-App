@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { signOut } from "@/app/(auth)/actions";
 import { MARKETS } from "@/lib/config";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/shell/user-chip";
 import { ArrowRight2, Lock1, Logout, ShieldTick, DocumentDownload, Mobile, Global, Crown1, Edit2 } from "@/components/icons";
 import { DataSaverSwitch } from "@/components/settings/settings-forms";
@@ -38,20 +38,27 @@ export default async function SettingsPage() {
     <div className="space-y-3">
       <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Settings</h1>
 
-      <section className="flex animate-rise flex-wrap items-center gap-4 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
-        <Avatar name={viewer.fullName} size={64} />
+      <section className="relative flex animate-rise items-center gap-4 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 pr-16 shadow-card">
+        {/* No avatar on phones: the name and details get the full width. */}
+        <span className="hidden sm:block">
+          <Avatar name={viewer.fullName} size={64} />
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-semibold text-ink-900">{viewer.fullName ?? "Add your name"}</p>
-          <p className="truncate text-sm text-ink-600">{viewer.email}</p>
+          <p className="text-lg font-semibold text-ink-900 [overflow-wrap:anywhere]">{viewer.fullName ?? "Add your name"}</p>
+          <p className="text-sm text-ink-600 [overflow-wrap:anywhere]">{viewer.email}</p>
           <p className="mt-0.5 text-[0.8125rem] text-ink-500">
             {stage ?? "Stage not set"}
             {markets ? ` · Applying in ${markets}` : ""}
           </p>
         </div>
-        <ButtonLink href="/settings/profile" variant="secondary" size="sm" className="shrink-0">
+        <Link
+          href="/settings/profile"
+          aria-label="Edit your details"
+          title="Edit your details"
+          className="absolute right-3 top-3 grid size-10 place-items-center rounded-lg border border-ink-150 bg-white text-ink-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+        >
           <Edit2 size={18} />
-          Edit details
-        </ButtonLink>
+        </Link>
       </section>
 
       <div className="grid items-start gap-3 xl:grid-cols-2">

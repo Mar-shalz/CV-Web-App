@@ -8,13 +8,19 @@ import { rangeLabel, monthLabel } from "@/lib/vault/dates";
 import { PROFILES, SECTION_HEADINGS, fileBase, profileRules } from "./profiles";
 import type { CvBullet, CvDoc, CvFlag, CvRoleBlock, CvSection } from "./types";
 
-export type ContactDetails = { fullName: string | null; phone: string | null; email: string | null; city: string | null; state: string | null; linkedin: string | null };
+export type ContactDetails = { fullName: string | null; phone: string | null; email: string | null; city: string | null; state: string | null; linkedin: string | null; portfolio?: string | null; website?: string | null };
+
+/** "https://www.linkedin.com/in/tolu/" reads as "linkedin.com/in/tolu" on a CV. */
+export function shortUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "");
+}
 
 /** Phone in +234 format (CV writing standard). Leaves non Nigerian numbers as written. */
 export function formatPhone(raw: string | null): string | null {
   if (!raw) return null;
   const d = raw.replace(/[^\d+]/g, "");
-  const local = d.startsWith("+234") ? d.slice(4) : d.startsWith("234") ? d.slice(3) : d.startsWith("0") && d.length === 11 ? d.slice(1) : null;
+  const local = d.startsWith("+2340") ? d.slice(5) : d.startsWith("+234") ? d.slice(4) : d.startsWith("234") ? d.slice(3) : d.startsWith("0") && d.length === 11 ? d.slice(1) : null;
   if (!local || local.length !== 10) return raw.trim();
   return `+234 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
 }
@@ -189,7 +195,7 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     format: job.destination.profile,
     profileVersion: profile.version,
     name: contact.fullName ?? "Your Name",
-    contactLine: [formatPhone(contact.phone), contact.email, place, contact.linkedin].filter(Boolean).join(" · "),
+    contactLine: [formatPhone(contact.phone), contact.email, place, shortUrl(contact.linkedin), shortUrl(contact.portfolio), shortUrl(contact.website)].filter(Boolean).join(" · "),
     titleLine: out.title_line,
     titleFlags: toFlags(lockLine(out.title_line, all)),
     summary: { text: out.summary.text, sourceItemIds: sumSources.map((s) => s.id), flags: toFlags(out.summary.text ? lockLine(out.summary.text, sumSources.length ? sumSources : all) : []) },

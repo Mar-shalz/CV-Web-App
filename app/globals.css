@@ -344,9 +344,13 @@ select {
 }
 [data-low-data] .aurora::before,
 [data-low-data] .aurora::after,
-[data-low-data] .confetti {
+[data-low-data] .confetti,
+[data-low-data] [data-decorative] {
   display: none;
 }
+/* Shown only while data saver is on, so people can see it's working. */
+.low-data-chip { display: none; }
+[data-low-data] .low-data-chip { display: inline-flex; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

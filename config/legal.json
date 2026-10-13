@@ -29,6 +29,11 @@
       "region": "Nearest region to Lagos the provider offers"
     },
     {
+      "name": "Google (Gemini)",
+      "purpose": "Reading job posts and CVs and writing CV drafts while the app is in testing",
+      "region": "United States"
+    },
+    {
       "name": "Anthropic",
       "purpose": "Reading job posts and writing CV drafts",
       "region": "United States"

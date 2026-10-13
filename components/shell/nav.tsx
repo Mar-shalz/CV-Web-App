@@ -33,11 +33,11 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
   return (
     <aside
       className={`sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-ink-150 bg-white transition-[width] duration-300 ease-[var(--ease-out)] lg:flex ${
-        collapsed ? "w-[88px]" : "w-[248px]"
+        collapsed ? "w-[108px]" : "w-[248px]"
       }`}
     >
       {/* The collapse control always sits beside the logo, so collapsing never adds a row. */}
-      <div className={`flex h-[76px] items-center ${collapsed ? "justify-center gap-0.5 px-2" : "justify-between pl-6 pr-3"}`}>
+      <div className={`flex h-[76px] items-center ${collapsed ? "justify-center gap-3 px-2" : "justify-between pl-6 pr-3"}`}>
         <Link href="/home" className="rounded-xl" aria-label="Home">
           <Logo collapsed={collapsed} />
         </Link>

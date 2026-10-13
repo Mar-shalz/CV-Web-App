@@ -26,7 +26,7 @@ export default async function AppLayout({ children, modal }: { children: React.R
   const stageLabel = MARKETS.career_stages.find((s) => s.id === viewer.careerStage)?.label ?? null;
 
   return (
-    <div className="flex min-h-dvh" data-low-data={viewer.lowDataMode || undefined}>
+    <div className="flex min-h-dvh" data-app-shell="" data-low-data={viewer.lowDataMode || undefined}>
       <Sidebar initialCollapsed={jar.get("sb_collapsed")?.value === "1"} footer={<AccessCard state={access} />} footerCollapsed={<AccessBadge state={access} />} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -58,6 +58,10 @@ export default async function AppLayout({ children, modal }: { children: React.R
             </form>
 
             <div className="ml-auto flex items-center gap-2 lg:gap-3">
+              <Link href="/settings" className="low-data-chip min-h-9 items-center gap-1.5 rounded-full bg-proof-50 px-3 text-xs font-semibold text-proof-700" title="Data saver is on: no animations, phone fonts, fewer pictures">
+                <span aria-hidden="true" className="size-1.5 rounded-full bg-proof-600" />
+                Data saver on
+              </Link>
               <UpdatesDrawer
                 checkInCount={checkIns.length}
                 items={inbox.items}

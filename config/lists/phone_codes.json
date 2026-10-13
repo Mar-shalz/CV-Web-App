@@ -1,0 +1,18 @@
+{
+  "version": "2026-10-14",
+  "default": "NG",
+  "codes": [
+    { "country": "NG", "label": "Nigeria", "code": "+234" },
+    { "country": "GH", "label": "Ghana", "code": "+233" },
+    { "country": "KE", "label": "Kenya", "code": "+254" },
+    { "country": "ZA", "label": "South Africa", "code": "+27" },
+    { "country": "CM", "label": "Cameroon", "code": "+237" },
+    { "country": "RW", "label": "Rwanda", "code": "+250" },
+    { "country": "EG", "label": "Egypt", "code": "+20" },
+    { "country": "GB", "label": "United Kingdom", "code": "+44" },
+    { "country": "IE", "label": "Ireland", "code": "+353" },
+    { "country": "US", "label": "United States or Canada", "code": "+1" },
+    { "country": "DE", "label": "Germany", "code": "+49" },
+    { "country": "AE", "label": "United Arab Emirates", "code": "+971" }
+  ]
+}

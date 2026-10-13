@@ -64,7 +64,7 @@ Primary user: Tolu, 21 to 27, NYSC or first 3 years of work, an Android phone wi
 - evals: `npm run evals` (placeholder listing gates G1 to G5 until the golden sets land; runs in CI)
 - first load budget: `npm run build && npm run check:size`
 - e2e: not set up yet (Playwright is the next step for the core flow)
-- env: see `.env.example` (Supabase keys, SUPABASE_SECRET_KEY, SENSITIVE_DATA_KEY_V1, ANTHROPIC_API_KEY, PAYSTACK_SECRET_KEY, APP_URL, CRON_SECRET, SPEECH_PROVIDER)
+- env: see `.env.example` (Supabase keys, SUPABASE_SECRET_KEY, SENSITIVE_DATA_KEY_V1, GEMINI_API_KEY and ANTHROPIC_API_KEY (Gemini runs first, see D-068), PAYSTACK_SECRET_KEY, APP_URL, CRON_SECRET, SPEECH_PROVIDER)
 
 ## Design
 - Brand and layout rules: design/brand.md. Tokens: app/globals.css (ships) and design/tokens.json (Figma).

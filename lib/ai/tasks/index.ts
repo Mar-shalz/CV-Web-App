@@ -7,7 +7,7 @@ import { fitVerdict } from "./fit-verdict";
 import { tailorCv } from "./tailor-cv";
 import { buildPack } from "./build-pack";
 import { classifyOutcome, extractDebrief } from "./outcomes";
-import { shortlistQuestions, drillFeedback } from "./shortlist";
+import { shortlistQuestions, drillFeedback, interviewResearch } from "./shortlist";
 
 /**
  * Task registry (Build pack section 6). One entry per task: model, prompt version,
@@ -30,6 +30,7 @@ export const TASKS = {
   extract_debrief: extractDebrief,
   shortlist_questions: shortlistQuestions,
   drill_feedback: drillFeedback,
+  interview_research: interviewResearch,
 } as const;
 
 export type TaskName = keyof typeof TASKS;

@@ -14,7 +14,7 @@ const nullableText = (max: number) => z.string().max(max).nullable();
 export const parseCv = defineTask({
   name: "parse_cv",
   model: "claude-haiku-5-5",
-  promptVersion: "v1",
+  promptVersion: "v2",
   input,
   output: z.object({
     is_cv: z.boolean(),
@@ -25,6 +25,8 @@ export const parseCv = defineTask({
       city: nullableText(80),
       state: nullableText(80),
       linkedin_url: nullableText(200),
+      portfolio_url: nullableText(200),
+      website_url: nullableText(200),
     }),
     // Old Nigerian CVs often carry these. They are offered to the user to keep privately, never used by default.
     sensitive_found: z.object({
