@@ -170,3 +170,9 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-064 Motion.** Every page eases in (template), the bell rings once when something new is waiting, progress segments fill in turn, overview cards are links that lift with a small icon tilt, arrows nudge on hover, lists stagger in. All of it stops with reduced motion and with data saver.
 
 **D-065 Preview server.** `npm run dev:preview` (port 3001, its own build folder) forces sample data even when real keys are in `.env.local`, so design reviews never need a sign in. It can never switch on in production.
+
+## Founder feedback round 8 (13 Oct 2026)
+
+**D-066 Centred sign in panel.** The blue panel on sign in, consent and setup centres its logo, heading and steps horizontally; the two floating proof cards sit one on each side so the centre stays clear.
+
+**D-067 AI budget mode.** `AI_BUDGET_MODE=haiku` runs every AI task, including the job research step (capped at 2 searches), on Claude Haiku, for testing on a small budget. Leave it empty in production: quality gates are measured on the models each task names. Switching to another provider's free tier was considered and not done: free tiers commonly allow the provider to use prompts to improve their products, and prompts here contain people's CVs.

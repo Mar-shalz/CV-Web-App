@@ -35,7 +35,10 @@ export function runTask<K extends TaskName>(
   options: { userId?: string } = {},
 ): Promise<AiResult<z.output<Output<K>>>> {
   // TASKS[name] widens to a union of tasks; the key pins it back to one.
-  const task = TASKS[name] as unknown as AiTask<Input<K>, Output<K>>;
+  const base = TASKS[name] as unknown as AiTask<Input<K>, Output<K>>;
+  // AI_BUDGET_MODE=haiku runs every task on the cheapest model: for testing on a small
+  // budget only. Quality gates are measured on the models each task names.
+  const task = process.env.AI_BUDGET_MODE === "haiku" ? { ...base, model: "claude-haiku-5-5" as const } : base;
   // With more than one task the generic widens; the key above already pins the types.
   return runAiTask(task, input, deps, {
     userRef: options.userId ? pseudonymousId(options.userId) : null,

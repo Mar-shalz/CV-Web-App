@@ -14,7 +14,8 @@ export type ResearchResult = { ok: true; notes: string; sources: ResearchSource[
  * free text notes for the structuring task and the sources the search tool really
  * returned. Logged like every other model call.
  */
-export async function runResearch(opts: { name: string; model: AiModel; user: string; maxSearches: number; userId?: string }): Promise<ResearchResult> {
+export async function runResearch(input: { name: string; model: AiModel; user: string; maxSearches: number; userId?: string }): Promise<ResearchResult> {
+  const opts = process.env.AI_BUDGET_MODE === "haiku" ? { ...input, model: "claude-haiku-5-5" as const, maxSearches: Math.min(input.maxSearches, 2) } : input;
   const sys = systemPrompt({ name: opts.name, promptVersion: "v1" });
   const started = Date.now();
   if (!anthropicProvider.research) return { ok: false };
