@@ -9,13 +9,14 @@ import { Magicpen, SearchNormal1 } from "@/components/icons";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { accessState } from "@/lib/entitlements";
 import { getCheckIns } from "@/lib/home-data";
+import { getInbox } from "@/lib/notifications/data";
 import { UpdatesDrawer } from "@/components/shell/updates-drawer";
 import { CheckInItem } from "@/components/home/check-in-card";
 import { APP_NAME, MARKETS } from "@/lib/config";
 
 export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const viewer = await requireReadyViewer();
-  const [jar, checkIns] = await Promise.all([cookies(), getCheckIns(viewer)]);
+  const [jar, checkIns, inbox] = await Promise.all([cookies(), getCheckIns(viewer), getInbox(viewer)]);
   const access = accessState({
     trialStartedAt: viewer.trial.startedAt,
     trialEndsAt: viewer.trial.endsAt,
@@ -57,15 +58,19 @@ export default async function AppLayout({ children, modal }: { children: React.R
             </form>
 
             <div className="ml-auto flex items-center gap-2 lg:gap-3">
-              <UpdatesDrawer count={checkIns.length}>
-                <ul className="space-y-2.5">
-                  {checkIns.map((a) => (
-                    <li key={a.id} className="rounded-xl border border-ink-150 bg-white p-3.5 shadow-card">
-                      <CheckInItem a={a} />
-                    </li>
-                  ))}
-                </ul>
-              </UpdatesDrawer>
+              <UpdatesDrawer
+                checkInCount={checkIns.length}
+                items={inbox.items}
+                checkIns={
+                  <ul className="space-y-2.5">
+                    {checkIns.map((a) => (
+                      <li key={a.id} className="rounded-xl border border-ink-150 bg-white p-3.5 shadow-card">
+                        <CheckInItem a={a} />
+                      </li>
+                    ))}
+                  </ul>
+                }
+              />
               <span className="hidden lg:block">
                 <ButtonLink href="/jobs/new" className="cta-sheen">
                   <Magicpen size={20} variant="bulk" />

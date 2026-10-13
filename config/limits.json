@@ -41,5 +41,9 @@
     "max_searches": 4,
     "cache_days_post": 7,
     "cache_days_employer": 30
+  },
+  "notifications": {
+    "pass_ending_days": 3,
+    "note": "Days before a pass ends that the reminder goes out."
   }
 }

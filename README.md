@@ -19,7 +19,7 @@ With no Supabase keys the app runs in preview mode: sample data and a click thro
 
 1. Create a project in the region nearest Lagos the provider offers.
 2. Run `npm run setup:env` (creates `.env.local` with generated secrets), then fill in the rest.
-3. Apply every file in `supabase/migrations/` in order, 0001 to 0008 (`supabase db push`, or paste each into the SQL editor). Run `supabase/verify_setup.sql` first to see which are already applied: an "already exists" error means that file ran before.
+3. Apply every file in `supabase/migrations/` once, in date order (`supabase db push`, or paste each into the SQL editor). An "already exists" error means that file ran before.
 4. Auth > Providers: enable Email and Google. Redirect URL: `https://<your-domain>/auth/callback`.
 5. Auth > Email templates > Magic link: include `{{ .Token }}` so users get a 6 digit code, not a link.
 6. Run `npm run test:db` to prove one user can't read another user's rows, payments unlock only through the service role, and account deletion removes everything.
@@ -27,9 +27,12 @@ With no Supabase keys the app runs in preview mode: sample data and a click thro
 
 ## SQL files
 
-- `supabase/migrations/0001` to `0008`: the source of truth, applied in order.
-- `supabase/sql/app_schema.sql` and `supabase/sql/back_office.sql`: the same SQL in two all in one files for a brand new project (app first, then back office). Rebuild with `npm run sql:bundle` after adding a migration.
-- `supabase/verify_setup.sql`: shows which migrations a project already has. Changes nothing.
+`supabase/migrations/` holds the whole database, in date order:
+- `20261013000000_app_schema.sql`: everything the app needs (baseline, applied 13 Oct 2026).
+- `20261013000100_back_office.sql`: staff roles, truth reports, AI call log, audit extras (baseline).
+- `20261013000200_notifications.sql`: the Updates panel (personal notifications and back office announcements).
+
+Run each file once, in order (SQL editor or `supabase db push`). Every later change is a new file with a later date; never edit an applied file.
 
 ## Payments (Paystack)
 

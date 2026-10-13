@@ -1,3 +1,8 @@
+-- Baseline 2 of 2: the back office (staff roles, truth reports, AI call log, audit extras).
+-- Run after the app schema. Exactly what was run in Supabase on 13 Oct 2026.
+-- ===========================================================================
+-- From 0002_back_office.sql
+-- ===========================================================================
 -- Back office: staff roles, truth reports, AI call log, richer audit entries.
 -- Staff tables have RLS on and no policies, so only the service role (server side,
 -- behind requireAdmin) can read or write them. Nothing here is reachable from the
@@ -65,3 +70,12 @@ create index if not exists audit_log_at_idx on public.audit_log (at desc);
 -- Rule sets and country profiles move through draft, reviewed and published.
 alter table public.rule_sets add column if not exists reviewed_at timestamptz;
 alter table public.country_profiles add column if not exists reviewed_at timestamptz;
+
+-- ===========================================================================
+-- From 0008_hardening.sql
+-- ===========================================================================
+-- Staff who leave and delete their own account don't block it.
+alter table public.admin_members drop constraint if exists admin_members_added_by_fkey;
+alter table public.admin_members add constraint admin_members_added_by_fkey foreign key (added_by) references public.users (id) on delete set null;
+alter table public.truth_reports drop constraint if exists truth_reports_resolved_by_fkey;
+alter table public.truth_reports add constraint truth_reports_resolved_by_fkey foreign key (resolved_by) references public.users (id) on delete set null;

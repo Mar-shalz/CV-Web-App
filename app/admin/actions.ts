@@ -75,3 +75,66 @@ export async function revokeMember(formData: FormData): Promise<void> {
   await logAdminAction(staff, "revoke_member", "admin_members", id.data);
   revalidatePath("/admin/team");
 }
+
+const LINK = /^\/[A-Za-z0-9/_?=&.#-]*$/;
+const messageSchema = z.object({
+  to: z.enum(["everyone", "trial", "pass", "no_pass", "person"]),
+  email: z.string().trim().toLowerCase().max(160).optional(),
+  title: z.string().trim().min(3, "Add a short title.").max(120, "Keep the title under 120 characters."),
+  body: z.string().trim().min(3, "Add the message.").max(600, "Keep the message under 600 characters."),
+  link: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .refine((v) => !v || LINK.test(v), "Links must be a page in the app, starting with /, for example /pass."),
+  days: z.coerce.number().int().min(1).max(90).optional(),
+});
+
+/**
+ * Sends an update to the Updates panel: an announcement to everyone (or one group), or a
+ * message to one person found by email. Logged without the message text.
+ */
+export async function sendUpdate(_prev: AdminActionState, formData: FormData): Promise<AdminActionState> {
+  const staff = await requireAdmin("messages");
+  const parsed = messageSchema.safeParse({
+    to: formData.get("to"),
+    email: formData.get("email") || undefined,
+    title: formData.get("title"),
+    body: formData.get("body"),
+    link: formData.get("link") || undefined,
+    days: formData.get("days") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  const m = parsed.data;
+  if (staff.preview) return { ok: "Preview: nothing was sent." };
+  const db = createAdminClient();
+
+  if (m.to === "person") {
+    if (!m.email) return { error: "Add the person's email." };
+    const { data: user } = await db.from("users").select("id").eq("email", m.email).maybeSingle();
+    if (!user) return { error: "No account uses that email." };
+    const { error } = await db.from("notifications").insert({ user_id: user.id, kind: "message", title: m.title, body: m.body, link: m.link ?? null });
+    if (error) return { error: "Couldn't send the message." };
+    await logAdminAction(staff, "message_person", "notifications", user.id);
+    revalidatePath("/admin/messages");
+    return { ok: "Sent. It shows in their Updates panel." };
+  }
+
+  const ends = m.days ? new Date(Date.now() + m.days * 86_400_000).toISOString() : null;
+  const { data, error } = await db.from("announcements").insert({ title: m.title, body: m.body, link: m.link ?? null, audience: m.to, ends_at: ends, created_by: staff.id }).select("id").single();
+  if (error || !data) return { error: "Couldn't send the update." };
+  await logAdminAction(staff, "announce", "announcements", data.id, { audience: m.to, days: m.days ?? null });
+  revalidatePath("/admin/messages");
+  return { ok: "Sent. It shows in the Updates panel now." };
+}
+
+/** Takes an announcement down straight away. */
+export async function endAnnouncement(formData: FormData): Promise<void> {
+  const staff = await requireAdmin("messages");
+  const id = uuid.safeParse(formData.get("id"));
+  if (staff.preview || !id.success) return;
+  await createAdminClient().from("announcements").update({ ends_at: new Date().toISOString() }).eq("id", id.data);
+  await logAdminAction(staff, "end_announcement", "announcements", id.data);
+  revalidatePath("/admin/messages");
+}

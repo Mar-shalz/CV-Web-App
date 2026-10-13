@@ -28,3 +28,12 @@ describe("back office permissions", () => {
     expect(maskEmail(null)).toBe("Unknown");
   });
 });
+
+describe("messages to users", () => {
+  it("lets owners and support send updates, and nobody else", () => {
+    expect(can("owner", "messages")).toBe(true);
+    expect(can("support", "messages")).toBe(true);
+    expect(can("reviewer", "messages")).toBe(false);
+    expect(can("finance", "messages")).toBe(false);
+  });
+});

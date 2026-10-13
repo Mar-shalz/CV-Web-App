@@ -9,18 +9,14 @@ Words you'll see:
 
 ---
 
-## 0. Fix the database errors you saw
+## 0. Database
 
-The errors ("type consent_type already exists", "relation rate_events already exists" and so on) mean **those files already ran successfully before**. Each file runs all or nothing, so nothing is half done. Running a file a second time is what fails.
+You ran the two baseline files, so the database matches `supabase/migrations/20261013000000_app_schema.sql` and `20261013000100_back_office.sql`. The old numbered files are gone from the project.
 
-- [ ] Open Supabase > your project > **SQL Editor** > **New query**.
-- [ ] Open `supabase/verify_setup.sql` in a text editor, copy everything, paste it into the editor and press **Run**. It changes nothing; it lists each migration file as "applied" or "NOT APPLIED".
-- [ ] For each file marked NOT APPLIED, in number order: open the file from `supabase/migrations/`, copy all of it, paste into a new query, press Run once. You should see "Success. No rows returned".
-- [ ] Run `verify_setup.sql` again. All eight rows should say "applied".
+- [x] App schema and back office (done 13 Oct 2026).
+- [ ] Run `supabase/migrations/20261013000200_notifications.sql` once in the SQL editor. It adds the Updates panel: messages from the back office, payment receipts, and pass and trial reminders. Until you run it, the panel shows only check ins.
 
-Never run a file that already says "applied".
-
-**Starting a brand new Supabase project instead?** Use the two all in one files: run `supabase/sql/app_schema.sql` first (everything the app needs), then `supabase/sql/back_office.sql` (staff roles, truth reports, AI cost log). Don't use them on a project that already ran the numbered files.
+From now on every database change comes as one new file in that folder with a later date in its name. Run each new file once, in date order. Never re-run an old one: "already exists" errors mean it ran before.
 
 ---
 

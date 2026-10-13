@@ -142,3 +142,15 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-052 All in one SQL.** `npm run sql:bundle` builds `supabase/sql/app_schema.sql` and `supabase/sql/back_office.sql` from the numbered migrations, which stay the source of truth. The bundles are for a brand new project only.
 
 **D-053 Applications header.** The page header has no Tailor my CV button: the top bar has it. The empty state keeps its own button, as it is the only next step there.
+
+## Founder feedback round 6 (13 Oct 2026)
+
+**D-054 Two baseline migrations.** The founder ran the two all in one files on the live project, so they became the migrations: `20261013000000_app_schema.sql` and `20261013000100_back_office.sql`, byte for byte the same SQL as the old 0001 to 0008 (checked by rebuilding before the swap). The numbered files, `verify_setup.sql`, the bundles and `sql:bundle` are gone. New changes are new dated files.
+
+**D-055 Updates panel is the inbox.** The bell opens Updates: "Needs your answer" (check ins) on top, then "Latest": messages from the team, a message to one person, payment receipts, pass ending and ended, trial ending. Opening it marks everything seen; the badge counts check ins plus unseen items. Personal notifications are written only by the service role (webhook, daily job, back office) with a dedupe key; people can read theirs and set read_at, nothing else. Links must be paths inside the app. The "See all applications" link left the panel.
+
+**D-056 Back office messages.** New "Messages to users" page (owner and support): send to everyone, people on the trial, pass holders, people without a pass, or one person by email; optional in app link and show-for days; preview of what people see; end a message early. Sends are audit logged without the text.
+
+**D-057 Modal slot fix.** The catch all page in the `@modal` slot (D-041) made every page outside the `(app)` group unreachable in Next 16: sign in, onboarding, legal, offline and the back office returned 404 ("page files do not match any complete route"). It is removed; the modal now hides itself when the address changes. CI's build step would have caught it; the build passes again.
+
+**D-058 Research review.** A product and UX research review with ranked bets is published as an artifact (Receipts Retention Playbook). Its figures are hypotheses for the research plan, not measured results.

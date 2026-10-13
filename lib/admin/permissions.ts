@@ -15,13 +15,14 @@ export const PERMISSIONS = [
   "ai",
   "audit",
   "team",
+  "messages",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const MATRIX: Record<AdminRole, readonly Permission[]> = {
   owner: PERMISSIONS,
   reviewer: ["overview", "reviews", "reviews.resolve", "rules", "ai"],
-  support: ["overview", "users", "waitlist", "reviews"],
+  support: ["overview", "users", "waitlist", "reviews", "messages"],
   finance: ["overview", "payments", "payments.refund", "ai"],
 };
 
@@ -32,7 +33,7 @@ export function can(role: AdminRole | null | undefined, permission: Permission):
 export const ROLE_LABELS: Record<AdminRole, { label: string; body: string }> = {
   owner: { label: "Owner", body: "Everything, including team access, publishing rules and refunds." },
   reviewer: { label: "Reviewer", body: "Truth reports, CV quality samples, rules and AI quality." },
-  support: { label: "Support", body: "Users and the waitlist, with emails masked. Can read reports." },
+  support: { label: "Support", body: "Users and the waitlist, with emails masked. Can read reports and send messages to users." },
   finance: { label: "Finance", body: "Payments, refunds and AI cost." },
 };
 

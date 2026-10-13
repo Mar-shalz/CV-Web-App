@@ -5,6 +5,8 @@ import { signatureValid, decideGrant, productFor, type PaystackEvent } from "@/l
 import { verifyCharge } from "@/lib/payments/paystack";
 import { PRICES } from "@/lib/config";
 import { track } from "@/lib/analytics/server";
+import { notify } from "@/lib/notifications/data";
+import { formatNaira } from "@/lib/format";
 
 const MAX_BODY = 64_000;
 
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
   }
   const forget = () => db.from("payment_events").delete().eq("reference", reference).eq("event", event.event);
 
-  const { data: p } = await db.from("passes").select("id, user_id, status, amount_kobo, type, paystack_reference").eq("paystack_reference", reference).maybeSingle();
+  const { data: p } = await db.from("passes").select("id, user_id, status, amount_kobo, type, paystack_reference, application_id").eq("paystack_reference", reference).maybeSingle();
   const grant = decideGrant(event, p ? { id: p.id, status: p.status, amountKobo: p.amount_kobo, type: p.type, reference: p.paystack_reference ?? "" } : null);
 
   if (grant.action === "fail" && p) {
@@ -54,7 +56,18 @@ export async function POST(request: NextRequest) {
     const days = productFor(p.type)?.days ?? 0;
     const { data: activated, error } = await db.rpc("activate_pass", { p_reference: reference, p_amount_kobo: p.amount_kobo, p_channel: charge.channel ?? "unknown", p_days: days });
     if (error) throw error;
-    if (activated) await track("payment_succeeded", { product: p.type, channel: charge.channel ?? "unknown" }, p.user_id);
+    if (activated) {
+      await track("payment_succeeded", { product: p.type, channel: charge.channel ?? "unknown" }, p.user_id);
+      // The receipt in the Updates panel. A failure here must not undo or retry the payment.
+      const boost = p.type === "interview_boost";
+      await notify(p.user_id, {
+        kind: "payment",
+        title: "Payment confirmed",
+        body: boost ? `${PRICES.products.interview_boost.label}, ${formatNaira(p.amount_kobo)}. Interview prep is open for this invite.` : `${PRICES.products.job_hunt_30d.label}, ${formatNaira(p.amount_kobo)}. Tailor as many CVs as you need for ${days} days.`,
+        link: boost && p.application_id ? `/applications/${p.application_id}/shortlist` : "/pass",
+        dedupeKey: `payment:${reference}`,
+      }).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   } catch {
     // Paystack retries failed webhooks; forget this one so the retry is handled.

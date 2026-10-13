@@ -1,3 +1,9 @@
+-- Baseline 1 of 2: everything the app needs (tables, policies, functions, buckets).
+-- This is exactly what was run in the Supabase SQL editor on 13 Oct 2026, in place of the
+-- earlier numbered files. New changes go in new, later files; never edit this one.
+-- ===========================================================================
+-- From 0001_init.sql
+-- ===========================================================================
 -- Receipts MVP schema, Build pack section 4.
 -- Every user owned table carries user_id and row level security so a user can
 -- only ever read and write their own rows. Dates are stored in UTC (timestamptz).
@@ -458,3 +464,239 @@ create policy waitlist_insert on public.waitlist for insert to anon, authenticat
 -- email, provider or timestamps that the server owns.
 revoke update on public.users from authenticated;
 grant update (career_stage, target_markets, low_data_mode, age_confirmed_at, setup_completed_at) on public.users to authenticated;
+
+-- ===========================================================================
+-- From 0003_vault_interview.sql
+-- ===========================================================================
+-- Slices 1 and 2: rate limits on AI endpoints and story interview sessions.
+
+-- Fixed window rate limit per user and bucket (Build pack section 10: rate limits on
+-- every AI endpoint). Security definer so it can write the events table, which has
+-- no policies of its own. Returns true when the call is allowed.
+create table public.rate_events (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references public.users (id) on delete cascade,
+  bucket text not null,
+  at timestamptz not null default now()
+);
+create index rate_events_lookup on public.rate_events (user_id, bucket, at desc);
+alter table public.rate_events enable row level security;
+
+create or replace function public.rate_limit_hit(p_bucket text, p_max int, p_window_seconds int)
+returns boolean
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  used int;
+begin
+  if uid is null then
+    return false;
+  end if;
+  select count(*) into used from public.rate_events
+    where user_id = uid and bucket = p_bucket and at > now() - make_interval(secs => p_window_seconds);
+  if used >= p_max then
+    return false;
+  end if;
+  insert into public.rate_events (user_id, bucket) values (uid, p_bucket);
+  -- Keep the table small: drop this user's events older than a day.
+  delete from public.rate_events where user_id = uid and at < now() - interval '1 day';
+  return true;
+end $$;
+revoke all on function public.rate_limit_hit(text, int, int) from public;
+grant execute on function public.rate_limit_hit(text, int, int) to authenticated;
+
+-- Story interview: one session per role, resumable from the same question.
+create table public.interview_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  role_id uuid references public.vault_roles (id) on delete cascade,
+  turns jsonb not null default '[]'::jsonb,
+  current_question jsonb,
+  status text not null default 'active' check (status in ('active', 'finished')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index interview_sessions_user_idx on public.interview_sessions (user_id, updated_at desc);
+alter table public.interview_sessions enable row level security;
+create policy interview_sessions_select_own on public.interview_sessions for select to authenticated using (user_id = (select auth.uid()));
+create policy interview_sessions_insert_own on public.interview_sessions for insert to authenticated with check (user_id = (select auth.uid()));
+create policy interview_sessions_update_own on public.interview_sessions for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy interview_sessions_delete_own on public.interview_sessions for delete to authenticated using (user_id = (select auth.uid()));
+create trigger interview_sessions_touch before update on public.interview_sessions for each row execute function public.touch_updated_at();
+
+-- ===========================================================================
+-- From 0004_jobs_storage.sql
+-- ===========================================================================
+-- Slices 3 to 6: private file storage and job workflow columns.
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values
+  ('job-uploads', 'job-uploads', false, 8388608, array['image/jpeg', 'image/png', 'image/webp', 'application/pdf']),
+  ('cv-exports', 'cv-exports', false, 2097152, array['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+on conflict (id) do nothing;
+
+-- Each user's files live under a folder named with their user id. Signed links are
+-- made on the server and expire within 10 minutes (Build pack section 10).
+create policy "own files select" on storage.objects for select to authenticated
+  using (bucket_id in ('job-uploads', 'cv-exports') and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "own files insert" on storage.objects for insert to authenticated
+  with check (bucket_id in ('job-uploads', 'cv-exports') and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "own files delete" on storage.objects for delete to authenticated
+  using (bucket_id in ('job-uploads', 'cv-exports') and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+alter table public.jobs add column if not exists parse_status text not null default 'parsed' check (parse_status in ('parsed', 'manual'));
+alter table public.jobs add column if not exists destination_signals jsonb not null default '[]'::jsonb;
+alter table public.jobs add column if not exists reviewed_at timestamptz;
+alter table public.jobs add column if not exists state text not null default 'captured'
+  check (state in ('captured', 'reviewed', 'checked', 'saved', 'skipped', 'applying'));
+
+-- ===========================================================================
+-- From 0005_checks.sql
+-- ===========================================================================
+-- Slice 4: verdict caching and survey answers.
+
+alter table public.verdicts add column if not exists cache_key text;
+alter table public.verdicts add column if not exists line text;
+alter table public.verdicts add column if not exists forced_by_rules boolean not null default false;
+alter table public.verdicts add column if not exists overridden_at timestamptz;
+create index if not exists verdicts_job_idx on public.verdicts (job_id, created_at desc);
+create index if not exists eligibility_job_idx on public.eligibility_results (job_id, created_at desc);
+create index if not exists legitimacy_job_idx on public.legitimacy_checks (job_id, created_at desc);
+
+-- One tap research surveys (PRD research plan). Answers only, no free text.
+create table public.survey_answers (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  survey text not null check (survey in ('verdict_helpful', 'send_as_is', 'applied_anyway')),
+  answer text not null check (char_length(answer) <= 20),
+  job_id uuid references public.jobs (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+alter table public.survey_answers enable row level security;
+create policy survey_insert_own on public.survey_answers for insert to authenticated with check (user_id = (select auth.uid()));
+create policy survey_select_own on public.survey_answers for select to authenticated using (user_id = (select auth.uid()));
+
+-- ===========================================================================
+-- From 0006_pack_log.sql
+-- ===========================================================================
+-- Slice 6 and 7: application packs, the log and outcomes.
+
+alter table public.application_packs add column if not exists checklist jsonb not null default '[]'::jsonb;
+alter table public.application_packs add column if not exists portal_steps jsonb not null default '[]'::jsonb;
+alter table public.application_packs add column if not exists apply_url text;
+alter table public.applications add column if not exists check_ins_done int not null default 0;
+alter table public.applications add column if not exists schedule_kind text not null default 'private' check (schedule_kind in ('private', 'programme'));
+create index if not exists applications_checkin_idx on public.applications (status, next_check_in_at);
+create unique index if not exists applications_one_open_per_job on public.applications (job_id) where status in ('draft', 'packed');
+
+alter table public.jobs drop constraint if exists jobs_state_check;
+alter table public.jobs add constraint jobs_state_check check (state in ('captured', 'reviewed', 'checked', 'saved', 'skipped', 'applying', 'applied'));
+
+-- ===========================================================================
+-- From 0007_outcomes_shortlist_payments.sql
+-- ===========================================================================
+-- Slices 7 to 9: outcomes, Shortlist mode and payments.
+
+-- Outcomes ------------------------------------------------------------------
+alter table public.debriefs add column if not exists mode text check (mode in ('voice', 'text'));
+create index if not exists debriefs_application_idx on public.debriefs (application_id);
+
+-- No reply is set automatically 30 days after sending (Build pack section 4).
+-- Called by the scheduled job with the service role only.
+create or replace function public.mark_silent_applications(p_days int)
+returns int
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare n int;
+begin
+  with silent as (
+    update public.applications a
+       set status = 'no_response', next_check_in_at = null, updated_at = now()
+     where a.status = 'sent'
+       and a.sent_at is not null
+       and a.sent_at < now() - make_interval(days => p_days)
+    returning a.id, a.user_id
+  ), events as (
+    insert into public.outcome_events (application_id, user_id, from_status, to_status, source)
+    select id, user_id, 'sent', 'no_response', 'auto_30d' from silent
+    returning 1
+  )
+  select count(*) into n from events;
+  return n;
+end $$;
+revoke all on function public.mark_silent_applications(int) from public, anon, authenticated;
+grant execute on function public.mark_silent_applications(int) to service_role;
+
+-- Shortlist mode: one session per application.
+create unique index if not exists shortlist_one_per_application on public.shortlist_sessions (application_id);
+
+-- Payments ------------------------------------------------------------------
+-- An interview boost unlocks Shortlist mode for one invite, so it points at it.
+alter table public.passes add column if not exists application_id uuid references public.applications (id) on delete set null;
+alter table public.passes add column if not exists channel text;
+alter table public.passes add column if not exists verified_at timestamptz;
+alter table public.passes add column if not exists updated_at timestamptz not null default now();
+create index if not exists passes_user_idx on public.passes (user_id, status);
+
+-- Every Paystack webhook we accept, once. The unique key makes a repeated webhook a
+-- no op. Service role only: no policies, so nobody else can read or write it.
+create table if not exists public.payment_events (
+  id uuid primary key default gen_random_uuid(),
+  reference text not null,
+  event text not null,
+  payload_sha256 text not null,
+  received_at timestamptz not null default now(),
+  unique (reference, event)
+);
+alter table public.payment_events enable row level security;
+
+-- Activates a pass exactly once, after the webhook signature and the amount have been
+-- checked in code. Returns true only for the call that made the change.
+create or replace function public.activate_pass(p_reference text, p_amount_kobo int, p_channel text, p_days int)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  p public.passes;
+  base timestamptz;
+begin
+  select * into p from public.passes where paystack_reference = p_reference for update;
+  if not found or p.status <> 'pending' or p.amount_kobo <> p_amount_kobo then
+    return false;
+  end if;
+  if p.type = 'job_hunt_30d' then
+    -- A new pass bought before the old one ends starts when the old one ends.
+    select greatest(now(), coalesce(max(ends_at), now())) into base
+      from public.passes where user_id = p.user_id and status = 'active' and type = 'job_hunt_30d';
+    update public.passes
+       set status = 'active', channel = p_channel, verified_at = now(), starts_at = base,
+           ends_at = base + make_interval(days => p_days), updated_at = now()
+     where id = p.id;
+  else
+    update public.passes
+       set status = 'active', channel = p_channel, verified_at = now(), starts_at = now(), updated_at = now()
+     where id = p.id;
+  end if;
+  return true;
+end $$;
+revoke all on function public.activate_pass(text, int, text, int) from public, anon, authenticated;
+grant execute on function public.activate_pass(text, int, text, int) to service_role;
+
+-- ===========================================================================
+-- From 0008_hardening.sql
+-- ===========================================================================
+-- Slice 10: account deletion must remove everything in one go.
+
+-- RESTRICT is checked the moment a job, CV or pack row goes, before the cascade from
+-- users reaches the application that points at it, so deleting an account failed.
+-- NO ACTION keeps the same protection (you still can't delete a job that has an
+-- application) but checks at the end of the statement, after the cascade.
+alter table public.applications drop constraint if exists applications_job_id_fkey;
+alter table public.applications add constraint applications_job_id_fkey foreign key (job_id) references public.jobs (id) on delete no action;
+alter table public.applications drop constraint if exists applications_cv_version_id_fkey;
+alter table public.applications add constraint applications_cv_version_id_fkey foreign key (cv_version_id) references public.cv_versions (id) on delete no action;
+alter table public.applications drop constraint if exists applications_pack_id_fkey;
+alter table public.applications add constraint applications_pack_id_fkey foreign key (pack_id) references public.application_packs (id) on delete no action;

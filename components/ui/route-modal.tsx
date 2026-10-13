@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Add } from "@/components/icons";
 
 /**
@@ -12,15 +12,24 @@ import { Add } from "@/components/icons";
 export function RouteModal({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   const router = useRouter();
   const ref = useRef<HTMLDialogElement>(null);
+  // Next keeps a parallel slot's last screen on other pages, so the modal hides itself
+  // as soon as the address moves on (for example after "Check this job"). A catch all
+  // slot route would do this too, but it breaks every route outside the (app) group.
+  const path = usePathname();
+  const [openedOn] = useState(path);
+  const active = path === openedOn;
 
   useEffect(() => {
+    if (!active) return;
     const d = ref.current;
     if (d && !d.open) d.showModal();
     document.documentElement.style.overflow = "hidden";
     return () => {
       document.documentElement.style.overflow = "";
     };
-  }, []);
+  }, [active]);
+
+  if (!active) return null;
 
   return (
     <dialog

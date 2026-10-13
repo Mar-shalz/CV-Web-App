@@ -14,8 +14,7 @@
     "test:watch": "vitest",
     "test:db": "supabase test db",
     "evals": "node evals/run.ts",
-    "setup:env": "node scripts/make-env.mjs",
-    "sql:bundle": "node scripts/bundle-sql.mjs"
+    "setup:env": "node scripts/make-env.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
