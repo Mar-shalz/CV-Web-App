@@ -167,7 +167,7 @@ export async function keepItems(input: z.input<typeof keepSchema>): Promise<{ ok
     })),
   );
   if (error) return { ok: false, saved: 0, error: "We couldn't save those. Try again." };
-  revalidatePath("/vault", "layout");
+  revalidatePath("/experience", "layout");
   revalidatePath("/home");
   return { ok: true, saved: parsed.data.items.length };
 }

@@ -100,7 +100,7 @@ export function UpdatesDrawer({ checkInCount, checkIns, items }: { checkInCount:
             {checkInCount ? (
               <section aria-labelledby="answer-title">
                 <h3 id="answer-title" className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">
-                  Needs your answer
+                  Needs Your Answer
                 </h3>
                 <p className="mt-1 text-[0.8125rem] text-ink-600">Any news on these applications? Tap one answer for each.</p>
                 <div className="mt-3">{checkIns}</div>

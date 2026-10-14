@@ -14,7 +14,7 @@ export function VaultCard({ confirmed }: { confirmed: number }) {
         </span>
         <div>
           <h2 id="vault-title" className="text-lg font-semibold text-ink-900">
-            My experience
+            My Experience
           </h2>
           <p className="text-[0.8125rem] text-ink-500">{ready ? "Ready for strong CVs" : `Add ${target - confirmed} more to get started`}</p>
         </div>
@@ -28,7 +28,7 @@ export function VaultCard({ confirmed }: { confirmed: number }) {
         <span className="font-semibold text-ink-900">{confirmed}</span> confirmed {confirmed === 1 ? "item" : "items"}. Every line on your CV comes from here, so
         nothing is made up.
       </p>
-      <Link href="/vault" className="mt-3 inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline">
+      <Link href="/experience" className="mt-3 inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline">
         {ready ? "Add a recent win" : "Add your experience"}
         <ArrowRight size={16} />
       </Link>

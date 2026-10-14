@@ -242,3 +242,43 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 **D-096 Back office headings and spacing.** Page, panel and column headings use Title Case with short joining words kept small (and, of, or, the, plus a, an, to, in, on, for, by, at), and so do the menu and tab titles. Gaps between blocks went from 24px to 16px and table rows are tighter. The empty space under long pages came from the chart's screen reader table: a table ignores the 1px "visually hidden" size, so it stretched the page; it now sits in a hidden wrapper.
 
 **D-097 AI calls are logged for the back office.** Every model call now also writes a row to `ai_call_logs` (task, model, outcome, tokens, cost, time; never prompt or answer text). AI Cost and Quality shows which AI keys this server has, in the order they're tried, and the latest failed calls, so a failing CV upload can be traced to a missing key on Vercel in one look.
+
+## Founder feedback round 12 (14 Oct 2026)
+
+**D-098 Faster AI.** Measured on 14 Oct 2026 with the founder's free Gemini key: gemini-3.8-flash took up to 90 seconds for a two line answer, gemini-3.5-flash about 2 seconds with thinking off. The default strong model is now gemini-3.5-flash (`GEMINI_MODEL` still overrides). Thinking follows each task's effort: low effort tasks skip it, medium ones think briefly, lite models choose their own. A busy or retired model hands over to the next Gemini model within the same time budget.
+
+**D-099 Reading links like ChatGPT does.** Many job sites (LinkedIn and others) block apps like ours. When our own fetch is blocked or needs a login, Google opens the page for us (Gemini url_context) or searches for a public copy of the same post (google_search). The text is only used when Google actually retrieved the page or returned sources, so nothing is made up; it is untrusted job post text like a paste, and the person still checks the details on the next screen. The same reading works for "Add one you already sent".
+
+**D-100 Voice through Gemini.** The founder couldn't find a microphone because no speech provider was set, so voice was off in production. Gemini now writes down recordings (tested with a browser webm recording: exact, including "Lekki Foods" from the vocabulary hint). `SPEECH_PROVIDER=off` turns it off; the G4 benchmark still decides the long term provider. Audio is sent in the request and never stored by us. A small "Say it instead" control now sits by every achievement box (adding a role, adding an achievement) and in interview practice, and what was said lands in the box to edit before saving or checking.
+
+**D-101 /vault is now /experience.** The address matches the name people see. Old links redirect permanently.
+
+**D-102 Experience folds.** Each role is folded to its header (title, employer, dates, badges, achievement count) with a chevron; a tap anywhere on the text opens it. Roles that still need a check open by themselves.
+
+**D-103 The review page never jumps.** After importing a CV, every role stays on the page in the same order while people confirm; before, a confirmed role disappeared and the page moved under their finger.
+
+**D-104 Home step 2 is done only after a CV.** "Tailor your CV to a job" counts as done once a CV has been tailored, not when a job is added. Setup shows until the first application is sent. The fourth Home card is "Work experience": the number of places worked or served, with confirmed achievements as the hint.
+
+**D-105 A tailored CV makes an application.** When a CV is ready, the job appears under Applications as "Not sent yet" with that CV. Applications stays highlighted in the menu through every tailoring step, and each step has a back link to the one before.
+
+**D-106 Honest waiting.** Slow AI steps (reading a CV, reading a job, the fit check, writing the CV) show one coloured panel: what is happening now, a running clock, a real range ("Usually 10 to 40 seconds") and, after a minute, "Still working". The old "about 20 seconds" promise is gone.
+
+**D-107 Logging an application needs the job and the CV.** "Save this application" stays inactive until there is a job post or link and the CV file that was sent; the line above the button says what's missing. Title and employer are read from the job and can be typed to override.
+
+**D-108 Deleting an application.** People can delete an application from its page (record, check ins, prep and the logged CV file). The back office keeps only a per person count of deleted applications.
+
+**D-109 Interview prep questions.** "Tell me about yourself" is always first. Then at least ten questions: lines from the CV they sent to defend, and the questions commonly asked in that field for that level, from the model and topped up from `config/lists/interview_questions.json`. General questions are checked against the strongest lines of their CV. Every question can be answered by voice or typing, and the transcript is editable before the check.
+
+**D-110 Visits mean sessions.** A visit is counted when someone opens the app, and again only after 30 minutes away (a small beacon, not page loads), so moving between pages or refreshing never adds visits. The country comes with it (D-093).
+
+**D-111 No waitlist.** The landing page price button records an anonymous tap (a random id kept in that browser, no IP, no account) as willingness to pay, then goes to sign in; signed in people go to the pass page. The waitlist section and its back office menu item are gone; the table stays for history.
+
+**D-112 Is this job real, as a checklist.** The scam check now answers in order: does the company exist (and its official website), how long it has been around (founded year from a cited source), are the email and apply link on the company's own domain (Gmail for a big company is a warning), did the company post the job itself (its careers page or its LinkedIn page), any public warnings, are the contacts in scam reports. Each line says passed, failed or "Couldn't check" with the reason. The company's own domain found by the search decides the domain check when the post doesn't claim one. Still never "safe".
+
+**D-113 A separate "Is this job real?" check.** `/jobs/real` runs only the scam check on a pasted post, link or screenshot, free for everyone, with a button from Home and from the tailoring screen. The result offers "Tailor my CV to this job".
+
+**D-114 Pricing: a bundle with an allowance, not points.** Founder asked whether to sell points so heavy use doesn't cost more than it earns. Recommendation, built: keep the one simple pass, but say what it includes in user terms, the way data bundles work in Nigeria (amount plus validity). The ₦5,000 pass includes 30 tailored CVs over 30 days (the step that costs money); a CV top-up adds 10 more for ₦1,500 and lasts until the pass ends. Everything else stays free (experience, job checks including "Is this job real?", tracking). Abstract points were not used: people can't tell what a point buys, they hoard them, and a CV tool should be used, not rationed. The numbers are in `config/prices.json` for the founder to confirm. CVs used are counted from `cv_versions` since the current pass started, so no new counter is needed.
+
+**D-115 Back office numbers explained.** Overview cards use the same design as the app's Home. Every key number has "How it's counted", and the numbers are now computed from real data: price taps, experience ready on day one, first pack within 24 hours, trial to pass, invites per active seeker, AI cost per active user, flagged lines resolved, applications sent.
+
+**D-116 Title Case headings in the app.** Page and section headings, modal titles, menu items and browser tabs in the app use Title Case (design/voice.md rule 13). Buttons, labels and body text stay in sentence case.

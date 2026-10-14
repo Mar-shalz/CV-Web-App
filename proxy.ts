@@ -3,7 +3,7 @@ import { updateSession } from "@/lib/supabase/proxy";
 import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { buildCsp, newNonce } from "@/lib/csp";
 
-const APP_PREFIXES = ["/home", "/jobs", "/applications", "/vault", "/settings", "/onboarding", "/pass", "/admin"];
+const APP_PREFIXES = ["/home", "/jobs", "/applications", "/experience", "/settings", "/onboarding", "/pass", "/admin"];
 const AUTH_PREFIXES = ["/sign-in"];
 
 export async function proxy(incoming: NextRequest) {
@@ -40,7 +40,7 @@ export async function proxy(incoming: NextRequest) {
   }
   if (user && AUTH_PREFIXES.some((p) => path.startsWith(p)) && !request.nextUrl.searchParams.has("signed_out")) {
     const url = request.nextUrl.clone();
-    url.pathname = request.nextUrl.searchParams.get("to") === "admin" ? "/admin" : "/home";
+    url.pathname = request.nextUrl.searchParams.get("to") === "admin" ? "/admin" : request.nextUrl.searchParams.get("from") === "price" ? "/pass" : "/home";
     url.search = "";
     return NextResponse.redirect(url);
   }

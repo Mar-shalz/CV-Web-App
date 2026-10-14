@@ -15,7 +15,7 @@ export type HomeApplication = {
 };
 
 export type HomeData = {
-  stats: { sent: number; invites: number; awaiting: number; vaultConfirmed: number };
+  stats: { sent: number; invites: number; awaiting: number; vaultConfirmed: number; workRoles: number; cvs: number };
   checkIns: HomeApplication[];
   recent: HomeApplication[];
 };
@@ -28,7 +28,7 @@ function daysAgo(n: number) {
 
 // Sample data for local design review only (preview mode, never production).
 const SAMPLE: HomeData = {
-  stats: { sent: 6, invites: 1, awaiting: 4, vaultConfirmed: 8 },
+  stats: { sent: 6, invites: 1, awaiting: 4, vaultConfirmed: 8, workRoles: 4, cvs: 7 },
   checkIns: [
     { id: "s1", title: "Graduate Trainee", employer: "Northbridge Bank", status: "sent", sentAt: daysAgo(8), channel: "portal" },
     { id: "s2", title: "Accounts Officer", employer: "Lekki Foods Manufacturing", status: "sent", sentAt: daysAgo(7), channel: "email" },
@@ -42,7 +42,7 @@ const SAMPLE: HomeData = {
   ],
 };
 
-const EMPTY: HomeData = { stats: { sent: 0, invites: 0, awaiting: 0, vaultConfirmed: 0 }, checkIns: [], recent: [] };
+const EMPTY: HomeData = { stats: { sent: 0, invites: 0, awaiting: 0, vaultConfirmed: 0, workRoles: 0, cvs: 0 }, checkIns: [], recent: [] };
 
 type Row = {
   id: string;
@@ -71,7 +71,7 @@ export async function getHomeData(viewer: Viewer, opts: { previewEmpty?: boolean
 
   await closeSilent(viewer);
   const supabase = await createClient();
-  const [{ data: apps }, { count: vaultConfirmed }] = await Promise.all([
+  const [{ data: apps }, { count: vaultConfirmed }, { count: workRoles }, { count: cvs }] = await Promise.all([
     supabase
       .from("applications")
       .select("id, status, sent_at, next_check_in_at, job_snapshot, jobs(parsed), application_packs(channel)")
@@ -79,6 +79,9 @@ export async function getHomeData(viewer: Viewer, opts: { previewEmpty?: boolean
       .order("created_at", { ascending: false })
       .limit(50),
     supabase.from("vault_items").select("id", { count: "exact", head: true }).eq("user_id", viewer.id).not("confirmed_at", "is", null),
+    // Places they worked or served: what "work experience" means on Home.
+    supabase.from("vault_roles").select("id", { count: "exact", head: true }).eq("user_id", viewer.id).in("kind", ["job", "internship_siwes", "nysc_ppa", "volunteer"]),
+    supabase.from("cv_versions").select("id", { count: "exact", head: true }).eq("user_id", viewer.id),
   ]);
 
   const rows = (apps ?? []) as unknown as Row[];
@@ -91,6 +94,8 @@ export async function getHomeData(viewer: Viewer, opts: { previewEmpty?: boolean
       invites: rows.filter((r) => INVITE_STATUSES.includes(r.status)).length,
       awaiting: rows.filter((r) => r.status === "sent").length,
       vaultConfirmed: vaultConfirmed ?? 0,
+      workRoles: workRoles ?? 0,
+      cvs: cvs ?? 0,
     },
     checkIns: rows
       // Only applications sent in the last 30 days that are due a check in.

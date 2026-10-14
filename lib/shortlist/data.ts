@@ -8,7 +8,7 @@ import { getCvById } from "@/lib/cv/data";
 import { track } from "@/lib/analytics/server";
 import type { ApplicationView } from "@/lib/applications/data";
 import type { InviteDetails } from "@/lib/applications/outcome";
-import { cvLines, linkQuestions, fallbackQuestions, answerContradictions, type ShortlistQuestion, type CvLine } from "./questions";
+import { cvLines, linkQuestions, fallbackQuestions, completeQuestions, answerContradictions, type ShortlistQuestion, type CvLine } from "./questions";
 import { daysUntil } from "./logistics";
 import { runResearch } from "@/lib/ai/research";
 
@@ -91,20 +91,25 @@ export async function updateShortlist(viewer: Viewer, sessionId: string, patch: 
 
 /** Likely questions from the job snapshot and the CV sent, each linked to a line in that CV. */
 export async function generateQuestions(viewer: Viewer, app: ApplicationView, view: ShortlistView): Promise<ShortlistQuestion[]> {
-  if (!view.lines.length) return [];
-  if (viewer.preview) return fallbackQuestions(view.lines);
+  // Logged applications (CV made elsewhere) have no CV lines: standard questions still work.
+  if (viewer.preview || !view.lines.length) {
+    const questions = fallbackQuestions(view.lines);
+    if (!viewer.preview) await updateShortlist(viewer, view.id, { questions });
+    return questions;
+  }
   const parsed = app.snapshot?.parsed;
   const res = await runTask(
     "shortlist_questions",
     {
-      job: { title: app.title, employer: app.employer, requirements: (parsed?.requirements ?? []).map((r) => r.text).slice(0, 20), post: (app.snapshot?.rawText ?? "").slice(0, 8000) },
+      job: { title: app.title, employer: app.employer, level: parsed?.experience_level ?? undefined, requirements: (parsed?.requirements ?? []).map((r) => r.text).slice(0, 20), post: (app.snapshot?.rawText ?? "").slice(0, 8000) },
       bullets: view.lines.slice(0, 40).map((l) => ({ id: l.id, role: l.role, text: l.text })),
       format: view.invite.format,
     },
     { userId: viewer.id },
   );
   const linked = res.ok ? linkQuestions(res.data.questions, view.lines).filter((q) => !lintCopy(q.question).length) : [];
-  const questions = linked.length >= 3 ? linked : fallbackQuestions(view.lines);
+  // Opening first, then the model's questions, topped up to at least MIN_QUESTIONS.
+  const questions = completeQuestions(linked, view.lines);
   await updateShortlist(viewer, view.id, { questions });
   return questions;
 }
@@ -112,8 +117,10 @@ export async function generateQuestions(viewer: Viewer, app: ApplicationView, vi
 /** One drill answer: code checks numbers against the CV line, the model adds the rest. */
 export async function drillAnswer(viewer: Viewer, view: ShortlistView, questionId: string, answer: string, mode: "voice" | "text"): Promise<DrillAttempt | { error: string }> {
   const q = view.questions.find((x) => x.id === questionId);
-  const line = q ? view.lines.find((l) => l.id === q.bulletId) : null;
-  if (!q || !line) return { error: "We couldn't find that question. Refresh and try again." };
+  if (!q) return { error: "We couldn't find that question. Refresh and try again." };
+  const line = q.bulletId ? (view.lines.find((l) => l.id === q.bulletId) ?? null) : null;
+  // General questions are checked against their strongest CV lines instead of one line.
+  const context = line ? [line] : [...view.lines].sort((a, b) => Number(/\d/.test(b.text)) - Number(/\d/.test(a.text))).slice(0, 6);
   const contradictions = answerContradictions(answer, line);
 
   let attempt: DrillAttempt;
@@ -124,12 +131,22 @@ export async function drillAnswer(viewer: Viewer, view: ShortlistView, questionI
       mode,
       matches: contradictions.length ? "no" : "yes",
       issues: contradictions.map((detail) => ({ type: "contradicts_cv", detail })),
-      points: ["Set the scene in one line: where you were and what the job needed", "Say what you did, in your own words", `End with the result from your CV: "${line.text}"`],
+      points: line ? ["Set the scene in one line: where you were and what the job needed", "Say what you did, in your own words", `End with the result from your CV: "${line.text}"`] : ["Say who you are now in one line", "Give your strongest proof for this job, with a real number", "Say why this role, in about a minute in all"],
       didWell: "You answered the question they asked.",
       at: new Date().toISOString(),
     };
   } else {
-    const res = await runTask("drill_feedback", { question: q.question, answer, bullet: { text: line.text, facts: [line.original, line.sourceQuote].filter((v): v is string => Boolean(v)) } }, { userId: viewer.id });
+    const res = await runTask(
+      "drill_feedback",
+      {
+        question: q.question,
+        answer,
+        bullet: line
+          ? { text: line.text, facts: [line.original, line.sourceQuote].filter((v): v is string => Boolean(v)) }
+          : { text: "General question: no single CV line. Their strongest CV lines are in their notes.", facts: context.map((l) => l.text).slice(0, 8) },
+      },
+      { userId: viewer.id },
+    );
     const modelIssues = res.ok ? res.data.issues : [];
     const points = res.ok ? res.data.stronger_points.filter((p) => !lintCopy(p).length) : ["Say where you were and what the job needed", "Say what you did", "End with the result exactly as it is on your CV"];
     const matches = contradictions.length ? "no" : res.ok ? res.data.matches_cv : "partly";

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { LegitimacyView } from "@/lib/legitimacy";
-import { ShieldSearch, ShieldTick, TickCircle, Danger, Warning2, InfoCircle, ExportSquare } from "@/components/icons";
+import type { LegitimacyCheck, LegitimacyView } from "@/lib/legitimacy";
+import { ShieldSearch, ShieldTick, TickCircle, Danger, Warning2, InfoCircle, ExportSquare, CloseCircle, MinusCircle } from "@/components/icons";
 
 const STATE = {
-  verified: { tone: "bg-proof-50 text-proof-700", icon: ShieldTick, title: "Verified on an official channel" },
-  unverified: { tone: "bg-care-50 text-care-700", icon: Warning2, title: "Couldn't verify. Be careful." },
-  red_flags: { tone: "bg-flag-50 text-flag-700", icon: Danger, title: "Red flags found" },
+  verified: { tone: "bg-proof-50 text-proof-700 ring-proof-100", icon: ShieldTick, title: "Looks genuine on the checks we could run" },
+  unverified: { tone: "bg-care-50 text-care-700 ring-care-100", icon: Warning2, title: "We couldn't confirm it. Be careful." },
+  red_flags: { tone: "bg-flag-50 text-flag-700 ring-flag-100", icon: Danger, title: "Red flags found" },
 } as const;
 
 const SIGNAL_ICON = {
@@ -17,11 +17,51 @@ const SIGNAL_ICON = {
   ok: { icon: TickCircle, cls: "text-proof-600" },
 } as const;
 
+const CHECK_ICON = {
+  pass: { icon: TickCircle, cls: "text-proof-600", word: "Yes" },
+  fail: { icon: CloseCircle, cls: "text-flag-600", word: "No" },
+  unknown: { icon: MinusCircle, cls: "text-ink-400", word: "Couldn't check" },
+} as const;
+
+function host(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function CheckRow({ c, loading }: { c: LegitimacyCheck; loading: boolean }) {
+  const pending = loading && c.status === "unknown";
+  const ic = CHECK_ICON[c.status];
+  const Icon = ic.icon;
+  return (
+    <li className="flex animate-rise items-start gap-3 py-2.5">
+      {pending ? <span className="mt-0.5 size-[18px] shrink-0 animate-spin rounded-full border-2 border-brand-500 border-r-transparent" aria-hidden="true" /> : <Icon size={20} variant="bulk" className={`mt-px shrink-0 ${ic.cls}`} />}
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-baseline justify-between gap-x-2">
+          <span className="text-[0.875rem] font-semibold text-ink-900">{c.label}</span>
+          <span className={`text-xs font-semibold ${pending ? "text-brand-700" : ic.cls}`}>{pending ? "Checking" : ic.word}</span>
+        </span>
+        {!pending ? <span className="mt-0.5 block text-[0.8125rem] leading-5 text-ink-600">{c.detail}</span> : null}
+        {!pending && c.sourceUrl ? (
+          <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="mt-0.5 inline-flex items-center gap-1 break-all text-xs font-medium text-brand-700 hover:underline">
+            {host(c.sourceUrl)}
+            <ExportSquare size={12} />
+            <span className="sr-only">(opens in a new tab)</span>
+          </a>
+        ) : null}
+      </span>
+    </li>
+  );
+}
+
 /**
- * The scam check: Layer 1 rules show instantly; the live lookup streams in and
- * replaces them. Never says a job is "safe".
+ * Is this job real? Instant rule checks show first; the live lookup (company, its age,
+ * its website and email, where the job was posted, warnings) fills a checklist that
+ * says what passed, what didn't and what we couldn't check. Never says "safe".
  */
-export function ScamCheck({ jobId, initial }: { jobId: string; initial: LegitimacyView }) {
+export function ScamCheck({ jobId, initial, large = false }: { jobId: string; initial: LegitimacyView; large?: boolean }) {
   const [view, setView] = useState<LegitimacyView>(initial);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -44,54 +84,58 @@ export function ScamCheck({ jobId, initial }: { jobId: string; initial: Legitima
 
   const s = STATE[view.state];
   const Icon = s.icon;
-  const signals = view.signals.filter((x) => x.severity !== "info" || x.id === "L1-00");
+  // Rule findings from the post itself (fees, WhatsApp only, and so on).
+  const flags = view.signals.filter((x) => x.id.startsWith("L1") && x.severity !== "info");
 
   return (
-    <section aria-labelledby="scam-title" aria-busy={loading} className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
+    <section aria-labelledby="scam-title" aria-busy={loading} className={`rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card ${large ? "p-5 lg:p-6" : "p-5"}`}>
       <h2 id="scam-title" className="flex items-center gap-2 text-[0.9375rem] font-semibold text-ink-900">
         <ShieldSearch size={20} variant="bulk" className="text-brand-600" />
-        Is this job genuine?
+        Is this job real?
       </h2>
       <div aria-live="polite">
-        <p key={view.state} className={`mt-4 flex animate-pop items-center gap-2.5 rounded-2xl px-3.5 py-3 text-sm font-semibold ${s.tone}`}>
-          <Icon size={22} variant="bulk" />
-          {loading && view.state !== "red_flags" ? "Checking official sources" : s.title}
-          {loading ? <span className="ml-auto size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" /> : null}
-        </p>
         {loading && view.state !== "red_flags" ? (
-          <div className="mt-3 space-y-2">
-            <div className="skeleton h-4 w-11/12" />
-            <div className="skeleton h-4 w-3/4" />
-          </div>
+          <p className="mt-4 flex items-center gap-2.5 rounded-2xl bg-brand-50 px-3.5 py-3 text-sm font-semibold text-brand-800 ring-1 ring-brand-100">
+            <span className="size-5 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />
+            Checking the company and where this job was posted. Usually 15 to 45 seconds.
+          </p>
         ) : (
-          <p className="mt-3 text-[0.8125rem] leading-5 text-ink-700">{view.headline}</p>
+          <>
+            <p key={view.state} className={`mt-4 flex animate-pop items-center gap-2.5 rounded-2xl px-3.5 py-3 text-sm font-semibold ring-1 ${s.tone}`}>
+              <Icon size={22} variant="bulk" />
+              {s.title}
+            </p>
+            <p className="mt-3 text-[0.8125rem] leading-5 text-ink-700">{view.headline}</p>
+          </>
         )}
-        {signals.length ? (
-          <ul className="mt-3 space-y-2.5">
-            {signals.map((sig) => {
+
+        {flags.length ? (
+          <ul className="mt-3 space-y-2">
+            {flags.map((sig) => {
               const si = SIGNAL_ICON[sig.severity];
               const SI = si.icon;
               return (
-                <li key={`${sig.id}-${sig.text}`} className="flex animate-rise items-start gap-2.5 text-[0.8125rem] leading-5 text-ink-700">
+                <li key={`${sig.id}-${sig.text}`} className="flex items-start gap-2.5 rounded-xl bg-ink-50 p-2.5 text-[0.8125rem] leading-5 text-ink-800">
                   <SI size={18} variant="bulk" className={`mt-px shrink-0 ${si.cls}`} />
                   <span className="min-w-0">
                     {sig.text}
                     {sig.evidence ? <span className="mt-0.5 block text-xs italic text-ink-500">&ldquo;{sig.evidence}&rdquo;</span> : null}
-                    {sig.sourceUrl ? (
-                      <a href={sig.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="mt-0.5 inline-flex items-center gap-1 break-all text-xs font-medium text-brand-700 hover:underline">
-                        {new URL(sig.sourceUrl).hostname.replace(/^www\./, "")}
-                        <ExportSquare size={12} />
-                        <span className="sr-only">(opens in a new tab)</span>
-                      </a>
-                    ) : null}
                   </span>
                 </li>
               );
             })}
           </ul>
         ) : null}
-        {failed && !loading ? <p className="mt-3 text-xs text-ink-500">The live check couldn&apos;t finish. The checks above still apply.</p> : null}
-        <p className="mt-4 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">We describe what we found. We can&apos;t prove a job is real, so never pay to apply or share your BVN.</p>
+
+        <h3 className="mt-4 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">What We Checked</h3>
+        <ul className="mt-1 divide-y divide-ink-100">
+          {view.checks.map((c) => (
+            <CheckRow key={c.key} c={c} loading={loading} />
+          ))}
+        </ul>
+
+        {failed && !loading ? <p className="mt-2 text-xs text-ink-500">The live check couldn&apos;t finish. Try again later; the checks above still apply.</p> : null}
+        <p className="mt-3 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">We describe what we found online. We can&apos;t prove a job is real, so never pay to apply and never share your BVN or bank PIN.</p>
       </div>
     </section>
   );

@@ -34,7 +34,10 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const ready = title.trim().length >= 2 && employer.trim().length >= 2 && Boolean(sentOn);
+  // Saving needs the job (post or link) and the exact CV that went; title and employer are read from the job.
+  const hasJob = post.trim().length >= 80 || /^https?:\/\/\S+\.\S+/.test(link.trim());
+  const ready = hasJob && Boolean(file) && Boolean(sentOn);
+  const missing = [!hasJob ? "the job post or its link" : null, !file ? "the CV you sent" : null].filter(Boolean);
 
   function pick(f: File | null | undefined) {
     if (!f) return;
@@ -73,7 +76,7 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
       const res = await fetch("/api/applications/log", { method: "POST", body });
       const data = (await res.json()) as { ok: boolean; applicationId?: string; error?: string };
       if (!data.ok || !data.applicationId) {
-        setError(data.error ?? "Something went wrong. Try again.");
+        setError(data.error ?? "That didn't work on our side. Try again in a moment.");
         return;
       }
       if (inModal) router.back();
@@ -100,26 +103,15 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
         </p>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block space-y-1.5">
-          <span className="text-sm font-semibold text-ink-900">Job title</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="For example Graduate Trainee" />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-semibold text-ink-900">Employer</span>
-          <input value={employer} onChange={(e) => setEmployer(e.target.value)} className={inputClass} placeholder="For example Northbridge Bank" />
-        </label>
-      </div>
-
       <label className="block space-y-1.5">
         <span className="text-sm font-semibold text-ink-900">
-          The job post <span className="font-normal text-ink-500">(paste it if you can)</span>
+          The job post <span className="font-normal text-ink-500">(paste it, or add the link below)</span>
         </span>
         <textarea value={post} onChange={(e) => setPost(e.target.value)} rows={4} className={`${inputClass} resize-y py-3 leading-6`} placeholder="Paste the job description. We keep a copy, even if the advert is taken down, and use it for interview prep." />
       </label>
       <label className="block space-y-1.5">
         <span className="text-sm font-semibold text-ink-900">
-          Link to the job <span className="font-normal text-ink-500">(optional)</span>
+          Or the link to the job <span className="font-normal text-ink-500">(we read the post from it)</span>
         </span>
         <input value={link} onChange={(e) => setLink(e.target.value)} type="url" inputMode="url" className={inputClass} placeholder="https://" />
       </label>
@@ -173,6 +165,21 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block space-y-1.5">
+          <span className="text-sm font-semibold text-ink-900">
+            Job title <span className="font-normal text-ink-500">(optional)</span>
+          </span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="We read it from the job" />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-sm font-semibold text-ink-900">
+            Employer <span className="font-normal text-ink-500">(optional)</span>
+          </span>
+          <input value={employer} onChange={(e) => setEmployer(e.target.value)} className={inputClass} placeholder="We read it from the job" />
+        </label>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block space-y-1.5">
           <span className="text-sm font-semibold text-ink-900">The day you sent it</span>
           <input type="date" value={sentOn} max={today()} onChange={(e) => setSentOn(e.target.value)} className={inputClass} />
         </label>
@@ -189,8 +196,9 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
         </fieldset>
       </div>
 
+      {!ready && missing.length ? <p className="text-[0.8125rem] text-ink-600">To save, add {missing.join(" and ")}.</p> : null}
       <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={!ready || busy} aria-busy={busy || undefined}>
-        {busy ? "Saving…" : "Save this application"}
+        {busy ? (link.trim() && post.trim().length < 80 ? "Reading the job and saving…" : "Saving…") : "Save this application"}
         {!busy ? <ArrowRight size={20} /> : null}
       </Button>
     </form>

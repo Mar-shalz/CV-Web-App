@@ -10,6 +10,7 @@ import { LIMITS } from "@/lib/config";
 import { Field, FieldError, inputClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/auth/form-error";
+import { WorkingNotice } from "@/components/ui/working-notice";
 
 type Mode = "paste" | "file" | "link" | "screenshot";
 
@@ -25,7 +26,7 @@ const DRAFT_KEY = "capture-draft-v1";
 
 const STEPS = ["Reading the job", "Finding the requirements", "Checking how to apply"];
 
-export function CaptureForm({ initialMode = "paste", initialError }: { initialMode?: Mode; initialError?: string }) {
+export function CaptureForm({ initialMode = "paste", initialError, purpose = "tailor" }: { initialMode?: Mode; initialError?: string; purpose?: "tailor" | "real" }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [error, setError] = useState<string | undefined>(initialError);
@@ -97,7 +98,7 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
       const res = await fetch("/api/jobs/capture", { method: "POST", body });
       const data = (await res.json()) as { ok: boolean; jobId?: string; error?: string; fallback?: Mode };
       if (!data.ok || !data.jobId) {
-        setError(data.error ?? "Something went wrong. Try again.");
+        setError(data.error ?? "That didn't work on our side. Try again in a moment.");
         // A link behind a login: move to paste or screenshot without losing anything.
         if (data.fallback && mode === "link") setMode(data.fallback);
         return;
@@ -105,7 +106,7 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
       try {
         localStorage.removeItem(DRAFT_KEY);
       } catch {}
-      router.push(`/jobs/${data.jobId}`);
+      router.push(purpose === "real" ? `/jobs/${data.jobId}/real` : `/jobs/${data.jobId}`);
     } catch {
       setError("You seem to be offline. Your text is saved on this phone; try again when you're connected.");
     } finally {
@@ -278,9 +279,10 @@ export function CaptureForm({ initialMode = "paste", initialError }: { initialMo
         ) : null}
       </div>
 
+      {busy ? <WorkingNotice compact title="Reading the Job" steps={["Opening the job", "Finding what they ask for", "Checking how to apply"]} estimate="Usually 5 to 30 seconds. Links from sites like LinkedIn take longer" stepSeconds={6} /> : null}
       <div className="rounded-2xl bg-ink-50 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
         <p className="text-[0.8125rem] leading-5 text-ink-600">
-          Next, we check if you qualify and if the job looks genuine. <span className="font-semibold text-ink-900">Free, even after your trial.</span>
+          {purpose === "real" ? "Next, we check the company, its website and email, and where this job was posted." : "Next, we check if you qualify and if the job looks genuine."} <span className="font-semibold text-ink-900">Free, even after your trial.</span>
         </p>
         <Button type="submit" size="lg" className="mt-3 w-full shrink-0 sm:mt-0 sm:w-auto" aria-disabled={!ready || busy || undefined} aria-busy={busy || undefined}>
           {busy ? (

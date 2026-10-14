@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, DocumentUpload, Magicpen, TickCircle, Warning2, ShieldTick } from "@/components/icons";
+import { ArrowRight, DocumentUpload, Magicpen, TickCircle, Warning2, ShieldTick, ShieldSearch } from "@/components/icons";
 
 const STEPS = ["Add the job description", "See if you qualify", "Get your tailored CV and email"];
 
@@ -18,7 +18,7 @@ export function TailorHero({ trialReady }: { trialReady: boolean }) {
             {trialReady ? "Your free trial starts here" : "Tailor a CV in about 4 minutes"}
           </p>
           <h2 id="tailor-title" className="mt-4 max-w-xl font-display text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.03em] lg:text-[2.5rem]">
-            Found a job you like? Let&apos;s tailor your CV to it.
+            Found a Job You Like? Let&apos;s Tailor Your CV to It.
           </h2>
           <p className="mt-3 max-w-xl text-[0.9375rem] leading-6 text-white/85 lg:text-base lg:leading-7">
             Add the job description. We check you qualify and that the job looks genuine, then rewrite your CV to match, using only things you
@@ -40,6 +40,12 @@ export function TailorHero({ trialReady }: { trialReady: boolean }) {
               Tailor my CV
               <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
             </span>
+          </Link>
+
+          <Link href="/jobs/real" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl px-1 text-sm font-semibold text-white/90 underline-offset-4 transition-colors hover:text-white hover:underline">
+            <ShieldSearch size={18} variant="bulk" />
+            Not sure a job is real? Check it first, free
+            <ArrowRight size={16} />
           </Link>
 
           <ol className="mt-5 flex flex-col gap-2 text-[0.8125rem] text-white/90 sm:flex-row sm:flex-wrap sm:gap-x-6" aria-label="How it works">

@@ -31,7 +31,7 @@ function prettyDate(d: string) {
 /** Where it stands (screen 18): paste their reply and we read it, or tap the update yourself. */
 export function StatusUpdate({ applicationId, next }: { applicationId: string; next: readonly ApplicationStatus[] }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"paste" | "tap">("paste");
+  const [mode, setMode] = useState<"paste" | "tap">("tap");
   const [message, setMessage] = useState("");
   const [suggestion, setSuggestion] = useState<OutcomeSuggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,12 +73,12 @@ export function StatusUpdate({ applicationId, next }: { applicationId: string; n
   return (
     <section aria-labelledby="update-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
       <h2 id="update-title" className="text-[0.9375rem] font-semibold text-ink-900">
-        Heard back?
+        Heard Back?
       </h2>
-      <p className="mt-1 text-[0.8125rem] leading-5 text-ink-600">Paste their email or SMS and we&apos;ll read it, or choose the update yourself.</p>
+      <p className="mt-1 text-[0.8125rem] leading-5 text-ink-600">Choose what happened, or paste their email or SMS and we&apos;ll read it for you.</p>
 
       <div role="tablist" aria-label="How to update" className="mt-4 grid grid-cols-2 gap-1 rounded-2xl bg-ink-75 p-1">
-        {(["paste", "tap"] as const).map((m) => (
+        {(["tap", "paste"] as const).map((m) => (
           <button
             key={m}
             role="tab"

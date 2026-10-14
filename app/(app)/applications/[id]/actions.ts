@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { getViewer } from "@/lib/auth/viewer";
 import { getApplication } from "@/lib/applications/data";
@@ -60,7 +63,7 @@ export async function confirmFromMessage(applicationId: string, input: { to: str
   const viewer = await getViewer();
   if (!viewer) return { ok: false, error: "Please sign in again." };
   const parsed = confirmSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Something went wrong. Try again." };
+  if (!parsed.success) return { ok: false, error: "That didn't work on our side. Try again in a moment." };
   const { to, evidence, source, invite } = parsed.data;
   if (viewer.preview) return { ok: true, shortlist: opensShortlist(to) };
   const res = await changeStatus(viewer, applicationId, to, { source, evidence, verified: Boolean(evidence) });
@@ -68,4 +71,30 @@ export async function confirmFromMessage(applicationId: string, input: { to: str
   if (invite && (to === "interview" || to === "second_interview" || to === "assessment")) await saveInvite(viewer, applicationId, invite);
   refresh(applicationId);
   return { ok: true, shortlist: opensShortlist(to) || to === "second_interview" };
+}
+
+/**
+ * Deletes an application for good: its record, pack, prep and the CV file they logged.
+ * The back office keeps only a count of deleted applications (D-108).
+ */
+export async function deleteApplication(applicationId: string): Promise<{ ok: false; error: string } | void> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  if (viewer.preview) redirect("/applications?deleted=1");
+  const app = await getApplication(viewer, applicationId);
+  if (!app) return { ok: false, error: "We couldn't find this application." };
+  const supabase = await createClient();
+  const { data: row } = await supabase.from("applications").select("*").eq("id", app.id).eq("user_id", viewer.id).maybeSingle();
+  const file = (row as { external_cv_path?: string | null } | null)?.external_cv_path;
+  if (file) await supabase.storage.from("cv-exports").remove([file]);
+  const { error } = await supabase.from("applications").delete().eq("id", app.id).eq("user_id", viewer.id);
+  if (error) return { ok: false, error: "We couldn't delete it just now. Try again." };
+  try {
+    await createAdminClient().rpc("count_deleted_application", { p_user: viewer.id });
+  } catch {
+    // The count is for the back office only; never block the delete on it.
+  }
+  revalidatePath("/applications");
+  revalidatePath("/home");
+  redirect("/applications?deleted=1");
 }

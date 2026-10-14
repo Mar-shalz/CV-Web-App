@@ -1,6 +1,6 @@
 import "server-only";
 import { chainProvider } from "./chain";
-import { consoleLogger } from "./log";
+import { logAiCall } from "./index";
 import { costUsd, PRICING_VERSION } from "./cost";
 import { systemPrompt } from "./prompt";
 import { ProviderError, type ResearchSource } from "./provider";
@@ -14,18 +14,19 @@ export type ResearchResult = { ok: true; notes: string; sources: ResearchSource[
  * free text notes for the structuring task and the sources the search tool really
  * returned. Logged like every other model call.
  */
-export async function runResearch(input: { name: string; model: AiModel; user: string; maxSearches: number; userId?: string }): Promise<ResearchResult> {
+export async function runResearch(input: { name: string; model: AiModel; user: string; maxSearches: number; userId?: string; promptVersion?: `v${number}` }): Promise<ResearchResult> {
   const opts = process.env.AI_BUDGET_MODE === "haiku" ? { ...input, model: "claude-haiku-5-5" as const, maxSearches: Math.min(input.maxSearches, 2) } : input;
-  const sys = systemPrompt({ name: opts.name, promptVersion: "v1" });
+  const version: `v${number}` = opts.promptVersion ?? "v1";
+  const sys = systemPrompt({ name: opts.name, promptVersion: version });
   const started = Date.now();
   if (!chainProvider.research) return { ok: false };
   try {
     const res = await chainProvider.research({ model: opts.model, system: sys.text, user: opts.user, maxTokens: 6000, timeoutMs: 45_000, maxSearches: opts.maxSearches });
-    consoleLogger({
+    logAiCall({
       event: "ai_call",
       task: opts.name,
       model: opts.model,
-      prompt_version: "v1",
+      prompt_version: version,
       prompt_hash: sys.hash,
       pricing_version: PRICING_VERSION,
       attempt: 1,
@@ -43,11 +44,11 @@ export async function runResearch(input: { name: string; model: AiModel; user: s
     return { ok: true, notes: res.notes.slice(0, 12_000), sources: res.sources.slice(0, 30), searches: res.searches };
   } catch (error) {
     const kind = error instanceof ProviderError ? error.kind : "fatal";
-    consoleLogger({
+    logAiCall({
       event: "ai_call",
       task: opts.name,
       model: opts.model,
-      prompt_version: "v1",
+      prompt_version: version,
       prompt_hash: sys.hash,
       pricing_version: PRICING_VERSION,
       attempt: 1,

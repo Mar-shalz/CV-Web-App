@@ -41,7 +41,7 @@ export default async function PaymentResultPage({ searchParams }: { searchParams
           <span className="relative mx-auto grid size-20 place-items-center rounded-full bg-proof-600 text-white shadow-raised">
             <TickCircle size={44} variant="bulk" />
           </span>
-          <h1 className="relative mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Payment confirmed</h1>
+          <h1 className="relative mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Payment Confirmed</h1>
           <p className="relative mt-2 text-[0.9375rem] leading-6 text-ink-600">
             {label}, {formatNaira(v.amount)}.{v.ends ? ` Active until ${formatDate(v.ends)}.` : " Interview prep is unlocked for this invite."}
           </p>
@@ -66,7 +66,7 @@ export default async function PaymentResultPage({ searchParams }: { searchParams
             <span aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600 [animation-duration:1.4s]" />
             <Clock size={34} variant="bulk" />
           </span>
-          <h1 className="mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Confirming your payment</h1>
+          <h1 className="mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Confirming Your Payment</h1>
           <p className="mt-2 text-[0.9375rem] leading-6 text-ink-600">Card payments confirm in seconds. Bank transfers and USSD can take a few minutes. This page updates by itself.</p>
           <p className="mt-2 text-sm text-ink-500">You can leave this page. Your pass switches on as soon as Paystack confirms.</p>
           <AutoRefresh />

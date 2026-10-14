@@ -213,6 +213,13 @@ body {
   padding-bottom: calc(var(--tooth) + 4px);
 }
 
+/* Example text in empty fields is lighter than typed text, so a field never looks filled in. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-ink-400);
+  opacity: 1;
+}
+
 /* Loading placeholder */
 .skeleton {
   background: linear-gradient(90deg, var(--color-ink-100) 0%, var(--color-ink-50) 50%, var(--color-ink-100) 100%);

@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { ArrowRight, TickCircle, Briefcase, Magicpen, Send2, Lock1 } from "@/components/icons";
 
 const STEPS = [
-  { href: "/vault", icon: Briefcase, title: "Add your experience", body: "Upload your old CV, even a photo of it, or answer a few quick questions." },
+  { href: "/experience", icon: Briefcase, title: "Add your experience", body: "Upload your old CV, even a photo of it, or answer a few quick questions." },
   { href: "/jobs/new", icon: Magicpen, title: "Tailor your CV to a job", body: "Add a job description. We check if you qualify, then rewrite your CV to match." },
   { href: "/applications", icon: Send2, title: "Send your application", body: "We prepare the CV and the exact email. You send it from your own phone." },
 ];
@@ -12,7 +12,7 @@ export function GettingStarted({ doneUpTo }: { doneUpTo: number }) {
   return (
     <section aria-labelledby="start-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-6">
       <h2 id="start-title" className="text-lg font-semibold text-ink-900">
-        Get set up in about 8 minutes
+        Get Set Up in About 8 Minutes
       </h2>
       <ol className="stagger mt-4 grid gap-3 md:grid-cols-3">
         {STEPS.map((s, i) => {

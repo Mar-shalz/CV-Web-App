@@ -63,7 +63,11 @@ export async function POST(request: NextRequest) {
       await notify(p.user_id, {
         kind: "payment",
         title: "Payment confirmed",
-        body: boost ? `${PRICES.products.interview_boost.label}, ${formatNaira(p.amount_kobo)}. Interview prep is open for this invite.` : `${PRICES.products.job_hunt_30d.label}, ${formatNaira(p.amount_kobo)}. Tailor as many CVs as you need for ${days} days.`,
+        body: boost
+          ? `${PRICES.products.interview_boost.label}, ${formatNaira(p.amount_kobo)}. Interview prep is open for this invite.`
+          : p.type === "cv_topup"
+            ? `${PRICES.products.cv_topup.label}, ${formatNaira(p.amount_kobo)}. ${PRICES.products.cv_topup.adds_cvs} more tailored CVs added to your pass.`
+            : `${PRICES.products.job_hunt_30d.label}, ${formatNaira(p.amount_kobo)}. Up to ${PRICES.products.job_hunt_30d.tailored_cvs} tailored CVs over ${days} days.`,
         link: boost && p.application_id ? `/applications/${p.application_id}/shortlist` : "/pass",
         dedupeKey: `payment:${reference}`,
       }).catch(() => {});

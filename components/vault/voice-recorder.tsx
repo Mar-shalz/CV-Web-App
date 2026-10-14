@@ -13,7 +13,7 @@ type State = { kind: "idle" } | { kind: "recording"; seconds: number } | { kind:
  * transcription. Offline, the recording waits on this phone and goes when the
  * connection is back. Audio is never stored on our side.
  */
-export function VoiceRecorder({ onText, disabled }: { onText: (text: string) => void; disabled?: boolean }) {
+export function VoiceRecorder({ onText, disabled, compact = false }: { onText: (text: string) => void; disabled?: boolean; compact?: boolean }) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [levels, setLevels] = useState<number[]>(Array(24).fill(0.1));
   const rec = useRef<MediaRecorder | null>(null);
@@ -98,6 +98,48 @@ export function VoiceRecorder({ onText, disabled }: { onText: (text: string) => 
   }
 
   const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  if (compact) {
+    // A small "Say it" control that sits next to a text box; what you say lands in the box to edit.
+    if (state.kind === "recording") {
+      return (
+        <span className="inline-flex items-center gap-2" aria-live="polite">
+          <button type="button" onClick={() => rec.current?.stop()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-flag-600 px-3.5 text-sm font-semibold text-white shadow-raised transition-transform active:scale-95" aria-label="Stop recording">
+            <StopCircle size={20} variant="bulk" />
+            Stop
+          </button>
+          <span className="flex h-6 w-16 items-center gap-[2px]" aria-hidden="true">
+            {levels.slice(0, 10).map((l, i) => (
+              <span key={i} className="w-full rounded-full bg-flag-600/70" style={{ height: `${Math.round(l * 100)}%` }} />
+            ))}
+          </span>
+          <span className="text-sm font-semibold tabular-nums text-flag-700">{mmss(state.seconds)}</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={start}
+          disabled={disabled || state.kind === "sending"}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-50 px-3.5 text-sm font-semibold text-brand-800 ring-1 ring-brand-100 transition-colors hover:bg-brand-100 disabled:cursor-progress disabled:opacity-70"
+        >
+          {state.kind === "sending" ? <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" /> : <Microphone2 size={18} variant="bulk" />}
+          {state.kind === "sending" ? "Writing down what you said" : "Say it instead"}
+        </button>
+        {state.kind === "error" ? (
+          <span className="text-[0.8125rem] text-flag-700" role="alert">
+            {state.message}
+          </span>
+        ) : state.kind === "queued" ? (
+          <span className="text-[0.8125rem] text-care-700" role="status">
+            Offline. It will send when you&apos;re back.
+          </span>
+        ) : null}
+      </span>
+    );
+  }
 
   if (state.kind === "recording") {
     return (

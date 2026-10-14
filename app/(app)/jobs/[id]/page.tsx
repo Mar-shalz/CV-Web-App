@@ -8,7 +8,7 @@ import { MARKETS } from "@/lib/config";
 import { formatDate } from "@/lib/format";
 import { Danger, DocumentText } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Check the details" };
+export const metadata: Metadata = { title: "Check the Details" };
 
 export default async function JobReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,7 +18,7 @@ export default async function JobReviewPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-3">
-      <FlowSteps current="add" hrefs={{}} />
+      <FlowSteps current="add" hrefs={{}} back="/applications" />
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">
           {manual ? "Fill in the job details" : "Check the details we found"}

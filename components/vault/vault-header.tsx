@@ -4,22 +4,22 @@ import { LIMITS } from "@/lib/config";
 import { DocumentUpload, Microphone2, AddCircle } from "@/components/icons";
 
 const ACTIONS = [
-  { href: "/vault/import", icon: DocumentUpload, tint: "bg-brand-50 text-brand-700", title: "Upload a CV", hint: "PDF, Word or a photo of it" },
-  { href: "/vault/interview", icon: Microphone2, tint: "bg-proof-50 text-proof-700", title: "Answer a few questions", hint: "Talk or type, one question at a time" },
-  { href: "/vault/new", icon: AddCircle, tint: "bg-ink-75 text-ink-700", title: "Add a role by hand", hint: "A job, SIWES, NYSC or your degree" },
+  { href: "/experience/import", icon: DocumentUpload, tint: "bg-brand-50 text-brand-700", title: "Upload a CV", hint: "PDF, Word or a photo of it" },
+  { href: "/experience/interview", icon: Microphone2, tint: "bg-proof-50 text-proof-700", title: "Answer a few questions", hint: "Talk or type. Tap the mic to speak" },
+  { href: "/experience/new", icon: AddCircle, tint: "bg-ink-75 text-ink-700", title: "Add a role by hand", hint: "A job, SIWES, NYSC or your degree" },
 ] as const;
 
 export function VaultActions() {
   return (
     <div className="grid gap-2.5 sm:grid-cols-3">
       {ACTIONS.map(({ href, icon: Icon, tint, title, hint }) => (
-        <Link key={href} href={href} className="lift group flex min-h-16 items-center gap-3 rounded-2xl border border-ink-150 bg-white px-4 py-3 shadow-card">
-          <span className={`grid size-10 shrink-0 place-items-center rounded-xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 ${tint}`}>
-            <Icon size={22} variant="bulk" />
+        <Link key={href} href={href} className="lift group flex min-h-[5.5rem] items-center gap-3.5 rounded-2xl border border-ink-150 bg-white px-4 py-4 shadow-card sm:min-h-28 sm:flex-col sm:items-start sm:justify-between sm:gap-3 sm:px-5">
+          <span className={`grid size-12 shrink-0 place-items-center rounded-xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 ${tint}`}>
+            <Icon size={24} variant="bulk" />
           </span>
           <span className="min-w-0">
-            <span className="block text-sm font-semibold text-ink-900">{title}</span>
-            <span className="block text-[0.8125rem] leading-5 text-ink-500">{hint}</span>
+            <span className="block text-[0.9375rem] font-semibold text-ink-900">{title}</span>
+            <span className="mt-0.5 block text-[0.8125rem] leading-5 text-ink-500">{hint}</span>
           </span>
         </Link>
       ))}

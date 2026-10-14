@@ -1,41 +1,35 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/auth";
 import { getOverview } from "@/lib/admin/data";
 import { can } from "@/lib/admin/permissions";
 import { KpiCard, PageHeader, Panel, StatusPill } from "@/components/admin/ui";
 import { BarChart } from "@/components/admin/bar-chart";
-import { TickCircle, MinusCircle, Clock, ArrowRight2, TaskSquare, Card, Judge } from "@/components/icons";
+import { StatCard } from "@/components/home/stat-card";
+import { TickCircle, MinusCircle, Clock, TaskSquare, Card, Judge, Profile2User } from "@/components/icons";
 
 export const metadata = { title: { absolute: "Overview · Back Office" } };
 
 export default async function AdminOverview() {
   const staff = await requireAdmin("overview");
   const o = await getOverview(staff);
+  // Same cards as the app's Home: label, icon, number, one line of context.
   const queue = [
-    { show: can(staff.role, "reviews"), href: "/admin/reviews", icon: TaskSquare, label: "Truth reports open", value: o.queue.openReports, sub: o.queue.overdueReports ? `${o.queue.overdueReports} past the 48 hour target` : "All inside 48 hours", urgent: o.queue.overdueReports > 0 },
-    { show: can(staff.role, "payments"), href: "/admin/payments", icon: Card, label: "Payments pending", value: o.queue.pendingPayments, sub: "Bank transfer and USSD settle on their own", urgent: false },
-    { show: can(staff.role, "rules"), href: "/admin/rules", icon: Judge, label: "Lists due for review", value: o.queue.listsDue, sub: "Reviewed monthly by a named owner", urgent: o.queue.listsDue > 0 },
-  ].filter((q) => q.show);
+    { show: can(staff.role, "reviews"), href: "/admin/reviews", icon: <TaskSquare size={22} variant="bulk" />, tint: o.queue.overdueReports ? "care" : "brand", label: "Truth reports open", value: o.queue.openReports, hint: o.queue.overdueReports ? `${o.queue.overdueReports} past 48 hours` : "All inside 48 hours" },
+    { show: can(staff.role, "payments"), href: "/admin/payments", icon: <Card size={22} variant="bulk" />, tint: "proof", label: "Payments pending", value: o.queue.pendingPayments, hint: "Transfers settle on their own" },
+    { show: can(staff.role, "rules"), href: "/admin/rules", icon: <Judge size={22} variant="bulk" />, tint: o.queue.listsDue ? "care" : "sky", label: "Lists due for review", value: o.queue.listsDue, hint: "Reviewed monthly" },
+    { show: can(staff.role, "users"), href: "/admin/users", icon: <Profile2User size={22} variant="bulk" />, tint: "sky", label: "Accounts", value: o.queue.accounts, hint: `${o.queue.newThisWeek} joined this week` },
+  ].filter((q) => q.show) as { href: string; icon: React.ReactNode; tint: "brand" | "proof" | "care" | "sky"; label: string; value: number; hint: string }[];
 
   return (
     <>
-      <PageHeader title="Overview" intro="How the product is doing against the PRD targets and gates. Figures cover the last 30 days unless marked." />
+      <PageHeader title="Overview" intro="How the product is doing against its targets and launch gates. Figures cover the last 30 days unless marked. Open “How it's counted” on any card to see what it measures." />
 
-      <section aria-label="Needs attention" className="grid gap-3 md:grid-cols-3">
-        {queue.map(({ href, icon: Icon, label, value, sub, urgent }) => (
-          <Link key={href} href={href} className="lift flex items-center gap-4 rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card">
-            <span className={`grid size-12 place-items-center rounded-2xl ${urgent ? "bg-care-50 text-care-700" : "bg-brand-50 text-brand-700"}`}>
-              <Icon size={24} variant="bulk" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[0.8125rem] text-ink-500">{label}</span>
-              <span className="block font-display text-2xl font-semibold text-ink-900">{value}</span>
-              <span className={`block truncate text-xs ${urgent ? "font-medium text-care-700" : "text-ink-500"}`}>{sub}</span>
-            </span>
-            <ArrowRight2 size={18} className="text-ink-400" />
-          </Link>
+      <ul aria-label="Needs attention" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {queue.map((q, i) => (
+          <li key={q.href}>
+            <StatCard href={q.href} label={q.label} value={q.value} icon={q.icon} tint={q.tint} hint={q.hint} i={i} />
+          </li>
         ))}
-      </section>
+      </ul>
 
       <section aria-label="Key numbers" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {o.kpis.map((k) => (
@@ -43,7 +37,7 @@ export default async function AdminOverview() {
         ))}
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_420px]">
         <Panel title="New accounts per day, last 14 days">
           <BarChart data={o.signups} label="new accounts" />
         </Panel>

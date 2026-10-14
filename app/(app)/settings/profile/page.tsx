@@ -5,7 +5,7 @@ import phoneCodes from "@/config/lists/phone_codes.json";
 import { SettingsShell } from "@/components/settings/settings-shell";
 import { ProfileForm } from "@/components/settings/settings-forms";
 
-export const metadata: Metadata = { title: "Personal details" };
+export const metadata: Metadata = { title: "Personal Details" };
 
 const PHONE_CODES = phoneCodes;
 

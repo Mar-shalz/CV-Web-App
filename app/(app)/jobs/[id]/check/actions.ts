@@ -21,7 +21,7 @@ export async function saveDetail(_prev: DetailState, formData: FormData): Promis
   if (!viewer) redirect("/sign-in");
   const kind = String(formData.get("kind"));
   const id = jobId.safeParse(formData.get("job_id"));
-  if (!id.success) return { error: "Something went wrong. Reload the page." };
+  if (!id.success) return { error: "That didn't work. Reload the page and try again." };
   if (viewer.preview) return { ok: true };
   const supabase = await createClient();
   const done = () => {
@@ -70,7 +70,7 @@ export async function saveDetail(_prev: DetailState, formData: FormData): Promis
       const { data: edu } = await supabase.from("vault_roles").select("id").eq("user_id", viewer.id).eq("kind", "education").order("end_date", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
       if (!edu) return { error: "Add your degree in My experience first." };
       await supabase.from("vault_roles").update({ grade, confirmed: true }).eq("id", edu.id).eq("user_id", viewer.id);
-      revalidatePath("/vault");
+      revalidatePath("/experience");
       return done();
     }
     case "licence": {
@@ -78,7 +78,7 @@ export async function saveDetail(_prev: DetailState, formData: FormData): Promis
       const status = String(formData.get("status") ?? "");
       if (!name || !["qualified", "in progress", "part qualified"].includes(status)) return { error: "Add the name and pick a status." };
       await supabase.from("vault_roles").insert({ user_id: viewer.id, kind: "certification", title: name, grade: status, source: "text", confirmed: true });
-      revalidatePath("/vault");
+      revalidatePath("/experience");
       return done();
     }
     case "olevel": {
@@ -93,7 +93,7 @@ export async function saveDetail(_prev: DetailState, formData: FormData): Promis
       return done();
     }
     case "education":
-      redirect("/vault/new");
+      redirect("/experience/new");
     default:
       return { error: "Unknown detail." };
   }

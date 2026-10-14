@@ -64,10 +64,11 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
         ))}
       </div>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="space-y-4">
+      <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="space-y-3">
           <Panel title="Visits per day, last 30 days" action={<span className="text-xs text-ink-500">Last active {lastSeen(u.lastActive).toLowerCase()}</span>}>
             <BarChart data={u.activity} label="Visits" />
+            <p className="border-t border-ink-100 px-4 py-2.5 text-xs leading-5 text-ink-500">A visit is each time they open the app. Moving between pages or refreshing doesn&apos;t count; a new visit starts after 30 minutes away.</p>
           </Panel>
 
           <Panel title="What they've done">
@@ -76,7 +77,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
                 ["Roles in experience", u.counts.roles],
                 ["Achievements", `${u.counts.confirmedItems} of ${u.counts.items} confirmed`],
                 ["CVs made", u.counts.cvs],
-                ["Applications", u.counts.applications],
+                ["Applications", u.counts.deletedApplications ? `${u.counts.applications + u.counts.deletedApplications} (${u.counts.deletedApplications} deleted by them)` : u.counts.applications],
                 ["Interviews", u.counts.interviews],
                 ["Offers", u.counts.offers],
               ].map(([label, value]) => (
@@ -114,11 +115,11 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
           </Panel>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Panel title="Details">
             <dl className="divide-y divide-ink-100">
               {facts.map(([k, v]) => (
-                <div key={k} className="flex items-start justify-between gap-4 px-5 py-3 text-sm">
+                <div key={k} className="flex items-start justify-between gap-3 px-5 py-3 text-sm">
                   <dt className="text-ink-500">{k}</dt>
                   <dd className="text-right font-medium text-ink-900 [overflow-wrap:anywhere]">{v}</dd>
                 </div>

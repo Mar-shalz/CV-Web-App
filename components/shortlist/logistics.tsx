@@ -26,7 +26,7 @@ export function Logistics({ applicationId, items, done }: { applicationId: strin
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 id="logistics-title" className="text-[0.9375rem] font-semibold text-ink-900">
-            For the day
+            For the Day
           </h2>
           <p className="text-[0.8125rem] text-ink-500">
             {ticked.size} of {items.length} ready

@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Category, Profile2User, ClipboardText, Card, TaskSquare, Judge, Cpu, Book1, People, ArrowLeft, Messages2 } from "./icons";
+import { Category, Profile2User, Card, TaskSquare, Judge, Cpu, Book1, People, ArrowLeft, Messages2 } from "./icons";
 
 const ITEMS = [
   { href: "/admin", label: "Overview", short: "Overview", icon: Category, perm: "overview" },
   { href: "/admin/users", label: "Users", short: "Users", icon: Profile2User, perm: "users" },
-  { href: "/admin/waitlist", label: "Waitlist", short: "Waitlist", icon: ClipboardText, perm: "waitlist" },
   { href: "/admin/payments", label: "Payments", short: "Payments", icon: Card, perm: "payments" },
   { href: "/admin/messages", label: "Messages to Users", short: "Messages", icon: Messages2, perm: "messages" },
   { href: "/admin/reviews", label: "Truth Reviews", short: "Reviews", icon: TaskSquare, perm: "reviews" },

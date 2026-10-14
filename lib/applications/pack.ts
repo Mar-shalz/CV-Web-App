@@ -132,3 +132,25 @@ export async function markSent(viewer: Viewer, applicationId: string): Promise<{
   await track("application_sent", { channel: app.pack?.channel ?? "email" }, viewer.id);
   return { ok: true };
 }
+
+/**
+ * A tailored CV makes the job an application straight away (D-105): it shows under
+ * Applications as "Not sent yet" with its CV, before the pack is built. One per job.
+ */
+export async function ensureDraftApplication(viewer: Viewer, job: JobView, cvId: string): Promise<void> {
+  if (viewer.preview) return;
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("applications").select("id, status").eq("job_id", job.id).eq("user_id", viewer.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (existing) {
+    // A newer CV for a job not yet packed or sent becomes the one on the application.
+    if (existing.status === "draft") await supabase.from("applications").update({ cv_version_id: cvId }).eq("id", existing.id).eq("user_id", viewer.id);
+    return;
+  }
+  await supabase.from("applications").insert({
+    user_id: viewer.id,
+    job_id: job.id,
+    cv_version_id: cvId,
+    status: "draft",
+    job_snapshot: { parsed: job.parsed, rawText: job.rawText, sourceUrl: job.sourceUrl, imagePath: null, capturedAt: job.capturedAt },
+  });
+}

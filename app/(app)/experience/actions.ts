@@ -31,7 +31,7 @@ async function ctx() {
 }
 
 function done(): VaultActionState {
-  revalidatePath("/vault", "layout");
+  revalidatePath("/experience", "layout");
   revalidatePath("/home");
   return { ok: true };
 }

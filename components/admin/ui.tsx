@@ -29,7 +29,7 @@ export function Panel({ title, children, action, className = "" }: { title?: str
   return (
     <section className={`rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card ${className}`}>
       {title ? (
-        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-ink-100 px-5 py-2.5">
+        <div className="flex min-h-11 items-center justify-between gap-3 border-b border-ink-100 px-4 py-2">
           <h2 className="text-[0.9375rem] font-semibold text-ink-900">{titleCase(title)}</h2>
           {action}
         </div>
@@ -48,7 +48,7 @@ export function Table({ head, children, caption }: { head: string[]; children: R
         <thead>
           <tr className="border-b border-ink-100 bg-ink-50/70 text-xs font-medium text-ink-500">
             {head.map((h) => (
-              <th key={h} scope="col" className="whitespace-nowrap px-5 py-2.5 font-medium">
+              <th key={h} scope="col" className="whitespace-nowrap px-4 py-2 font-medium">
                 {titleCase(h)}
               </th>
             ))}
@@ -61,7 +61,7 @@ export function Table({ head, children, caption }: { head: string[]; children: R
 }
 
 export function Td({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <td className={`px-5 py-3 align-middle ${className}`}>{children}</td>;
+  return <td className={`px-4 py-2.5 align-middle ${className}`}>{children}</td>;
 }
 
 const STATUS = {
@@ -82,9 +82,9 @@ export function StatusPill({ status, label }: { status: keyof typeof STATUS; lab
   );
 }
 
-export function KpiCard({ label, value, target, status, note }: { label: string; value: string; target: string; status: keyof typeof STATUS; note: string }) {
+export function KpiCard({ label, value, target, status, note, how }: { label: string; value: string; target: string; status: keyof typeof STATUS; note: string; how?: string }) {
   return (
-    <div className="flex h-full flex-col rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card">
+    <div className="flex h-full flex-col rounded-[var(--radius-card)] border border-ink-150 bg-white p-3.5 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[0.8125rem] leading-5 text-ink-500">{titleCase(label)}</p>
         <StatusPill status={status} />
@@ -94,6 +94,12 @@ export function KpiCard({ label, value, target, status, note }: { label: string;
         Target: {target}
         <span className="block">{note}</span>
       </p>
+      {how ? (
+        <details className="group mt-2 border-t border-ink-100 pt-2">
+          <summary className="cursor-pointer list-none text-xs font-semibold text-brand-700 marker:hidden hover:underline">How it&apos;s counted</summary>
+          <p className="mt-1 text-xs leading-5 text-ink-600">{how}</p>
+        </details>
+      ) : null}
     </div>
   );
 }

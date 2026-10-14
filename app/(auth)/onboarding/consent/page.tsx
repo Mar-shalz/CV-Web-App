@@ -5,7 +5,7 @@ import { ConsentForm } from "@/components/auth/consent-form";
 import { getViewer } from "@/lib/auth/viewer";
 import { LIMITS } from "@/lib/config";
 
-export const metadata: Metadata = { title: "Your data, your choice" };
+export const metadata: Metadata = { title: "Your Data, Your Choice" };
 
 export default async function ConsentPage() {
   const viewer = await getViewer();
@@ -13,7 +13,7 @@ export default async function ConsentPage() {
   if (viewer.consentDone && !viewer.preview) redirect(viewer.setupDone ? "/home" : "/onboarding/setup");
 
   return (
-    <AuthShell step={2} title="Your data, your choice" subtitle="Plain words, no small print. Tick the first three to continue.">
+    <AuthShell step={2} title="Your Data, Your Choice" subtitle="Plain words, no small print. Tick the first three to continue.">
       <ConsentForm minAge={LIMITS.onboarding.min_age_years} />
     </AuthShell>
   );

@@ -33,8 +33,10 @@ export async function logExternalApplication(supabase: SupabaseClient, viewer: V
     const res = await captureJob(supabase, viewer.id, viewer.targetMarkets, { mode: "paste", text: input.post });
     if (res.ok) jobId = res.jobId;
   } else if (input.link) {
+    // The same link reading as tailoring, Google fallback included.
     const res = await captureJob(supabase, viewer.id, viewer.targetMarkets, { mode: "link", url: input.link });
     if (res.ok) jobId = res.jobId;
+    else if (!input.title || !input.employer) return { ok: false, error: `${res.error} Or type the job title and employer.` };
   }
   let parsed: ParsedJob;
   if (jobId) {
@@ -42,8 +44,10 @@ export async function logExternalApplication(supabase: SupabaseClient, viewer: V
     parsed = { ...EMPTY_JOB, ...((data?.parsed as ParsedJob) ?? {}) };
     // What they typed wins: it's what they applied for.
     parsed = { ...parsed, title: input.title || parsed.title, employer_name: input.employer || parsed.employer_name };
+    if (!parsed.title || !parsed.employer_name) return { ok: false, error: "We couldn't find the job title or employer in the post. Type them in, then save." };
     await supabase.from("jobs").update({ parsed, state: "applied" }).eq("id", jobId).eq("user_id", viewer.id);
   } else {
+    if (!input.title || !input.employer) return { ok: false, error: "We couldn't read the job title and employer from the post. Type them in, then save." };
     parsed = { ...EMPTY_JOB, is_job_post: true, title: input.title, employer_name: input.employer };
     const { data, error } = await supabase
       .from("jobs")

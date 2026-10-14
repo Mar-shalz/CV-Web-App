@@ -8,7 +8,7 @@ import { VoiceRecorder } from "@/components/vault/voice-recorder";
 import { Button } from "@/components/ui/button";
 import { MagicStar, DocumentText, ArrowDown2, TickCircle, Warning2, Danger, Lamp, Repeat, MessageQuestion } from "@/components/icons";
 
-const KIND: Record<ShortlistQuestion["kind"], string> = { defend_cv: "Defend your CV", job_fit: "Fit for the job", situational: "What would you do", technical: "Technical" };
+const KIND: Record<ShortlistQuestion["kind"], string> = { intro: "Always asked first", defend_cv: "Defend your CV", job_fit: "Fit for the job", situational: "What would you do", technical: "Technical", standard: "Common in this field" };
 const MATCH = {
   yes: { label: "Matches your CV", cls: "bg-proof-50 text-proof-700", icon: TickCircle },
   partly: { label: "Partly matches your CV", cls: "bg-care-50 text-care-700", icon: Warning2 },
@@ -48,7 +48,7 @@ export function Drill({ applicationId, initial, attempts, voice }: { application
             <span className="mx-auto grid size-14 place-items-center rounded-3xl bg-brand-50 text-brand-700">
               <MessageQuestion size={28} variant="bulk" />
             </span>
-            <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">What will they ask you?</h2>
+            <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">What Will They Ask You?</h2>
             <p className="mx-auto mt-2 max-w-md text-[0.9375rem] leading-6 text-ink-600">
               Panels pick lines from your CV and ask you to defend them. We&apos;ll find the likely questions from this job and the exact CV you sent, then you practise.
             </p>
@@ -72,9 +72,9 @@ export function Drill({ applicationId, initial, attempts, voice }: { application
       <div className="flex items-end justify-between gap-3">
         <div>
           <h2 id="questions-title" className="text-lg font-semibold text-ink-900">
-            Likely questions
+            Likely Questions
           </h2>
-          <p className="text-[0.8125rem] text-ink-600">Each one links to a line in the CV you sent. Practise out loud: it sticks better.</p>
+          <p className="text-[0.8125rem] text-ink-600">The question every panel opens with, lines from the CV you sent, and questions common for this kind of role. Practise out loud, by voice or typing: it sticks better.</p>
         </div>
       </div>
       <ol className="stagger mt-4 space-y-3">
@@ -134,13 +134,15 @@ function QuestionCard({ n, q, open, onToggle, applicationId, voice, tries }: { n
             <Lamp size={16} className="mt-0.5 shrink-0 text-care-600" />
             {q.why}
           </p>
-          <div className="torn-edge rounded-t-2xl bg-paper p-4">
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-500">
-              <DocumentText size={14} />
-              On the CV you sent
-            </p>
-            <p className="mt-1 text-sm leading-6 text-ink-800">{q.bulletText}</p>
-          </div>
+          {q.bulletText ? (
+            <div className="torn-edge rounded-t-2xl bg-paper p-4">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-500">
+                <DocumentText size={14} />
+                On the CV you sent
+              </p>
+              <p className="mt-1 text-sm leading-6 text-ink-800">{q.bulletText}</p>
+            </div>
+          ) : null}
 
           {result ? (
             <Feedback r={result} onAgain={() => { setResult(null); setAnswer(""); }} />
@@ -156,7 +158,7 @@ function QuestionCard({ n, q, open, onToggle, applicationId, voice, tries }: { n
                 />
               ) : null}
               <label htmlFor={`a-${q.id}`} className={`block text-sm font-semibold text-ink-900 ${voice ? "mt-4" : ""}`}>
-                {voice ? "Or type your answer" : "Your answer"}
+                {voice ? "Your answer (what you said appears here: fix any words before you check it)" : "Your answer"}
               </label>
               <textarea
                 id={`a-${q.id}`}

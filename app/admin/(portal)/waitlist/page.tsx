@@ -15,7 +15,7 @@ export default async function AdminWaitlist() {
   return (
     <>
       <PageHeader title="Waitlist" intro={`${w.total.toLocaleString("en-NG")} people. Gate 1 needs 300 sign ups and 3% clicking the price button.`} />
-      <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="grid gap-3 xl:grid-cols-[380px_minmax(0,1fr)]">
         <Panel title="Where they came from">
           <ul className="space-y-3 p-5">
             {w.bySource.map((s) => (

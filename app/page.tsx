@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/status";
-import { PriceDoor, Waitlist } from "@/components/landing/waitlist";
+import { PriceDoor } from "@/components/landing/price-door";
 import { ArrowRight, DocumentUpload, ShieldSearch, Magicpen, Send2, TickCircle, Warning2, MinusCircle, ShieldTick, CloseCircle, Verify } from "@/components/icons";
 import { APP, APP_NAME, LIMITS, PRICES } from "@/lib/config";
 import { formatNaira } from "@/lib/format";
@@ -199,7 +199,7 @@ export default function LandingPage() {
                 {price} <span className="text-base font-medium text-ink-500">for {pass.days} days</span>
               </p>
               <ul className="mt-5 space-y-3 text-[0.9375rem]">
-                {["Unlimited job checks", "Tailored CVs in Nigerian and UK formats", "Ready to send emails and form answers", "Interview prep from the CV you sent"].map((f) => (
+                {[`Up to ${pass.tailored_cvs} tailored CVs, in Nigerian and UK formats`, "Checks on every job: do you qualify, is it real", "Ready to send emails and form answers", "Interview prep from the CV you sent"].map((f) => (
                   <li key={f} className="flex items-center gap-2.5">
                     <TickCircle size={20} variant="bulk" className="text-brand-600" />
                     {f}
@@ -213,18 +213,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Waitlist */}
-        <section aria-labelledby="wl-title" className="px-3 pb-16 lg:px-4 lg:pb-24">
-          <div className="mx-auto max-w-[1200px] rounded-[var(--radius-panel)] bg-brand-50 p-6 lg:p-12">
-            <h2 id="wl-title" className="font-display text-[1.75rem] font-semibold tracking-[-0.03em] lg:text-[2.25rem]">
-              Join the waiting list
-            </h2>
-            <p className="mt-2 max-w-xl text-[0.9375rem] leading-6 text-ink-600">We&apos;re letting people in from job groups and campuses in small batches.</p>
-            <div className="mt-5 max-w-xl">
-              <Waitlist source="footer" />
-            </div>
-          </div>
-        </section>
       </main>
 
       <footer className="border-t border-ink-150">

@@ -23,8 +23,9 @@ import { Badge } from "@/components/ui/status";
 import { buttonClass } from "@/components/ui/button";
 import { Building, Location, Calendar1, Sms, Global, Magicpen, ArrowRight, TickCircle, Warning2, MinusCircle, Archive, Lamp, Crown1 } from "@/components/icons";
 import { PendingButton } from "@/components/ui/pending-button";
+import { WorkingNotice } from "@/components/ui/working-notice";
 
-export const metadata: Metadata = { title: "Job check" };
+export const metadata: Metadata = { title: "Job Check" };
 
 const VERDICT = {
   apply: { label: "Apply", tone: "from-proof-50 border-proof-100", icon: TickCircle, iconTone: "bg-proof-600" },
@@ -51,7 +52,7 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="space-y-3 pb-24 lg:pb-0">
-      <FlowSteps current="check" hrefs={{ add: `/jobs/${job.id}` }} />
+      <FlowSteps current="check" hrefs={{ add: `/jobs/${job.id}` }} back={`/jobs/${job.id}`} />
 
       <section className="animate-rise rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -111,17 +112,12 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
 
 function VerdictSkeleton() {
   return (
-    <section className="rounded-[var(--radius-panel)] border border-ink-150 bg-white p-6" aria-busy="true" aria-label="Working out our advice">
-      <div className="flex items-center gap-4">
-        <div className="skeleton size-14 rounded-2xl" />
-        <div className="flex-1 space-y-2">
-          <div className="skeleton h-4 w-24" />
-          <div className="skeleton h-7 w-48" />
-          <div className="skeleton h-4 w-3/4" />
-        </div>
-      </div>
-      <p className="mt-4 text-sm text-ink-500">Comparing the job with your experience. This takes a few seconds.</p>
-    </section>
+    <WorkingNotice
+      title="Checking Your CV Against This Job"
+      steps={["Reading what the job asks for", "Matching it with your experience", "Checking the rules for this kind of job", "Writing our advice"]}
+      estimate="Usually 10 to 40 seconds"
+      stepSeconds={7}
+    />
   );
 }
 
@@ -222,7 +218,7 @@ function EligibilityCard({ eligibility, job }: { eligibility: EligibilityResult;
     <section aria-labelledby="hard-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="hard-title" className="text-lg font-semibold text-ink-900">
-          Must-have requirements
+          Must-have Requirements
         </h2>
         {allMet ? <Badge tone="proof">All met</Badge> : null}
       </div>
@@ -264,7 +260,7 @@ async function MatchList({ promise, vault }: { promise: Promise<FinalVerdict>; v
     <section aria-labelledby="match-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 id="match-title" className="text-lg font-semibold text-ink-900">
-          How your experience matches
+          How Your Experience Matches
         </h2>
         <span className="text-sm text-ink-500">
           {met} of {v.requirements.length} met
@@ -296,7 +292,7 @@ async function MatchList({ promise, vault }: { promise: Promise<FinalVerdict>; v
       </ul>
       <p className="mt-4 text-[0.8125rem] text-ink-500">
         Missing something you&apos;ve actually done?{" "}
-        <Link href="/vault/interview" className="font-semibold text-brand-700 hover:underline">
+        <Link href="/experience/interview" className="font-semibold text-brand-700 hover:underline">
           Add it to your experience
         </Link>{" "}
         and check again.

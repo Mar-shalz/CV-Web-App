@@ -5,7 +5,7 @@ import { listApplications } from "@/lib/applications/data";
 import type { HomeApplication } from "@/lib/home-data";
 import { RecentApplications } from "@/components/home/recent-applications";
 import { ButtonLink } from "@/components/ui/button";
-import { Magicpen, SearchNormal1, Receipt21, InfoCircle, AddCircle } from "@/components/icons";
+import { Magicpen, SearchNormal1, Receipt21, InfoCircle, AddCircle, TickCircle } from "@/components/icons";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 
 export const metadata: Metadata = { title: "Applications" };
@@ -19,9 +19,9 @@ const FILTERS = [
   { id: "not_sent", label: "Not sent yet", match: (s: ApplicationStatus) => s === "draft" || s === "packed" },
 ] as const;
 
-export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
+export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; deleted?: string }> }) {
   const viewer = await requireReadyViewer();
-  const { q, status } = await searchParams;
+  const { q, status, deleted } = await searchParams;
   const all = await listApplications(viewer);
   const rows: HomeApplication[] = all.map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt, channel: a.pack?.channel ?? null }));
 
@@ -41,6 +41,13 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           Add one you already sent
         </ButtonLink>
       </header>
+
+      {deleted ? (
+        <p role="status" className="flex animate-pop items-center gap-2 rounded-2xl bg-proof-50 px-4 py-3 text-sm font-medium text-proof-700">
+          <TickCircle size={18} variant="bulk" />
+          Application deleted.
+        </p>
+      ) : null}
 
       {rows.length ? (
         <>
@@ -104,7 +111,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-brand-50 text-brand-700">
             <Receipt21 size={30} variant="bulk" />
           </span>
-          <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">Your applications will live here</h2>
+          <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">Your Applications Will Live Here</h2>
           <p className="mx-auto mt-2 max-w-sm text-[0.9375rem] leading-6 text-ink-600">
             Each one keeps the job post and the exact CV you sent, so when they call you weeks later you know what they&apos;re looking at.
           </p>

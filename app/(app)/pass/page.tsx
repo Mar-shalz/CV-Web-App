@@ -6,12 +6,17 @@ import { PRICES, LIMITS } from "@/lib/config";
 import { formatDate, formatNaira } from "@/lib/format";
 import { track } from "@/lib/analytics/server";
 import { PayButton } from "@/components/pass/pay-button";
+import { passCvUsage } from "@/lib/payments/pass-usage";
 import { ButtonLink } from "@/components/ui/button";
 import { Crown1, TickCircle, ShieldTick, Card, Bank, Mobile, Teacher, Receipt21, Magicpen } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Job hunt pass" };
+export const metadata: Metadata = { title: "Job Hunt Pass" };
 
-const ADDS = ["A tailored CV for every job you apply to", "The exact email, subject line and documents each employer asks for", "Interview prep for every invite: likely questions and practice with feedback"];
+const ADDS = [
+  `Up to ${PRICES.products.job_hunt_30d.tailored_cvs} tailored CVs, one for each job you apply to`,
+  "The exact email, subject line and documents each employer asks for",
+  "Interview prep for every invite: likely questions and practice with feedback",
+];
 const FREE = ["Your saved experience", "Checking if you qualify, and scam checks, on any job", "A record of every application, with the job post and the CV you sent"];
 
 type Search = { product?: string; application?: string; reason?: string };
@@ -32,6 +37,8 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
     history = (data ?? []).map((p) => ({ reference: p.paystack_reference ?? "", type: p.type, amount: p.amount_kobo, status: p.status, at: p.created_at, ends: p.ends_at }));
   }
   if (state.kind !== "pass") await track("paywall_shown", { trigger: reason ?? (wantsBoost ? "shortlist" : state.kind) }, viewer.id);
+  const usage = state.kind === "pass" ? await passCvUsage(viewer) : null;
+  const topup = PRICES.products.cv_topup;
 
   const headline =
     state.kind === "pass"
@@ -54,18 +61,41 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
         <p className="mx-auto mt-2 max-w-xl text-[0.9375rem] leading-6 text-ink-600">
           {state.kind === "pass"
             ? state.passType === "free_access"
-              ? "Everything is open for you, with nothing to pay. Tailor as many CVs as you need."
-              : `${state.daysLeft} ${state.daysLeft === 1 ? "day" : "days"} left. Tailor as many CVs as you need.`
+              ? "Everything is open for you, with nothing to pay."
+              : `${state.daysLeft} ${state.daysLeft === 1 ? "day" : "days"} left.${usage ? ` ${usage.left} of ${usage.cap} tailored CVs left.` : ""}`
             : `One payment, ${pass.days} days, no auto renewal. Everything you've built stays yours either way.`}
         </p>
       </header>
 
       {state.kind === "pass" ? (
-        <div className="flex justify-center">
-          <ButtonLink href="/jobs/new" size="lg">
-            <Magicpen size={20} variant="bulk" />
-            Tailor my CV
-          </ButtonLink>
+        <div className="mx-auto max-w-xl space-y-3">
+          {usage ? (
+            <section aria-labelledby="usage-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 id="usage-title" className="text-[0.9375rem] font-semibold text-ink-900">
+                  Tailored CVs in This Pass
+                </h2>
+                <p className="text-sm tabular-nums text-ink-600">
+                  <span className="font-semibold text-ink-900">{usage.left}</span> of {usage.cap} left
+                </p>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink-150" role="progressbar" aria-valuemin={0} aria-valuemax={usage.cap} aria-valuenow={usage.used} aria-label="Tailored CVs used">
+                <div className={`h-full rounded-full ${usage.left <= 3 ? "bg-care-600" : "bg-brand-600"}`} style={{ width: `${Math.min(100, (usage.used / usage.cap) * 100)}%` }} />
+              </div>
+              <p id="topup" className="mt-3 text-[0.8125rem] leading-5 text-ink-600">
+                Running low? Add {topup.adds_cvs} more CVs for {formatNaira(topup.amount_kobo)}. They last until this pass ends.
+              </p>
+              <div className="mt-3">
+                <PayButton product="cv_topup" label={`Add ${topup.adds_cvs} CVs for ${formatNaira(topup.amount_kobo)}`} variant={usage.left <= 3 ? "primary" : "secondary"} />
+              </div>
+            </section>
+          ) : null}
+          <div className="flex justify-center">
+            <ButtonLink href="/jobs/new" size="lg">
+              <Magicpen size={20} variant="bulk" />
+              Tailor my CV
+            </ButtonLink>
+          </div>
         </div>
       ) : (
         <div className={`grid gap-3 ${wantsBoost ? "lg:grid-cols-2" : "mx-auto max-w-xl"}`}>
@@ -113,7 +143,7 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
       <div className="grid gap-3 lg:grid-cols-2">
         <section aria-labelledby="free-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
           <h2 id="free-title" className="text-[0.9375rem] font-semibold text-ink-900">
-            Free forever, pass or no pass
+            Free Forever, Pass or No Pass
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-ink-700">
             {FREE.map((t) => (
@@ -126,7 +156,7 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
         </section>
         <section aria-labelledby="how-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
           <h2 id="how-title" className="text-[0.9375rem] font-semibold text-ink-900">
-            How paying works
+            How Paying Works
           </h2>
           <ul className="mt-3 flex flex-wrap gap-2">
             {[

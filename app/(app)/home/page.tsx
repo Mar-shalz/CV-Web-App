@@ -33,8 +33,11 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     activePass: viewer.activePass,
   });
 
-  const isNew = data.recent.length === 0;
+  // Setup shows until the first application is sent. Step 2 is done once a CV has been
+  // tailored to a job (D-104), not just when a job was added.
+  const isNew = data.stats.sent === 0;
   const vaultReady = data.stats.vaultConfirmed >= LIMITS.onboarding.vault_ready_items;
+  const doneUpTo = !vaultReady ? 0 : data.stats.cvs > 0 ? 2 : 1;
   const name = firstName(viewer.fullName);
 
   return (
@@ -50,7 +53,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
       {isNew ? (
         <div style={{ "--i": 1 } as CSSProperties}>
-          <GettingStarted doneUpTo={vaultReady ? 1 : 0} />
+          <GettingStarted doneUpTo={doneUpTo} />
         </div>
       ) : (
         <ul style={{ "--i": 1 } as CSSProperties} className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Your numbers">
@@ -64,7 +67,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <StatCard href="/applications?status=waiting" label="Waiting to hear back" value={data.stats.awaiting} icon={<Clock size={22} variant="bulk" />} tint="care" hint="Sent in the last 30 days" />
           </li>
           <li>
-            <StatCard href="/vault" label="Experience items" value={data.stats.vaultConfirmed} icon={<Briefcase size={22} variant="bulk" />} tint="sky" hint="Confirmed by you" />
+            <StatCard href="/experience" label="Work experience" value={data.stats.workRoles} icon={<Briefcase size={22} variant="bulk" />} tint="sky" hint={`${data.stats.vaultConfirmed} achievements confirmed`} />
           </li>
         </ul>
       )}
@@ -75,14 +78,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
       <div
         style={{ "--i": 4 } as CSSProperties}
-        className={isNew ? "grid gap-3 md:grid-cols-2" : "grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]"}
+        className={data.recent.length === 0 ? "grid gap-3 md:grid-cols-2" : "grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]"}
       >
-        {isNew ? null : (
+        {data.recent.length === 0 ? null : (
           <div className="min-w-0">
             <RecentApplications items={data.recent} />
           </div>
         )}
-        <div className={isNew ? "contents" : "flex flex-col gap-3"}>
+        <div className={data.recent.length === 0 ? "contents" : "flex flex-col gap-3"}>
           <div className="lg:hidden">
             <AccessCard state={access} />
           </div>

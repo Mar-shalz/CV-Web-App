@@ -9,7 +9,7 @@ import { defineTask, trusted, untrusted } from "../types";
 export const legitimacyLookup = defineTask({
   name: "legitimacy_lookup",
   model: "claude-haiku-5-5",
-  promptVersion: "v1",
+  promptVersion: "v2",
   input: z.object({
     employer: z.string().max(160),
     title: z.string().max(160),
@@ -17,16 +17,22 @@ export const legitimacyLookup = defineTask({
     notes: z.string().max(12_000),
   }),
   output: z.object({
+    company: z.object({
+      exists: z.enum(["yes", "no", "unknown"]),
+      official_domain: z.string().max(120).nullable(),
+      founded_year: z.number().int().min(1800).max(2100).nullable(),
+      founded_source_index: z.number().int().min(1).nullable(),
+    }),
     findings: z
       .array(
         z.object({
-          id: z.enum(["L2-01", "L2-02", "L2-05", "L2-06", "L2-07", "L2-08"]),
+          id: z.enum(["L2-01", "L2-02", "L2-05", "L2-06", "L2-07", "L2-08", "L2-09"]),
           result: z.enum(["found", "not_found", "match", "mismatch", "warning", "unknown"]),
           text: z.string().max(240),
           source_index: z.number().int().min(1).nullable(),
         }),
       )
-      .max(8),
+      .max(10),
   }),
   maxTokens: 3000,
   timeoutMs: 25_000,

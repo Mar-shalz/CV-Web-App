@@ -5,7 +5,7 @@ import { SettingsShell } from "@/components/settings/settings-shell";
 import { SensitiveList } from "@/components/settings/settings-forms";
 import { Lock1 } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Sensitive details" };
+export const metadata: Metadata = { title: "Sensitive Details" };
 
 export default async function SensitivePage() {
   const viewer = await requireReadyViewer();

@@ -10,7 +10,7 @@ import { FlowSteps } from "@/components/flow/flow-steps";
 import { SendPack } from "@/components/flow/send-pack";
 import { CHANNEL_LABELS } from "@/lib/jobs/labels";
 
-export const metadata: Metadata = { title: "Send your application" };
+export const metadata: Metadata = { title: "Send Your Application" };
 
 export default async function PackPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,9 +32,9 @@ export default async function PackPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-3">
-      <FlowSteps current="send" hrefs={{ add: `/jobs/${job.id}`, check: `/jobs/${job.id}/check`, cv: `/jobs/${job.id}/cv` }} />
+      <FlowSteps current="send" hrefs={{ add: `/jobs/${job.id}`, check: `/jobs/${job.id}/check`, cv: `/jobs/${job.id}/cv` }} back={`/jobs/${job.id}/cv`} />
       <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Ready to send</h1>
+        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Ready to Send</h1>
         <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
           {channel === "email"
             ? "This employer wants applications by email. Here's everything they asked for, in the format they asked for it."

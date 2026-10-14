@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { startInterview, submitAnswer, keepItems, type InterviewStep } from "@/app/(app)/vault/interview/actions";
+import { startInterview, submitAnswer, keepItems, type InterviewStep } from "@/app/(app)/experience/interview/actions";
 import type { DraftItem, Ownership } from "@/lib/vault/schema";
 import { VoiceRecorder } from "./voice-recorder";
 import { inputClass } from "@/components/ui/field";
@@ -117,7 +117,7 @@ export function InterviewFlow({ roles, voice, initialRoleId }: { roles: RoleOpti
         </ul>
         <p className="text-[0.8125rem] text-ink-500">
           Role not listed?{" "}
-          <Link href="/vault/new" className="font-semibold text-brand-700 hover:underline">
+          <Link href="/experience/new" className="font-semibold text-brand-700 hover:underline">
             Add it first
           </Link>
           .
@@ -273,7 +273,7 @@ export function InterviewFlow({ roles, voice, initialRoleId }: { roles: RoleOpti
           {busy ? "Finding your achievements" : "Send answer"}
           <ArrowRight size={20} />
         </Button>
-        <Link href="/vault" className="inline-flex min-h-12 items-center justify-center rounded-2xl px-4 text-sm font-semibold text-ink-600 hover:bg-ink-75">
+        <Link href="/experience" className="inline-flex min-h-12 items-center justify-center rounded-2xl px-4 text-sm font-semibold text-ink-600 hover:bg-ink-75">
           {saved ? `Done for now (${saved} saved)` : "Stop for now"}
         </Link>
       </div>

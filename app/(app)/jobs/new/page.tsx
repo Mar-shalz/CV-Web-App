@@ -7,7 +7,7 @@ import { FlowSteps } from "@/components/flow/flow-steps";
 import { CaptureForm } from "@/components/flow/capture-form";
 import { Briefcase, ShieldSearch, Magicpen, Send2, Danger, ArrowRight } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Tailor my CV" };
+export const metadata: Metadata = { title: "Tailor My CV" };
 
 const NEXT = [
   { icon: ShieldSearch, title: "We check the job", body: "Hard requirements like class of degree, NYSC and age, plus signs of a scam." },
@@ -27,10 +27,15 @@ export default async function CaptureJobPage({ searchParams }: { searchParams: P
 
   return (
     <div className="space-y-3">
-      <FlowSteps current="add" />
+      <FlowSteps current="add" back="/applications" />
       <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Tailor your CV to a job</h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Start with the job description. The more complete it is, the better your CV will match.</p>
+        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Tailor Your CV to a Job</h1>
+        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
+          Start with the job description. The more complete it is, the better your CV will match.{" "}
+          <Link href="/jobs/real" className="font-semibold text-brand-700 hover:underline">
+            Only want to check if a job is real?
+          </Link>
+        </p>
       </header>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -48,7 +53,7 @@ export default async function CaptureJobPage({ searchParams }: { searchParams: P
               <p className="mt-1.5 text-[0.8125rem] leading-5 text-care-700">
                 Your CV is written only from what you tell us. You have {data.stats.vaultConfirmed} of {target} items. Add a few more for a stronger CV.
               </p>
-              <Link href="/vault" className="mt-3 inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-care-700 underline-offset-2 hover:underline">
+              <Link href="/experience" className="mt-3 inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-care-700 underline-offset-2 hover:underline">
                 Add experience
                 <ArrowRight size={16} />
               </Link>
@@ -66,7 +71,7 @@ export default async function CaptureJobPage({ searchParams }: { searchParams: P
 
           <section aria-labelledby="next-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
             <h2 id="next-title" className="text-[0.9375rem] font-semibold text-ink-900">
-              What happens next
+              What Happens Next
             </h2>
             <ol className="mt-4 space-y-4">
               {NEXT.map(({ icon: Icon, title, body }, i) => (

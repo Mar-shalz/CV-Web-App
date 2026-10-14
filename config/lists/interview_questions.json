@@ -1,0 +1,20 @@
+{
+  "version": "2026-10-14",
+  "note": "Standard questions used when the model is unavailable or returns too few. The first question is always 'Tell me about yourself.' (added by code).",
+  "opening": {
+    "question": "Tell me about yourself.",
+    "why": "Almost every interview opens with this. Keep it to about a minute: who you are, your strongest proof for this job, and why this role."
+  },
+  "standard": [
+    { "question": "Why do you want to work here?", "why": "They want to see you know the company and chose it on purpose." },
+    { "question": "Why should we hire you for this role?", "why": "A chance to link your strongest proof to what the job needs." },
+    { "question": "What are your main strengths?", "why": "Name two, and give a real example from your CV for each." },
+    { "question": "What is one weakness you're working on?", "why": "They look for honesty and what you're doing about it." },
+    { "question": "Tell us about a time you worked in a team to get something done.", "why": "Teamwork questions are common at every level." },
+    { "question": "Tell us about a time you made a mistake at work. What did you do?", "why": "They want to see you own it and learn from it." },
+    { "question": "How do you handle pressure and tight deadlines?", "why": "Most roles have busy periods; they want a real example." },
+    { "question": "Where do you see yourself in three years?", "why": "They check that you plan to grow, ideally with them." },
+    { "question": "What do you know about our company?", "why": "Shows you prepared. Read their website and recent news." },
+    { "question": "Do you have any questions for us?", "why": "Always have two ready. It shows real interest." }
+  ]
+}

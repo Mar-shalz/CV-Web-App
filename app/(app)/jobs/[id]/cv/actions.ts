@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth/viewer";
 import { getJob } from "@/lib/jobs/data";
 import { generateForJob, getCvById, type GenerateResult } from "@/lib/cv/data";
+import { ensureDraftApplication } from "@/lib/applications/pack";
 import { getVault } from "@/lib/vault/data";
 import { lockLine, type LockSource } from "@/lib/rules/fact-lock";
 import { findBullet, mergeFlags, updateBullet } from "@/lib/cv/ops";
@@ -20,7 +21,9 @@ export async function generateCv(jobId: string): Promise<GenerateResult> {
   if (!viewer.preview && !(await allow("tailor"))) return { ok: false, reason: "error", error: RATE_LIMITED_MESSAGE };
   const job = await getJob(viewer, jobId);
   const res = await generateForJob(viewer, job);
+  if (res.ok) await ensureDraftApplication(viewer, job, res.cvId);
   revalidatePath(`/jobs/${jobId}/cv`);
+  revalidatePath("/applications");
   return res;
 }
 
@@ -91,7 +94,7 @@ export async function editCv(cvId: string, rawOp: CvOp): Promise<EditResult> {
       sources.set(item.id, { id: item.id, text: bullet.text, sourceQuote: bullet.text, metrics: extractMetrics(bullet.text), ownership: firstSource?.ownership ?? "did", skills: [], role: firstSource?.role ?? { kind: "job", organisation: null, title: null, location: null, start: null, end: null, grade: null } });
       const ids = [...bullet.sourceItemIds, item.id];
       doc = updateBullet(doc, o.bulletId, (b) => ({ ...b, sourceItemIds: ids, flags: mergeFlags(b.flags, relock(b.text, ids)) }));
-      revalidatePath("/vault");
+      revalidatePath("/experience");
     }
   }
 

@@ -34,7 +34,7 @@ export function InviteCard({ applicationId, invite, days }: { applicationId: str
     setError(null);
     start(async () => {
       const res = await saveInviteDetails(applicationId, { date: form.date || null, time: form.time || null, placeOrLink: form.placeOrLink.trim() || null, format: form.format });
-      if (!res.ok) return setError(res.error ?? "Something went wrong.");
+      if (!res.ok) return setError(res.error ?? "That didn't save. Try again in a moment.");
       setEditing(false);
       router.refresh();
     });
@@ -44,7 +44,7 @@ export function InviteCard({ applicationId, invite, days }: { applicationId: str
     return (
       <section aria-labelledby="invite-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
         <h2 id="invite-title" className="text-[0.9375rem] font-semibold text-ink-900">
-          Your invite
+          Your Invite
         </h2>
         <p className="mt-1 text-[0.8125rem] text-ink-600">Add what you know. You can change it later.</p>
         <div className="mt-4 grid grid-cols-2 gap-3">
@@ -97,7 +97,7 @@ export function InviteCard({ applicationId, invite, days }: { applicationId: str
     <section aria-labelledby="invite-title" className="relative overflow-hidden rounded-[var(--radius-card)] brand-gradient p-5 text-white shadow-raised">
       <div className="flex items-start justify-between gap-3">
         <h2 id="invite-title" className="text-xs font-semibold uppercase tracking-[0.1em] text-white/75">
-          Your invite
+          Your Invite
         </h2>
         <button type="button" onClick={() => setEditing(true)} className="-mr-2 -mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-white/90 hover:bg-white/10">
           <Edit2 size={16} />

@@ -7,7 +7,7 @@ import { getViewer } from "@/lib/auth/viewer";
 import { APP } from "@/lib/config";
 import { Lock1 } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Account paused", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Account Paused", robots: { index: false, follow: false } };
 
 /** Where a paused account lands. Plain words, a way to ask why, and a way out. */
 export default async function SuspendedPage() {
@@ -24,7 +24,7 @@ export default async function SuspendedPage() {
         <span className="mx-auto mt-6 grid size-14 place-items-center rounded-2xl bg-care-50 text-care-700">
           <Lock1 size={28} variant="bulk" />
         </span>
-        <h1 className="mt-4 font-display text-2xl font-semibold tracking-[-0.02em] text-ink-900">Your account is paused</h1>
+        <h1 className="mt-4 font-display text-2xl font-semibold tracking-[-0.02em] text-ink-900">Your Account Is Paused</h1>
         <p className="mt-2 text-[0.9375rem] leading-6 text-ink-600">
           You can&apos;t use the app with this account for now. Your experience and CVs are kept safe. If you think this is a mistake, email{" "}
           <a href={`mailto:${APP.support_email}`} className="font-semibold text-brand-700 underline underline-offset-2">

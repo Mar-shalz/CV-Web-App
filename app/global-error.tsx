@@ -17,7 +17,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
       <body className="min-h-full">
         <main id="main" className="grid min-h-dvh place-items-center bg-ink-50 px-6 text-center">
           <div className="max-w-sm">
-            <h1 className="font-display text-2xl font-bold tracking-[-0.02em]">Something went wrong</h1>
+            <h1 className="font-display text-2xl font-bold tracking-[-0.02em]">Something Went Wrong</h1>
             <p className="mt-2 text-[0.9375rem] leading-6 text-ink-600">
               Try again. If it keeps happening, come back in a few minutes.
             </p>

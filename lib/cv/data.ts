@@ -10,6 +10,9 @@ import { buildCv, type ContactDetails } from "./generate";
 import { demoCvDoc } from "@/lib/demo/cv-doc";
 import type { CvDoc } from "./types";
 import { startTrialIfNeeded } from "@/lib/entitlements-server";
+import { passCvUsage } from "@/lib/payments/pass-usage";
+import { PRICES } from "@/lib/config";
+import { formatNaira } from "@/lib/format";
 
 export type CvRecord = { id: string; doc: CvDoc; locked: boolean; createdAt: string };
 
@@ -37,7 +40,7 @@ export async function getContact(viewer: Viewer): Promise<ContactDetails> {
   return { fullName: row.full_name ?? viewer.fullName, phone: row.phone ?? null, email: row.contact_email ?? viewer.email, city: row.city ?? null, state: row.state ?? null, linkedin: row.linkedin_url ?? null, portfolio: row.portfolio_url ?? null, website: row.website_url ?? null };
 }
 
-export type GenerateResult = { ok: true; cvId: string } | { ok: false; reason: "paywall" | "error" | "no_items"; error: string };
+export type GenerateResult = { ok: true; cvId: string } | { ok: false; reason: "paywall" | "cv_cap" | "error" | "no_items"; error: string };
 
 /** Writes a new tailored CV version for a job, within the trial cap or the pass. */
 export async function generateForJob(viewer: Viewer, job: JobView): Promise<GenerateResult> {
@@ -48,6 +51,14 @@ export async function generateForJob(viewer: Viewer, job: JobView): Promise<Gene
     return { ok: false, reason: "paywall", error: "Your trial has ended." };
   }
   if (access.kind === "trial_ready") await startTrialIfNeeded(viewer);
+  // The pass includes a set number of tailored CVs; top-ups add more (D-114).
+  if (access.kind === "pass") {
+    const usage = await passCvUsage(viewer);
+    if (usage && usage.left <= 0) {
+      await track("paywall_shown", { trigger: "pass_cv_cap" }, viewer.id);
+      return { ok: false, reason: "cv_cap", error: `You've made all ${usage.cap} tailored CVs in this pass. Add ${PRICES.products.cv_topup.adds_cvs} more for ${formatNaira(PRICES.products.cv_topup.amount_kobo)}.` };
+    }
+  }
 
   const vault = await getVault(viewer);
   if (vault.confirmedItems === 0) return { ok: false, reason: "no_items", error: "Confirm a few achievements in My experience first. Your CV is written only from them." };

@@ -1,29 +1,24 @@
 "use server";
 
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isPreviewMode } from "@/lib/env";
 import { track } from "@/lib/analytics/server";
 
-export type WaitlistState = { ok?: boolean; error?: string } | undefined;
-
-const schema = z.object({ email: z.string().trim().toLowerCase().pipe(z.email()) });
-
-export async function joinWaitlist(_prev: WaitlistState, formData: FormData): Promise<WaitlistState> {
-  const parsed = schema.safeParse({ email: formData.get("email") });
-  if (!parsed.success) return { error: "Enter an email address like name@gmail.com" };
-  const source = String(formData.get("source") ?? "landing").slice(0, 40);
-
+/**
+ * The price on the landing page: counts the tap as willingness to pay (D-111), then
+ * goes to sign in. Anonymous: a random id from this browser only, no IP, no account.
+ */
+export async function priceClicked(formData: FormData): Promise<void> {
+  const product = String(formData.get("product") ?? "job_hunt_30d").slice(0, 40);
+  const visitor = String(formData.get("visitor") ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 64) || null;
   if (!isPreviewMode()) {
-    const supabase = await createClient();
-    const { error } = await supabase.from("waitlist").insert({ email: parsed.data.email, source });
-    // 23505: already on the list. Treat as success and reveal nothing.
-    if (error && error.code !== "23505") return { error: "We couldn't add you just now. Try again in a minute." };
+    try {
+      await createAdminClient().from("price_clicks").insert({ visitor, source: product });
+    } catch {
+      // Counting must never stop someone signing up.
+    }
   }
-  await track("waitlist_joined", { source });
-  return { ok: true };
-}
-
-export async function priceClicked(product: string): Promise<void> {
-  await track("landing_price_clicked", { product: product.slice(0, 40) });
+  await track("landing_price_clicked", { product });
+  redirect("/sign-in?from=price");
 }

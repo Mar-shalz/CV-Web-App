@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveItem, type VaultActionState } from "@/app/(app)/vault/actions";
+import { saveItem, type VaultActionState } from "@/app/(app)/experience/actions";
 import { inputClass } from "@/components/ui/field";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { FormError } from "@/components/auth/form-error";
 import type { VaultItem } from "@/lib/vault/data";
 import type { Ownership } from "@/lib/vault/schema";
 import { CloseSquare } from "@/components/icons";
+import { VoiceRecorder } from "./voice-recorder";
 
 const OWN: { id: Ownership; label: string; hint: string }[] = [
   { id: "did", label: "I did it", hint: "Your own work" },
@@ -79,6 +80,7 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
         placeholder="For example: Opened about 15 customer accounts a day and checked each customer's documents."
         className={`${inputClass} resize-y py-3 leading-6`}
       />
+      <VoiceRecorder compact onText={(t) => setText((cur) => (cur.trim() ? `${cur.trim()} ${t}` : t))} />
       {text.length > 10 && !hasNumber ? (
         <p className="text-xs text-care-700">Add a number if you can: how many, how often, how much. A rough number is fine; write &ldquo;about&rdquo;.</p>
       ) : null}

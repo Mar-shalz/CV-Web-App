@@ -61,7 +61,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           {staff.mfa ? <AdminMobileNav allowed={allowed} /> : null}
         </header>
-        <main id="main" className="w-full max-w-[1480px] space-y-4 px-4 pb-8 pt-5 lg:px-8 lg:pt-6">
+        <main id="main" className="w-full max-w-[1480px] space-y-3 px-4 pb-8 pt-5 lg:px-8 lg:pt-6">
           {children}
         </main>
       </div>

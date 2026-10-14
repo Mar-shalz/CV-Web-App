@@ -4,12 +4,12 @@ import { AuthShell } from "@/components/shell/auth-shell";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { Lock1 } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = { title: "Sign In" };
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; to?: string }> }) {
   const { error, to } = await searchParams;
   return (
-    <AuthShell step={1} title="Let's get you started" subtitle="Sign in or create an account. It takes less than a minute.">
+    <AuthShell step={1} title="Let's Get You Started" subtitle="Sign in or create an account. It takes less than a minute.">
       <SignInForm
         dest={to === "admin" ? "admin" : undefined}
         initialError={

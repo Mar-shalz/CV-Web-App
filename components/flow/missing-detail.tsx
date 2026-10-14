@@ -191,7 +191,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
           Save and update the check
         </SubmitButton>
       ) : (
-        <Link href="/vault/new" className="inline-flex min-h-12 items-center rounded-2xl bg-brand-600 px-5 text-sm font-semibold text-white">
+        <Link href="/experience/new" className="inline-flex min-h-12 items-center rounded-2xl bg-brand-600 px-5 text-sm font-semibold text-white">
           Add education
         </Link>
       )}

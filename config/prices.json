@@ -1,9 +1,31 @@
 {
-  "version": "2026-10-10",
+  "version": "2026-10-14",
   "currency": "NGN",
   "products": {
-    "job_hunt_30d": { "label": "Job hunt pass", "amount_kobo": 500000, "days": 30, "auto_renew": false },
-    "interview_boost": { "label": "Interview boost", "amount_kobo": 150000, "days": null, "auto_renew": false }
+    "job_hunt_30d": {
+      "label": "Job hunt pass",
+      "amount_kobo": 500000,
+      "days": 30,
+      "auto_renew": false,
+      "tailored_cvs": 30
+    },
+    "interview_boost": {
+      "label": "Interview boost",
+      "amount_kobo": 150000,
+      "days": null,
+      "auto_renew": false
+    },
+    "cv_topup": {
+      "label": "CV top-up",
+      "amount_kobo": 150000,
+      "days": null,
+      "auto_renew": false,
+      "adds_cvs": 10
+    }
   },
-  "refund_rule": { "within_days": 7, "max_packed_applications": 2 }
+  "refund_rule": {
+    "within_days": 7,
+    "max_packed_applications": 2
+  },
+  "note": "Founder to confirm: 30 tailored CVs per pass and a 10 CV top-up for N1,500 (D-114). Free features stay unlimited."
 }

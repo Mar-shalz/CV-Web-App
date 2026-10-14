@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { WorkingNotice } from "@/components/ui/working-notice";
 import { useRouter } from "next/navigation";
 import { DocumentUpload, Camera, DocumentText, TickCircle, Danger, ArrowRight, Edit2 } from "./icons";
 import { compressImage } from "@/lib/client/compress-image";
@@ -33,10 +34,10 @@ export function ImportPanel() {
       const res = await fetch("/api/vault/import", { method: "POST", body });
       const data = (await res.json()) as { ok: boolean; error?: string; manual?: boolean; sensitiveSkipped?: boolean };
       if (!data.ok) {
-        setPhase({ kind: "error", message: data.error ?? "Something went wrong. Try again.", manual: Boolean(data.manual) });
+        setPhase({ kind: "error", message: data.error ?? "That didn't work on our side. Try again in a moment.", manual: Boolean(data.manual) });
         return;
       }
-      router.push(`/vault/review${data.sensitiveSkipped ? "?sensitive=1" : ""}`);
+      router.push(`/experience/review${data.sensitiveSkipped ? "?sensitive=1" : ""}`);
     } catch {
       setPhase({ kind: "error", message: "You seem to be offline. Your file is still on your phone; try again when you're connected.", manual: false });
     } finally {
@@ -61,23 +62,7 @@ export function ImportPanel() {
   }
 
   if (phase.kind === "working") {
-    return (
-      <div className="animate-pop rounded-[var(--radius-panel)] border border-brand-100 bg-gradient-to-b from-brand-50 to-white p-6 text-center lg:p-10" role="status" aria-live="polite">
-        <div className="relative mx-auto h-36 w-28 overflow-hidden rounded-xl border border-paper-edge bg-paper shadow-raised" aria-hidden="true">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <span key={i} className="mx-3 mt-3 block h-2 rounded-full bg-ink-150" style={{ width: `${60 + ((i * 17) % 30)}%` }} />
-          ))}
-          <span className="absolute inset-x-0 top-0 h-10 animate-[scan_1.8s_ease-in-out_infinite] bg-gradient-to-b from-transparent via-brand-400/30 to-transparent" />
-        </div>
-        <p className="mt-6 text-lg font-semibold text-ink-900">{STEPS[phase.step]}</p>
-        <p className="mt-1 text-sm text-ink-600">This usually takes about 20 seconds. Keep this page open.</p>
-        <ol className="mx-auto mt-5 flex max-w-xs justify-center gap-1.5" aria-hidden="true">
-          {STEPS.map((s, i) => (
-            <li key={s} className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${i <= phase.step ? "bg-brand-600" : "bg-ink-150"}`} />
-          ))}
-        </ol>
-      </div>
-    );
+    return <WorkingNotice title="Reading Your CV" steps={STEPS} estimate="Usually 15 to 40 seconds" stepSeconds={8} />;
   }
 
   const tabs: { id: Mode; label: string; icon: typeof DocumentUpload }[] = [
@@ -95,7 +80,7 @@ export function ImportPanel() {
             {phase.message}
           </p>
           {phase.manual ? (
-            <ButtonLink href="/vault/new" variant="secondary" size="sm" className="shrink-0">
+            <ButtonLink href="/experience/new" variant="secondary" size="sm" className="shrink-0">
               <Edit2 size={18} />
               Add by hand
             </ButtonLink>

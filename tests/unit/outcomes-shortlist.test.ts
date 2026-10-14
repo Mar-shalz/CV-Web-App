@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { guessSource, targetStatus } from "@/lib/applications/outcome-rules";
-import { linkQuestions, fallbackQuestions, answerContradictions, type CvLine } from "@/lib/shortlist/questions";
+import { linkQuestions, fallbackQuestions, completeQuestions, answerContradictions, type CvLine } from "@/lib/shortlist/questions";
 import { logisticsFor, daysUntil } from "@/lib/shortlist/logistics";
 import { lintCopy } from "@/lib/copy-lint";
 
@@ -49,11 +49,23 @@ describe("Shortlist questions link to the CV sent", () => {
     const q = { question: "Walk me through reconciling cash", why: "x", bullet_id: "b2", kind: "defend_cv" as const };
     expect(linkQuestions([q, { ...q, question: " walk me through reconciling cash " }], lines)).toHaveLength(1);
   });
-  it("falls back to one question per line, every one linked, numbers first", () => {
+  it("falls back to the opening question, then CV lines (numbers first), then standard questions, at least 10", () => {
     const out = fallbackQuestions(lines);
-    expect(out.every((q) => lines.some((l) => l.id === q.bulletId))).toBe(true);
-    expect(/\d/.test(out[0].bulletText)).toBe(true);
+    expect(out[0].question).toBe("Tell me about yourself.");
+    expect(out.length).toBeGreaterThanOrEqual(10);
+    const defend = out.filter((q) => q.kind === "defend_cv");
+    expect(defend.length).toBeGreaterThan(0);
+    expect(defend.every((q) => lines.some((l) => l.id === q.bulletId))).toBe(true);
+    expect(/\d/.test(defend[0].bulletText ?? "")).toBe(true);
     for (const q of out) expect(lintCopy(q.question)).toEqual([]);
+  });
+  it("keeps the opening question first and never twice", () => {
+    const linked = linkQuestions([{ question: "Tell me about yourself", why: "x", bullet_id: null, kind: "standard" }, { question: "Why this bank?", why: "y", bullet_id: null, kind: "job_fit" }], lines);
+    expect(linked.map((q) => q.question)).toEqual(["Why this bank?"]);
+    const all = completeQuestions(linked, lines);
+    expect(all[0].kind).toBe("intro");
+    expect(all.filter((q) => /about yourself/i.test(q.question))).toHaveLength(1);
+    expect(all.length).toBeGreaterThanOrEqual(10);
   });
 });
 

@@ -8,7 +8,7 @@ import { MODAL_ROUTES } from "@/components/ui/modal-routes";
 import { CaptureForm } from "@/components/flow/capture-form";
 import { Danger, ShieldSearch, Magicpen, Send2 } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Tailor my CV" };
+export const metadata: Metadata = { title: "Tailor My CV" };
 
 /** "Tailor my CV" opens over the current page. A refresh or a shared link shows the full page. */
 export default async function TailorModal({ searchParams }: { searchParams: Promise<{ via?: string }> }) {
@@ -25,7 +25,7 @@ export default async function TailorModal({ searchParams }: { searchParams: Prom
           <Danger size={18} variant="bulk" className="mt-px shrink-0" />
           <span>
             Your CV is written only from your experience. You have {confirmed} of {target} items.{" "}
-            <Link href="/vault" className="font-semibold underline underline-offset-2">
+            <Link href="/experience" className="font-semibold underline underline-offset-2">
               Add more first
             </Link>
           </span>

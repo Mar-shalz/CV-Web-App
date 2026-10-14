@@ -8,8 +8,9 @@ import { UPLOAD_MAX_BYTES, tooBigMessage } from "@/lib/uploads/limits";
 import { logExternalApplication } from "@/lib/applications/log";
 
 const fields = z.object({
-  title: z.string().trim().min(2, "Add the job title.").max(160),
-  employer: z.string().trim().min(2, "Add the employer's name.").max(160),
+  // Optional: read from the job post or link when left empty.
+  title: z.string().trim().max(160).optional(),
+  employer: z.string().trim().max(160).optional(),
   post: z.string().trim().max(60_000).optional(),
   link: z
     .string()
@@ -30,14 +31,16 @@ export async function POST(request: NextRequest) {
 
   const form = await request.formData();
   const parsed = fields.safeParse({
-    title: form.get("title"),
-    employer: form.get("employer"),
+    title: form.get("title") || undefined,
+    employer: form.get("employer") || undefined,
     post: form.get("post") || undefined,
     link: form.get("link") || undefined,
     sent_on: form.get("sent_on"),
     channel: form.get("channel") || "other",
   });
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." }, { status: 400 });
+  // The record is only useful with the job and the exact CV that went (D-107).
+  if (!((parsed.data.post?.length ?? 0) >= 80 || parsed.data.link)) return NextResponse.json({ ok: false, error: "Add the job: paste the job post or its link." }, { status: 400 });
   const sent = new Date(`${parsed.data.sent_on}T12:00:00+01:00`);
   if (sent.getTime() > Date.now() + 86_400_000) return NextResponse.json({ ok: false, error: "The day you sent it can't be in the future." }, { status: 400 });
 
@@ -53,10 +56,11 @@ export async function POST(request: NextRequest) {
     if (file.size > UPLOAD_MAX_BYTES) return NextResponse.json({ ok: false, error: tooBigMessage(file.size) }, { status: 413 });
     cv = { bytes: Buffer.from(await file.arrayBuffer()), name: file.name, type: file.type };
   }
+  if (!cv) return NextResponse.json({ ok: false, error: "Add the CV you sent, as a PDF or Word file." }, { status: 400 });
 
   const res = await logExternalApplication(supabase, viewer, {
-    title: parsed.data.title,
-    employer: parsed.data.employer,
+    title: parsed.data.title ?? "",
+    employer: parsed.data.employer ?? "",
     post: parsed.data.post ?? null,
     link: parsed.data.link ?? null,
     sentOn: parsed.data.sent_on,

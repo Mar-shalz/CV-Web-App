@@ -12,7 +12,7 @@ export function RoleFormPage({ inModal = false }: { inModal?: boolean }) {
         if (inModal) {
           router.back();
           setTimeout(() => router.refresh(), 60);
-        } else router.push("/vault");
+        } else router.push("/experience");
       }}
     />
   );

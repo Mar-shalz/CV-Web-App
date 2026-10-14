@@ -5,20 +5,22 @@ import { RoleCard } from "@/components/vault/role-card";
 import { ButtonLink } from "@/components/ui/button";
 import { Lock1, TickCircle, ArrowRight } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Check what we found" };
+export const metadata: Metadata = { title: "Check What We Found" };
 
 export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ sensitive?: string }> }) {
   const viewer = await requireReadyViewer();
   const { sensitive } = await searchParams;
   const vault = await getVault(viewer);
-  const toCheck = vault.roles.filter((r) => !r.confirmed || r.items.some((i) => !i.confirmed));
+  // Every role stays on the page, in the same order, so confirming one never moves the
+  // rest (D-103). The list only ends when nothing is left to check.
+  const toCheck = vault.unchecked ? vault.roles : [];
   const totalChecks = vault.roles.length + vault.totalItems;
   const done = totalChecks - vault.unchecked;
 
   return (
     <div className="mx-auto max-w-3xl space-y-3">
       <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Check what we found</h1>
+        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Check What We Found</h1>
         <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">Read each one. Confirm what&apos;s right, fix what isn&apos;t. Nothing goes on a CV until you confirm it.</p>
         <div className="mt-4">
           <div className="flex justify-between text-sm">
@@ -50,7 +52,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-proof-600 text-white shadow-raised">
             <TickCircle size={36} variant="bulk" />
           </span>
-          <h2 className="mt-4 text-xl font-semibold text-ink-900">All checked</h2>
+          <h2 className="mt-4 text-xl font-semibold text-ink-900">All Checked</h2>
           <p className="mt-1 text-[0.9375rem] text-ink-600">
             {vault.confirmedItems} confirmed achievements ready to use.{vault.ready ? "" : " A few more will make your CVs stronger."}
           </p>
@@ -59,7 +61,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
               Tailor my CV to a job
               <ArrowRight size={18} />
             </ButtonLink>
-            <ButtonLink href="/vault/interview" variant="secondary">
+            <ButtonLink href="/experience/interview" variant="secondary">
               Add more by answering questions
             </ButtonLink>
           </div>

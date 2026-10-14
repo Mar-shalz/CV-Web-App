@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveRole, type VaultActionState } from "@/app/(app)/vault/actions";
+import { saveRole, type VaultActionState } from "@/app/(app)/experience/actions";
 import { ROLE_KINDS, EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_KINDS, type RoleKind, type EmploymentType } from "@/lib/vault/schema";
 import { inputClass } from "@/components/ui/field";
 import { MonthYearField } from "@/components/ui/date-fields";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { FormError } from "@/components/auth/form-error";
 import { Add, Trash, TickCircle } from "@/components/icons";
+import { VoiceRecorder } from "./voice-recorder";
 import type { VaultRole } from "@/lib/vault/data";
 
 // Words people use on CVs: "Work experience" rather than "Job".
@@ -142,7 +143,7 @@ export function RoleForm({ role, defaultKind = "job", onDone, onCancel }: { role
       {!role && HAS_WORK.includes(kind) ? (
         <section aria-labelledby="did-title" className="rounded-2xl border border-ink-150 bg-ink-50 p-4">
           <h3 id="did-title" className="text-sm font-semibold text-ink-900">
-            What did you do there? <span className="font-normal text-ink-500">(optional, you can add more later)</span>
+            What Did You Do There? <span className="font-normal text-ink-500">(optional, you can add more later)</span>
           </h3>
           <p className="mt-1 text-[0.8125rem] leading-5 text-ink-600">Add one thing at a time. Each one becomes one line on your CV. Say what you did and, if you can, how many or how often.</p>
           {things.length ? (
@@ -152,7 +153,12 @@ export function RoleForm({ role, defaultKind = "job", onDone, onCancel }: { role
                   <TickCircle size={18} variant="bulk" className="mt-0.5 shrink-0 text-proof-600" />
                   <span className="flex-1">{t}</span>
                   <input type="hidden" name="items" value={t} />
-                  <button type="button" onClick={() => setThings((all) => all.filter((_, j) => j !== i))} aria-label={`Remove: ${t}`} className="grid size-9 shrink-0 place-items-center rounded-lg text-flag-600 hover:bg-flag-50">
+                  <button
+                    type="button"
+                    onClick={() => setThings((all) => all.filter((_, j) => j !== i))}
+                    aria-label={`Remove: ${t}`}
+                    className="grid size-9 shrink-0 place-items-center rounded-lg text-flag-600 hover:bg-flag-50"
+                  >
                     <Trash size={16} />
                   </button>
                 </li>
@@ -176,15 +182,18 @@ export function RoleForm({ role, defaultKind = "job", onDone, onCancel }: { role
             placeholder="For example: Reconciled about 40 customer accounts each day with the bank statement."
             className={`${inputClass} mt-1.5 resize-y py-3 leading-6`}
           />
-          <button
-            type="button"
-            onClick={addThing}
-            aria-disabled={!canAddThing || undefined}
-            className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-3.5 text-sm font-semibold text-brand-700 ring-1 ring-ink-150 hover:bg-brand-50 aria-disabled:cursor-not-allowed aria-disabled:text-ink-400"
-          >
-            <Add size={18} />
-            {things.length ? "Add this one too" : "Add this one"}
-          </button>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={addThing}
+              aria-disabled={!canAddThing || undefined}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-3.5 text-sm font-semibold text-brand-700 ring-1 ring-ink-150 hover:bg-brand-50 aria-disabled:cursor-not-allowed aria-disabled:text-ink-400"
+            >
+              <Add size={18} />
+              {things.length ? "Add this one too" : "Add this one"}
+            </button>
+            <VoiceRecorder compact onText={(t) => setDraft((cur) => (cur.trim() ? `${cur.trim()} ${t}` : t))} />
+          </div>
         </section>
       ) : null}
 

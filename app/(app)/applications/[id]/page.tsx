@@ -14,6 +14,7 @@ import { StatusUpdate } from "@/components/applications/status-update";
 import { Timeline } from "@/components/applications/timeline";
 import { LateReply } from "@/components/applications/late-reply";
 import { ArrowLeft2, ArrowRight, Verify, DocumentDownload, DocumentText, Sms, Calendar, Location, Clipboard, MessageQuestion, Teacher, Send2, ShieldTick } from "@/components/icons";
+import { DeleteApplication } from "@/components/applications/delete-application";
 
 export const metadata: Metadata = { title: "Application" };
 
@@ -147,7 +148,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
               </span>
               <div>
                 <h2 id="post-title" className="text-[0.9375rem] font-semibold text-ink-900">
-                  The job post, as you saw it
+                  The Job Post, as You Saw It
                 </h2>
                 <p className="text-[0.8125rem] text-ink-500">
                   {app.snapshot ? `Saved ${formatDate(app.snapshot.capturedAt)}. Kept even if the advert is taken down.` : "Saved when you send it."}
@@ -162,7 +163,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
                 </dl>
                 {job.requirements.length ? (
                   <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">What they asked for</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">What They Asked For</h3>
                     <ul className="mt-2 space-y-1.5">
                       {job.requirements.map((r) => (
                         <li key={r.text} className="flex gap-2 text-sm leading-6 text-ink-800">
@@ -192,6 +193,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
         <aside className="space-y-3">
           {!notSent ? <StatusUpdate applicationId={app.id} next={nextStatuses(app.status)} /> : null}
           <Timeline events={app.timeline} />
+          <DeleteApplication applicationId={app.id} />
           <p className="flex items-start gap-2 px-1 text-xs leading-5 text-ink-500">
             <ShieldTick size={16} className="mt-px shrink-0" />
             Only you can see this application. It opens without data once you&apos;ve viewed it on this phone.

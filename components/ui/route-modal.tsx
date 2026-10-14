@@ -12,15 +12,14 @@ import { ModalHeader } from "./modal-header";
 // The loading frame opens first; the real screen then takes its place without a second pop.
 let frameShownFor: string | null = null;
 
-export function RouteModal({ title, description, children, frame = false }: { title: string; description?: string; children: ReactNode; frame?: boolean }) {
+export function RouteModal({ title, description, children, href, frame = false }: { title: string; description?: string; children: ReactNode; href: string; frame?: boolean }) {
   const router = useRouter();
   const ref = useRef<HTMLDialogElement>(null);
-  // Next keeps a parallel slot's last screen on other pages, so the modal hides itself
-  // as soon as the address moves on (for example after "Check this job"). A catch all
-  // slot route would do this too, but it breaks every route outside the (app) group.
+  // Next keeps a parallel slot's last screen on other pages, so the modal shows only
+  // while the address is its own (href). Comparing with the address it opened on was
+  // not enough: a re-mounted slot took the new page's address and popped up again.
   const path = usePathname();
-  const [openedOn] = useState(path);
-  const active = path === openedOn;
+  const active = path === href;
   // Read once on mount: true when the loading frame for this screen was just on show.
   const [settled] = useState(() => !frame && frameShownFor === path);
 
@@ -68,9 +67,9 @@ export function RouteModal({ title, description, children, frame = false }: { ti
  * Shown the instant a modal link is tapped (the route's loading.tsx), so the screen opens
  * straight away and fills in when the server is done.
  */
-export function ModalLoading({ title, description }: { title: string; description?: string }) {
+export function ModalLoading({ title, description, href }: { title: string; description?: string; href: string }) {
   return (
-    <RouteModal title={title} description={description} frame>
+    <RouteModal title={title} description={description} href={href} frame>
       <div role="status" className="animate-pulse space-y-4">
         <span className="sr-only">Loading</span>
         <div className="grid gap-4 sm:grid-cols-2">

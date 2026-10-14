@@ -15,7 +15,7 @@ export default async function AdminTeam() {
   return (
     <>
       <PageHeader title="Team and access" intro="Give each person the smallest role that covers their work. Everyone uses two factor sign in. Pause stops someone's back office access until you reactivate them; delete takes them off the team. Both take effect on their next page load." />
-      <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid items-start gap-3 2xl:grid-cols-[minmax(0,1fr)_380px]">
         <Panel title="Staff">
           <Table caption="Staff" head={["Who", "Role", "Added", "Status", ""]}>
             {rows.map((m) => (

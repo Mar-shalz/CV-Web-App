@@ -46,7 +46,7 @@ export type UserDetail = UserRow & {
   visits30: number;
   activeDays7: number;
   activity: { date: string; count: number }[];
-  counts: { roles: number; items: number; confirmedItems: number; cvs: number; applications: number; interviews: number; offers: number };
+  counts: { roles: number; items: number; confirmedItems: number; cvs: number; applications: number; deletedApplications: number; interviews: number; offers: number };
   payments: { id: string; product: string; amountKobo: number; status: string; reference: string | null; created: string; endsAt: string | null }[];
   freeAccess: { until: string | null; note: string | null } | null;
 };
@@ -230,7 +230,7 @@ export async function getUserDetail(staff: Staff, id: string, full: boolean): Pr
       visits30: acts.reduce((n, a) => n + a.views, 0),
       activeDays7: acts.filter((a) => a.day >= lagosDay(new Date(Date.now() - 6 * DAY))).length,
       activity: last30(acts),
-      counts: { roles: 6, items: 18, confirmedItems: 15, cvs: 7, applications: 9, interviews: 2, offers: 0 },
+      counts: { roles: 6, items: 18, confirmedItems: 15, cvs: 7, applications: 9, deletedApplications: 1, interviews: 2, offers: 0 },
       payments: r.paidKobo ? [{ id: "p1", product: "Job hunt pass", amountKobo: 500000, status: "active", reference: "PSK_7f3a91", created: ago(6), endsAt: ago(-24) }] : [],
       freeAccess: r.plan.kind === "free_access" ? { until: null, note: "Tester" } : null,
     };
@@ -246,7 +246,7 @@ export async function getUserDetail(staff: Staff, id: string, full: boolean): Pr
   const [profile, passes, usage, free, activity, auth, staffRow, roles, items, confirmed, cvs, apps, interviews, offers] = await Promise.all([
     db.from("profiles").select("full_name, phone").eq("user_id", id).maybeSingle(),
     db.from("passes").select("id, user_id, type, status, amount_kobo, ends_at, starts_at, created_at, paystack_reference").eq("user_id", id).order("created_at", { ascending: false }),
-    db.from("usage_counters").select("user_id, trial_started_at, trial_ends_at").eq("user_id", id).maybeSingle(),
+    db.from("usage_counters").select("*").eq("user_id", id).maybeSingle(),
     db.from("free_access").select("email, ends_at, note").is("revoked_at", null).eq("email", email.toLowerCase()).maybeSingle(),
     db.from("user_activity").select("*").eq("user_id", id).gte("day", since30),
     db.auth.admin.getUserById(id),
@@ -285,7 +285,16 @@ export async function getUserDetail(staff: Staff, id: string, full: boolean): Pr
     visits30: acts.reduce((n, a) => n + a.views, 0),
     activeDays7: acts.filter((a) => a.day >= since7).length,
     activity: last30(acts),
-    counts: { roles: roles.count ?? 0, items: items.count ?? 0, confirmedItems: confirmed.count ?? 0, cvs: cvs.count ?? 0, applications: apps.count ?? 0, interviews: interviews.count ?? 0, offers: offers.count ?? 0 },
+    counts: {
+      roles: roles.count ?? 0,
+      items: items.count ?? 0,
+      confirmedItems: confirmed.count ?? 0,
+      cvs: cvs.count ?? 0,
+      applications: apps.count ?? 0,
+      deletedApplications: Number((usage.data as { applications_deleted?: number } | null)?.applications_deleted ?? 0),
+      interviews: interviews.count ?? 0,
+      offers: offers.count ?? 0,
+    },
     payments: myPasses.filter((x) => x.type !== "trial_3d").map((x) => ({ id: x.id, product: PRODUCT[x.type] ?? x.type, amountKobo: x.amount_kobo, status: x.status, reference: x.paystack_reference, created: x.created_at, endsAt: x.ends_at })),
     freeAccess: free.data ? { until: (free.data as Free).ends_at, note: (free.data as Free).note } : null,
   };

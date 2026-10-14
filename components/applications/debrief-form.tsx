@@ -38,7 +38,7 @@ export function DebriefForm({ applicationId, voice, existing }: { applicationId:
             <TickCircle size={26} variant="bulk" />
           </span>
           <div>
-            <h2 className="font-display text-lg font-semibold text-ink-900">Notes saved</h2>
+            <h2 className="font-display text-lg font-semibold text-ink-900">Notes Saved</h2>
             <p className="text-sm text-ink-600">
               {FORMAT[result.format ?? "unknown"]}
               {result.panel ? ` · ${result.panel}` : ""}
@@ -47,7 +47,7 @@ export function DebriefForm({ applicationId, voice, existing }: { applicationId:
         </div>
         {result.questions.length ? (
           <>
-            <h3 className="mt-5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Questions you were asked</h3>
+            <h3 className="mt-5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Questions You Were Asked</h3>
             <ol className="stagger mt-2 space-y-2">
               {result.questions.map((q, i) => (
                 <li key={q.text} style={{ ["--i" as string]: i }} className="flex gap-3 rounded-2xl bg-ink-50 p-3.5">

@@ -9,9 +9,9 @@ import { defineTask, trusted, untrusted } from "../types";
 export const shortlistQuestions = defineTask({
   name: "shortlist_questions",
   model: "claude-sonnet-5-5",
-  promptVersion: "v1",
+  promptVersion: "v2",
   input: z.object({
-    job: z.object({ title: z.string(), employer: z.string(), requirements: z.array(z.string().max(300)).max(20), post: z.string().max(8000) }),
+    job: z.object({ title: z.string(), employer: z.string(), level: z.string().max(60).optional(), requirements: z.array(z.string().max(300)).max(20), post: z.string().max(8000) }),
     bullets: z.array(z.object({ id: z.string(), role: z.string(), text: z.string().max(400) })).min(1).max(40),
     format: z.string(),
   }),
@@ -21,18 +21,18 @@ export const shortlistQuestions = defineTask({
         z.object({
           question: z.string().min(8).max(240),
           why: z.string().max(240),
-          bullet_id: z.string(),
-          kind: z.enum(["defend_cv", "job_fit", "situational", "technical"]),
+          bullet_id: z.string().nullable(),
+          kind: z.enum(["defend_cv", "job_fit", "situational", "technical", "standard"]),
         }),
       )
       .min(1)
-      .max(8),
+      .max(16),
   }),
-  maxTokens: 4000,
-  timeoutMs: 40_000,
-  effort: "medium",
+  maxTokens: 5000,
+  timeoutMs: 45_000,
+  effort: "low",
   render: (i) => [
-    trusted(`Interview for ${i.job.title} at ${i.job.employer}. Format: ${i.format}.`),
+    trusted(`Interview for ${i.job.title} at ${i.job.employer}. Level: ${i.job.level ?? "not stated"}. Format: ${i.format}.`),
     untrusted("cv_sent", i.bullets.map((b) => `[${b.id}] (${b.role}) ${b.text}`).join("\n")),
     untrusted("job_post", `Requirements:\n${i.job.requirements.map((r) => `- ${r}`).join("\n")}\n\nPost:\n${i.job.post}`),
   ],
@@ -47,11 +47,11 @@ export const shortlistQuestions = defineTask({
 export const drillFeedback = defineTask({
   name: "drill_feedback",
   model: "claude-sonnet-5-5",
-  promptVersion: "v1",
+  promptVersion: "v2",
   input: z.object({
     question: z.string().max(240),
     answer: z.string().min(1).max(6000),
-    bullet: z.object({ text: z.string().max(400), facts: z.array(z.string().max(600)).max(6) }),
+    bullet: z.object({ text: z.string().max(400), facts: z.array(z.string().max(600)).max(8) }),
   }),
   output: z.object({
     matches_cv: z.enum(["yes", "partly", "no"]),

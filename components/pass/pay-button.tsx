@@ -17,7 +17,7 @@ function Submit({ label, variant }: { label: string; variant: ButtonVariant }) {
 }
 
 /** Pay with Paystack: card, bank transfer or USSD. The secret key stays on the server. */
-export function PayButton({ product, application, label, variant = "primary" }: { product: "job_hunt_30d" | "interview_boost"; application?: string | null; label: string; variant?: ButtonVariant }) {
+export function PayButton({ product, application, label, variant = "primary" }: { product: "job_hunt_30d" | "interview_boost" | "cv_topup"; application?: string | null; label: string; variant?: ButtonVariant }) {
   const [state, action] = useActionState<PayState, FormData>(startPayment, undefined);
   return (
     <form action={action}>

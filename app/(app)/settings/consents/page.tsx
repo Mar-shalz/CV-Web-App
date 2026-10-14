@@ -8,7 +8,7 @@ import { SettingsShell } from "@/components/settings/settings-shell";
 import { ConsentSwitch } from "@/components/settings/settings-forms";
 import { TickCircle } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Your consents" };
+export const metadata: Metadata = { title: "Your Consents" };
 
 type C = { type: string; version: string; granted_at: string | null; withdrawn_at: string | null; created_at: string };
 
@@ -29,7 +29,7 @@ export default async function ConsentsPage() {
     <SettingsShell title="Your consents" intro="What you've agreed to, and when. Change the optional ones any time.">
       <section aria-labelledby="req-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
         <h2 id="req-title" className="text-[0.9375rem] font-semibold text-ink-900">
-          Needed to use the app
+          Needed to Use the App
         </h2>
         <ul className="mt-3 space-y-3">
           {(["terms", "privacy"] as const).map((t) => (

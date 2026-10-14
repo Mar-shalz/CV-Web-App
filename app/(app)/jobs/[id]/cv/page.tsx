@@ -8,7 +8,7 @@ import { FlowSteps } from "@/components/flow/flow-steps";
 import { CvEditor } from "@/components/flow/cv-editor";
 import { GenerateCv } from "@/components/flow/generate-cv";
 
-export const metadata: Metadata = { title: "Your tailored CV" };
+export const metadata: Metadata = { title: "Your Tailored CV" };
 
 export default async function CvPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,9 +22,9 @@ export default async function CvPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="space-y-3">
-      <FlowSteps current="cv" hrefs={{ add: `/jobs/${job.id}`, check: `/jobs/${job.id}/check` }} />
+      <FlowSteps current="cv" hrefs={{ add: `/jobs/${job.id}`, check: `/jobs/${job.id}/check` }} back={`/jobs/${job.id}/check`} />
       <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Your tailored CV</h1>
+        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Your Tailored CV</h1>
         <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
           For {job.parsed.title ?? "this job"}
           {job.parsed.employer_name ? ` at ${job.parsed.employer_name}` : ""}. Written only from your experience, in the {PROFILE_LABELS[job.destination.profile].toLowerCase().replace("uk", "UK")} format.

@@ -15,7 +15,7 @@ import { WebQuestions } from "@/components/shortlist/web-questions";
 import { ButtonLink } from "@/components/ui/button";
 import { ArrowLeft2, Teacher, TickCircle, Crown1, DocumentText } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Interview prep" };
+export const metadata: Metadata = { title: "Interview Prep" };
 
 export default async function ShortlistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,7 +42,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
             <span className="grid size-12 place-items-center rounded-2xl bg-white/15">
               <Teacher size={26} variant="bulk" />
             </span>
-            <h1 className="mt-4 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.02em]">Congratulations on the invite</h1>
+            <h1 className="mt-4 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.02em]">Congratulations on the Invite</h1>
             <p className="mt-2 text-[0.9375rem] leading-6 text-white/85">Prepare from exactly what {app.employer} has in front of them: your CV and their post.</p>
           </div>
           <div className="p-6">
@@ -83,7 +83,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
           <Teacher size={16} variant="bulk" />
           Interview prep
         </p>
-        <h1 className="mt-3 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Get ready for {app.employer}</h1>
+        <h1 className="mt-3 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Get Ready for {app.employer}</h1>
         <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Everything here comes from the job post you saved and the exact CV you sent. Nothing new to memorise, only your own proof to explain well.</p>
       </header>
 

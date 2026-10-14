@@ -50,7 +50,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
     start(async () => {
       const res = await sentIt(applicationId);
       if (res.ok) setSent(true);
-      else setError(res.error ?? "Something went wrong.");
+      else setError(res.error ?? "That didn't save. Try again in a moment.");
     });
   }
 
@@ -60,7 +60,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
         <span className="mx-auto grid size-20 place-items-center rounded-full bg-proof-600 text-white shadow-raised">
           <TickCircle size={44} variant="bulk" />
         </span>
-        <h2 className="mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Application saved</h2>
+        <h2 className="mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Application Saved</h2>
         <p className="mt-2 text-[0.9375rem] leading-6 text-ink-600">
           We kept the job post and the exact CV you sent. If they invite you weeks from now, you&apos;ll prepare from exactly what they have.
         </p>
@@ -88,7 +88,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
                 <Sms size={22} variant="bulk" />
               </span>
               <div>
-                <h2 className="text-[0.9375rem] font-semibold text-ink-900">Your application email</h2>
+                <h2 className="text-[0.9375rem] font-semibold text-ink-900">Your Application Email</h2>
                 <p className="text-[0.8125rem] text-ink-500">Copy each part, or open it ready in your email app.</p>
               </div>
             </div>
@@ -184,7 +184,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
       <aside className="space-y-3">
         <section aria-labelledby="checklist-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
           <h2 id="checklist-title" className="text-[0.9375rem] font-semibold text-ink-900">
-            Before you press send
+            Before You Press Send
           </h2>
           <ul className="mt-3 space-y-1">
             {pack.checklist.map((c, i) => (
@@ -202,7 +202,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
         </section>
 
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
-          <h2 className="text-[0.9375rem] font-semibold text-ink-900">Sent it?</h2>
+          <h2 className="text-[0.9375rem] font-semibold text-ink-900">Sent It?</h2>
           <p className="mt-1 text-[0.8125rem] leading-5 text-ink-600">Tell us, and we&apos;ll save this application with the exact CV and job post.</p>
           {error ? (
             <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-flag-700">

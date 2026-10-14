@@ -31,6 +31,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // "My experience" used to live at /vault (D-101): old links and bookmarks still work.
+  async redirects() {
+    return [
+      { source: "/vault", destination: "/experience", permanent: true },
+      { source: "/vault/:path*", destination: "/experience/:path*", permanent: true },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

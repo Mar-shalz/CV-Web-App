@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { cookies, headers } from "next/headers";
-import { after } from "next/server";
-import { recordVisit } from "@/lib/activity";
+import { cookies } from "next/headers";
+import { VisitBeacon } from "@/components/shell/visit-beacon";
 import { Mark } from "@/components/brand/logo";
 import { Sidebar, BottomNav } from "@/components/shell/nav";
 import { AccessBadge, AccessCard } from "@/components/shell/access-card";
@@ -18,10 +17,7 @@ import { APP_NAME, MARKETS } from "@/lib/config";
 
 export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const viewer = await requireReadyViewer();
-  const [jar, head, checkIns, inbox] = await Promise.all([cookies(), headers(), getCheckIns(viewer), getInbox(viewer)]);
-  // Counts the day as active for the back office, after the page is sent.
-  const country = head.get("x-vercel-ip-country");
-  if (!viewer.preview) after(() => recordVisit(viewer.id, country));
+  const [jar, checkIns, inbox] = await Promise.all([cookies(), getCheckIns(viewer), getInbox(viewer)]);
   const access = accessState({
     trialStartedAt: viewer.trial.startedAt,
     trialEndsAt: viewer.trial.endsAt,
@@ -32,6 +28,7 @@ export default async function AppLayout({ children, modal }: { children: React.R
 
   return (
     <div className="flex min-h-dvh" data-app-shell="" data-low-data={viewer.lowDataMode || undefined}>
+      <VisitBeacon />
       <Sidebar initialCollapsed={jar.get("sb_collapsed")?.value === "1"} footer={<AccessCard state={access} />} footerCollapsed={<AccessBadge state={access} />} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -58,7 +55,7 @@ export default async function AppLayout({ children, modal }: { children: React.R
                 name="q"
                 type="search"
                 placeholder="Search jobs, employers or applications"
-                className="h-12 w-full rounded-full border border-transparent bg-ink-75 pl-12 pr-4 text-[0.9375rem] text-ink-900 placeholder:text-ink-500 transition-colors focus:border-brand-500 focus:bg-white focus:outline-none"
+                className="h-12 w-full rounded-full border border-transparent bg-ink-75 pl-12 pr-4 text-[0.9375rem] text-ink-900 placeholder:text-ink-400 transition-colors focus:border-brand-500 focus:bg-white focus:outline-none"
               />
             </form>
 

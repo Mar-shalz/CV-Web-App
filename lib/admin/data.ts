@@ -15,84 +15,140 @@ const ago = (d: number, h = 0) => new Date(Date.now() - d * DAY - h * 3600000).t
 // Overview
 // ---------------------------------------------------------------------------
 export type KpiStatus = "good" | "warn" | "bad" | "none";
-export type Kpi = { label: string; value: string; target: string; status: KpiStatus; note: string };
+/** `how` says in plain words what is counted, for anyone reading the card. */
+export type Kpi = { label: string; value: string; target: string; status: KpiStatus; note: string; how: string };
 export type Gate = { name: string; state: "passed" | "in_progress" | "not_started"; checks: { text: string; ok: boolean | null }[] };
 export type Overview = {
   kpis: Kpi[];
   gates: Gate[];
   signups: { date: string; count: number }[];
-  queue: { openReports: number; overdueReports: number; pendingPayments: number; listsDue: number };
+  queue: { openReports: number; overdueReports: number; pendingPayments: number; listsDue: number; accounts: number; newThisWeek: number };
 };
 
 const SAMPLE_SIGNUPS = [12, 18, 9, 22, 31, 27, 19, 24, 40, 36, 28, 33, 45, 38].map((count, i) => ({ date: ago(13 - i), count }));
+
+const HOW = {
+  price: "Taps on the price on the landing page in the last 30 days. Each tap goes to sign in, so it shows how many people are ready to pay.",
+  ready: "Of people who joined in the last 30 days (at least a day ago), the share who confirmed 5 or more achievements within 24 hours of joining.",
+  pack: "Of the same people, the share whose first application pack (tailored CV plus the message to send) was ready within 24 hours of joining.",
+  trial: "Of people whose 3 day trial started in the last 60 days, the share who then bought a pass.",
+  invites: "Interview invites recorded in the last 30 days, divided by the people who sent at least one application in that time.",
+  ai: "AI spend in the last 30 days divided by the people who used at least one AI step. Free tier calls count as $0.",
+  flags: "Of CV lines our fact check flagged in CVs made in the last 30 days, the share the person fixed, removed or confirmed.",
+  sent: "Applications people marked as sent in the last 30 days, and how many people sent them.",
+} as const;
+
+const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : "Not enough data");
+const statusFor = (n: number, d: number, target: number): KpiStatus => (d < 5 ? "none" : n / d >= target ? "good" : n / d >= target * 0.75 ? "warn" : "bad");
 
 export async function getOverview(staff: Staff): Promise<Overview> {
   if (staff.preview) {
     return {
       kpis: [
-        { label: "Waitlist", value: "412", target: "300 for Gate 1", status: "good", note: "Gate 1 target met" },
-        { label: "Price button clicks", value: "4.1%", target: "3% or more", status: "good", note: "17 of 412 visitors" },
-        { label: "Vault ready on day one", value: "54%", target: "50%", status: "good", note: "5 confirmed items in session one" },
-        { label: "First pack within 24h", value: "38%", target: "40%", status: "warn", note: "2 points under target" },
-        { label: "Trial to pass", value: "6.2%", target: "8%", status: "warn", note: "Beta target" },
-        { label: "Invites per active seeker", value: "0.7", target: "1 per 30 days", status: "warn", note: "North star" },
-        { label: "AI cost per active user", value: "$0.31", target: `under $${LIMITS.ai.budget_usd_per_active_user_month}`, status: "good", note: "Last 30 days" },
-        { label: "Flagged lines resolved", value: "93%", target: "95%", status: "warn", note: "Fixed or removed before download" },
+        { label: "Price button taps", value: "17", target: "3% of visitors", status: "good", note: "Last 30 days", how: HOW.price },
+        { label: "Experience ready on day one", value: "54%", target: "50%", status: "good", note: "32 of 59 new people", how: HOW.ready },
+        { label: "First pack within 24h", value: "38%", target: "40%", status: "warn", note: "22 of 59 new people", how: HOW.pack },
+        { label: "Trial to pass", value: "6.2%", target: "8%", status: "warn", note: "9 of 145 trials", how: HOW.trial },
+        { label: "Invites per active seeker", value: "0.7", target: "1 per 30 days", status: "warn", note: "North star", how: HOW.invites },
+        { label: "AI cost per active user", value: "$0.31", target: `under $${LIMITS.ai.budget_usd_per_active_user_month}`, status: "good", note: "Last 30 days", how: HOW.ai },
+        { label: "Flagged lines resolved", value: "93%", target: "95%", status: "warn", note: "Fixed, removed or confirmed", how: HOW.flags },
+        { label: "Applications sent", value: "286", target: "Growing each week", status: "good", note: "By 131 people", how: HOW.sent },
       ],
       gates: [
-        { name: "Gate 1: willingness to pay", state: "passed", checks: [{ text: "300 waitlist sign ups", ok: true }, { text: "3% click the price button", ok: true }] },
-        {
-          name: "Gate 2: truth and data",
-          state: "in_progress",
-          checks: [
-            { text: "Zero invented facts on golden set G3", ok: null },
-            { text: "Under 1.5MB of data per session", ok: true },
-            { text: "First load under 300KB", ok: true },
-          ],
-        },
+        { name: "Gate 1: willingness to pay", state: "passed", checks: [{ text: "300 accounts", ok: true }, { text: "3% tap the price", ok: true }] },
+        { name: "Gate 2: truth and data", state: "in_progress", checks: [{ text: "Zero invented facts on golden set G3", ok: null }, { text: "Under 1.5MB of data per session", ok: true }, { text: "First load under 300KB", ok: true }] },
         { name: "Gate 3: closed beta", state: "not_started", checks: [{ text: "70% find the verdict helpful", ok: null }, { text: "8% trial to pass", ok: null }, { text: "8% of applications get an invite", ok: null }] },
       ],
       signups: SAMPLE_SIGNUPS,
-      queue: { openReports: 3, overdueReports: 1, pendingPayments: 2, listsDue: 1 },
+      queue: { openReports: 3, overdueReports: 1, pendingPayments: 2, listsDue: 1, accounts: 412, newThisWeek: 64 },
     };
   }
 
   const db = createAdminClient();
   const since14 = ago(14);
-  const [waitlist, users, recent, reports, overdue, pending] = await Promise.all([
-    db.from("waitlist").select("id", { count: "exact", head: true }),
+  const since30 = ago(30);
+  const [users, recent, reports, overdue, pending, clicks, cohort, trials, aiRows, invites, senders, cvs, week] = await Promise.all([
     db.from("users").select("id", { count: "exact", head: true }),
     db.from("users").select("created_at").gte("created_at", since14),
     db.from("truth_reports").select("id", { count: "exact", head: true }).eq("status", "open"),
     db.from("truth_reports").select("id", { count: "exact", head: true }).eq("status", "open").lt("created_at", ago(0, LIMITS.back_office.truth_report_sla_hours)),
     db.from("passes").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    db.from("price_clicks").select("visitor").gte("at", since30).limit(20000),
+    db.from("users").select("id, created_at").gte("created_at", since30).lt("created_at", ago(1)).limit(2000),
+    db.from("usage_counters").select("user_id").gte("trial_started_at", ago(60)).limit(5000),
+    db.from("ai_call_logs").select("cost_usd, user_ref").gte("at", since30).limit(50000),
+    db.from("outcome_events").select("user_id").in("to_status", ["interview", "second_interview", "assessment"]).gte("created_at", since30).limit(20000),
+    db.from("applications").select("user_id").gte("sent_at", since30).limit(20000),
+    db.from("cv_versions").select("content").gte("created_at", since30).limit(1000),
+    db.from("users").select("id", { count: "exact", head: true }).gte("created_at", ago(7)),
   ]);
+
+  // Day one readiness and first pack for people who joined in the last 30 days.
+  const people = (cohort.data ?? []) as { id: string; created_at: string }[];
+  const ids = people.map((p) => p.id);
+  const joined = new Map(people.map((p) => [p.id, new Date(p.created_at).getTime()]));
+  const [items, packs] = ids.length
+    ? await Promise.all([
+        db.from("vault_items").select("user_id, confirmed_at").in("user_id", ids).not("confirmed_at", "is", null).limit(50000),
+        db.from("application_packs").select("user_id, created_at").in("user_id", ids).limit(20000),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const within = (uid: string, at: string) => new Date(at).getTime() - (joined.get(uid) ?? 0) <= DAY;
+  const earlyItems = new Map<string, number>();
+  for (const i of (items.data ?? []) as { user_id: string; confirmed_at: string }[]) if (within(i.user_id, i.confirmed_at)) earlyItems.set(i.user_id, (earlyItems.get(i.user_id) ?? 0) + 1);
+  const readyDayOne = [...earlyItems.values()].filter((n) => n >= LIMITS.onboarding.vault_ready_items).length;
+  const fastPack = new Set(((packs.data ?? []) as { user_id: string; created_at: string }[]).filter((p) => within(p.user_id, p.created_at)).map((p) => p.user_id)).size;
+
+  // Trial to pass.
+  const trialIds = ((trials.data ?? []) as { user_id: string }[]).map((t) => t.user_id);
+  const { data: paid } = trialIds.length ? await db.from("passes").select("user_id").in("user_id", trialIds).eq("type", "job_hunt_30d").in("status", ["active", "expired"]) : { data: [] };
+  const converted = new Set((paid ?? []).map((p) => p.user_id)).size;
+
+  // Invites per active seeker, AI cost per active user.
+  const seekers = new Set(((senders.data ?? []) as { user_id: string }[]).map((a) => a.user_id)).size;
+  const inviteCount = (invites.data ?? []).length;
+  const ai = (aiRows.data ?? []) as { cost_usd: number; user_ref: string | null }[];
+  const aiUsers = new Set(ai.map((r) => r.user_ref).filter(Boolean)).size;
+  const aiTotal = ai.reduce((n, r) => n + Number(r.cost_usd), 0);
+
+  // Flagged lines resolved: flags on CV lines, by status.
+  let flagged = 0;
+  let resolved = 0;
+  for (const c of (cvs.data ?? []) as { content: { sections?: { kind?: string; roles?: { bullets?: { flags?: { status?: string }[] }[] }[] }[] } | null }[]) {
+    for (const sec of c.content?.sections ?? []) for (const r of sec.roles ?? []) for (const b of r.bullets ?? []) for (const f of b.flags ?? []) {
+      flagged++;
+      if (f.status && f.status !== "open") resolved++;
+    }
+  }
+
   const byDay = new Map<string, number>();
   for (let i = 13; i >= 0; i--) byDay.set(ago(i).slice(0, 10), 0);
   for (const r of recent.data ?? []) {
     const k = String(r.created_at).slice(0, 10);
     if (byDay.has(k)) byDay.set(k, (byDay.get(k) ?? 0) + 1);
   }
-  const wl = waitlist.count ?? 0;
-  const none = (label: string, target: string): Kpi => ({ label, value: "Not enough data", target, status: "none", note: "Fills in during the beta" });
+  const accounts = users.count ?? 0;
+  const taps = new Set(((clicks.data ?? []) as { visitor: string | null }[]).map((c, i) => c.visitor ?? `anon-${i}`)).size;
+  const budget = LIMITS.ai.budget_usd_per_active_user_month;
+  const perUser = aiUsers ? aiTotal / aiUsers : 0;
   return {
     kpis: [
-      { label: "Waitlist", value: wl.toLocaleString("en-NG"), target: "300 for Gate 1", status: wl >= 300 ? "good" : "warn", note: `${users.count ?? 0} accounts created` },
-      none("Price button clicks", "3% or more"),
-      none("Vault ready on day one", "50%"),
-      none("First pack within 24h", "40%"),
-      none("Trial to pass", "8%"),
-      none("Invites per active seeker", "1 per 30 days"),
-      none("AI cost per active user", `under $${LIMITS.ai.budget_usd_per_active_user_month}`),
-      none("Flagged lines resolved", "95%"),
+      { label: "Price button taps", value: taps.toLocaleString("en-NG"), target: "3% of visitors", status: taps ? "good" : "none", note: clicks.error ? "Shows once the latest database update runs" : "Last 30 days, one per browser", how: HOW.price },
+      { label: "Experience ready on day one", value: pct(readyDayOne, people.length), target: "50%", status: statusFor(readyDayOne, people.length, 0.5), note: `${readyDayOne} of ${people.length} new people`, how: HOW.ready },
+      { label: "First pack within 24h", value: pct(fastPack, people.length), target: "40%", status: statusFor(fastPack, people.length, 0.4), note: `${fastPack} of ${people.length} new people`, how: HOW.pack },
+      { label: "Trial to pass", value: pct(converted, trialIds.length), target: "8%", status: statusFor(converted, trialIds.length, 0.08), note: `${converted} of ${trialIds.length} trials`, how: HOW.trial },
+      { label: "Invites per active seeker", value: seekers ? (inviteCount / seekers).toFixed(1) : "Not enough data", target: "1 per 30 days", status: seekers < 5 ? "none" : inviteCount / seekers >= 1 ? "good" : "warn", note: `${inviteCount} invites, ${seekers} people applying`, how: HOW.invites },
+      { label: "AI cost per active user", value: aiUsers ? `$${perUser.toFixed(2)}` : "Not enough data", target: `under $${budget}`, status: aiUsers ? (perUser <= budget ? "good" : "bad") : "none", note: `$${aiTotal.toFixed(2)} across ${aiUsers} people`, how: HOW.ai },
+      { label: "Flagged lines resolved", value: pct(resolved, flagged), target: "95%", status: statusFor(resolved, flagged, 0.95), note: `${resolved} of ${flagged} flagged lines`, how: HOW.flags },
+      { label: "Applications sent", value: (senders.data ?? []).length.toLocaleString("en-NG"), target: "Growing each week", status: (senders.data ?? []).length ? "good" : "none", note: `By ${seekers} ${seekers === 1 ? "person" : "people"}`, how: HOW.sent },
     ],
     gates: [
-      { name: "Gate 1: willingness to pay", state: "in_progress", checks: [{ text: "300 waitlist sign ups", ok: wl >= 300 }, { text: "3% click the price button", ok: null }] },
+      { name: "Gate 1: willingness to pay", state: accounts >= 300 ? "passed" : "in_progress", checks: [{ text: "300 accounts", ok: accounts >= 300 }, { text: "3% tap the price", ok: null }] },
       { name: "Gate 2: truth and data", state: "in_progress", checks: [{ text: "Zero invented facts on golden set G3", ok: null }, { text: "First load under 300KB", ok: true }] },
-      { name: "Gate 3: closed beta", state: "not_started", checks: [{ text: "70% find the verdict helpful", ok: null }, { text: "8% trial to pass", ok: null }] },
+      { name: "Gate 3: closed beta", state: "not_started", checks: [{ text: "70% find the verdict helpful", ok: null }, { text: "8% trial to pass", ok: trialIds.length >= 20 ? converted / trialIds.length >= 0.08 : null }] },
     ],
     signups: [...byDay].map(([date, count]) => ({ date, count })),
-    queue: { openReports: reports.count ?? 0, overdueReports: overdue.count ?? 0, pendingPayments: pending.count ?? 0, listsDue: 0 },
+    queue: { openReports: reports.count ?? 0, overdueReports: overdue.count ?? 0, pendingPayments: pending.count ?? 0, listsDue: 0, accounts, newThisWeek: week.count ?? 0 },
   };
 }
 

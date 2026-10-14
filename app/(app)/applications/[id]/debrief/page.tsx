@@ -8,7 +8,7 @@ import { voiceEnabled } from "@/lib/speech";
 import { DebriefForm } from "@/components/applications/debrief-form";
 import { ArrowLeft2 } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Interview notes" };
+export const metadata: Metadata = { title: "Interview Notes" };
 
 export default async function DebriefPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,7 +24,7 @@ export default async function DebriefPage({ params }: { params: Promise<{ id: st
         {app.title}
       </Link>
       <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">How did it go?</h1>
+        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">How Did It Go?</h1>
         <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">
           Talk or type for two minutes about your interview with {app.employer}. We&apos;ll pull out the questions so you can practise them next time.
         </p>

@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { runTask } from "@/lib/ai";
 import { EMPTY_JOB, jobSchema, type ParsedJob } from "./schema";
 import { fetchJobLink } from "./fetch-link";
+import { geminiReadJobLink } from "@/lib/ai/gemini";
 import { detectDestination } from "@/lib/rules/destination";
 import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -61,17 +62,25 @@ export async function captureJob(supabase: SupabaseClient, userId: string, targe
     }
     case "link": {
       const res = await fetchJobLink(input.url);
-      if (!res.ok) {
-        const msg =
-          res.reason === "login"
-            ? "That page needs a login, so we can't open it. Paste the job text or add a screenshot of it instead."
-            : res.reason === "invalid" || res.reason === "blocked"
-              ? "We can't open that link. Check it, or paste the job text instead."
-              : "We couldn't open that link just now. Paste the job text or add a screenshot instead.";
-        return { ok: false, error: msg, fallback: res.reason === "login" ? "screenshot" : "paste" };
+      if (res.ok) {
+        sourceUrl = res.finalUrl;
+        rawText = res.text;
+      } else if (res.reason !== "invalid") {
+        // Sites like LinkedIn block apps like ours. Google can often still open the page,
+        // or find the same post elsewhere, the way ChatGPT and Claude do (D-099).
+        const read = await geminiReadJobLink(input.url);
+        if (!read) {
+          const msg =
+            res.reason === "login"
+              ? "That site only shows the job to people who are signed in, and we couldn't find a public copy. Copy the job text from the page and paste it, or add a screenshot."
+              : "We couldn't open that link or find a public copy of the job. Copy the job text and paste it, or add a screenshot.";
+          return { ok: false, error: msg, fallback: res.reason === "login" ? "screenshot" : "paste" };
+        }
+        sourceUrl = input.url;
+        rawText = read.text;
+      } else {
+        return { ok: false, error: "That doesn't look like a web link. Check it, or paste the job text instead.", fallback: "paste" };
       }
-      sourceUrl = res.finalUrl;
-      rawText = res.text;
       postHash = hash(rawText);
       parseInput = { kind: "text", text: rawText, postHash, today };
       break;

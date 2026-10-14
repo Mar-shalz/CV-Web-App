@@ -37,6 +37,12 @@ function persist(record: AiCallLog) {
   }
 }
 
+/** Same logging as every task, for steps outside runTask (the web research step). */
+export function logAiCall(record: AiCallLog) {
+  consoleLogger(record);
+  persist(record);
+}
+
 const deps: AiDeps = {
   // Gemini first while testing on its free tier, then Anthropic (D-068).
   provider: chainProvider,

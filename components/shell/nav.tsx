@@ -15,7 +15,9 @@ const SIDEBAR_ITEMS = NAV_ITEMS.filter((i) => !("primary" in i));
 const ICONS = { home: Category, tailor: Magicpen, applications: Send2, experience: Briefcase, settings: Setting2 };
 
 function isActive(path: string, href: string) {
-  if (href === "/jobs/new") return path.startsWith("/jobs");
+  // Tailoring a CV is part of an application: Applications stays lit through every step.
+  if (href === "/applications") return path.startsWith("/applications") || path.startsWith("/jobs");
+  if (href === "/jobs/new") return path === "/jobs/new";
   return path === href || path.startsWith(`${href}/`);
 }
 

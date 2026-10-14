@@ -74,3 +74,28 @@ grant execute on function public.touch_activity(uuid, text) to service_role;
 
 -- 8. Team members can be paused (no back office access until reactivated).
 alter table public.admin_members add column if not exists paused_at timestamptz;
+
+-- 9. People can delete an application. The back office still counts it: a per person
+-- tally of deleted applications (no job, CV or employer kept).
+alter table public.usage_counters add column if not exists applications_deleted int not null default 0;
+create or replace function public.count_deleted_application(p_user uuid) returns void
+language sql security definer set search_path = '' as $$
+  update public.usage_counters set applications_deleted = applications_deleted + 1 where user_id = p_user;
+$$;
+revoke all on function public.count_deleted_application(uuid) from public, anon, authenticated;
+grant execute on function public.count_deleted_application(uuid) to service_role;
+
+-- 10. Willingness to pay: taps on the price on the landing page. Anonymous: a random
+-- browser id only, no IP, no account.
+create table if not exists public.price_clicks (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  visitor text check (char_length(visitor) <= 64),
+  source text check (char_length(source) <= 40)
+);
+alter table public.price_clicks enable row level security;
+revoke all on public.price_clicks from anon, authenticated;
+
+-- 11. CV top-up: more tailored CVs during a job hunt pass (prices and amounts in
+-- config/prices.json). Activates through the same verified Paystack webhook.
+alter type public.pass_type add value if not exists 'cv_topup';

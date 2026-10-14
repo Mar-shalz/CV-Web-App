@@ -22,7 +22,7 @@ async function appUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-const schema = z.object({ product: z.enum(["job_hunt_30d", "interview_boost"]), application: z.uuid().nullable() });
+const schema = z.object({ product: z.enum(["job_hunt_30d", "interview_boost", "cv_topup"]), application: z.uuid().nullable() });
 
 /** Creates a pending pass and sends the person to Paystack. Nothing unlocks until the webhook. */
 export async function startPayment(_prev: PayState, formData: FormData): Promise<PayState> {
@@ -34,6 +34,8 @@ export async function startPayment(_prev: PayState, formData: FormData): Promise
   if (!product) return { error: "That product isn't available." };
   if (viewer.preview) redirect(`/pass/result?reference=preview_${product.id}`);
   if (product.id === "interview_boost" && !parsed.data.application) return { error: "Open the boost from the application you were invited for." };
+  // A top-up adds CVs to a pass you have now (D-114).
+  if (product.id === "cv_topup" && viewer.activePass?.type !== "job_hunt_30d") return { error: "A top-up adds CVs to a job hunt pass. Get the pass first." };
   if (!paystackConfigured()) return { error: "Payments aren't switched on yet. Try again soon." };
   if (!(await allow("payment"))) return { error: RATE_LIMITED_MESSAGE };
 

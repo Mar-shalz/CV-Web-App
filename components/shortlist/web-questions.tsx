@@ -37,7 +37,7 @@ export function WebQuestions({ applicationId, employer, initial }: { application
         </span>
         <div className="min-w-0">
           <h2 id="web-q-title" className="text-[0.9375rem] font-semibold text-ink-900">
-            Asked in real interviews
+            Asked in Real Interviews
           </h2>
           <p className="text-[0.8125rem] leading-5 text-ink-600">Questions people report from interviews at {employer} or for roles like this one, with where we found them.</p>
         </div>

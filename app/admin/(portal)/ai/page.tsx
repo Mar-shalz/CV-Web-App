@@ -28,7 +28,7 @@ export default async function AdminAi() {
         <KpiCard label="Active users" value={a.activeUsers.toLocaleString("en-NG")} target="Counted by hashed id" status="none" note="Used at least one AI step" />
         <KpiCard label="Cost per active user" value={usd(a.perActiveUsd)} target={`under ${usd(a.budgetUsd)}`} status={a.activeUsers ? (over ? "bad" : "good") : "none"} note={over ? "Over budget: check the biggest task" : "Within budget"} />
       </section>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <Panel title="AI keys on this server">
           <ul className="divide-y divide-ink-100">
             {a.providers.map((p) => (

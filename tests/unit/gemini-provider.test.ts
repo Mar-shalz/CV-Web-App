@@ -15,7 +15,7 @@ describe("Gemini provider", () => {
 
   it("maps fast and strong tasks to Gemini models, overridable by env", () => {
     expect(geminiModelFor("claude-haiku-5-5")).toBe("gemini-3.5-flash-lite");
-    expect(geminiModelFor("claude-sonnet-5-5")).toBe("gemini-3.8-flash");
+    expect(geminiModelFor("claude-sonnet-5-5")).toBe("gemini-3.5-flash");
     vi.stubEnv("GEMINI_MODEL", "gemini-custom");
     expect(geminiModelFor("claude-sonnet-5-5")).toBe("gemini-custom");
   });
@@ -56,9 +56,9 @@ describe("Gemini provider", () => {
     });
     const res = await geminiProvider.complete({ model: "claude-sonnet-5-5", system: "", user: "x", maxTokens: 10, timeoutMs: 1000, jsonSchema: {} });
     expect(res.text).toBe('{"ok":true}');
-    expect(seen[0]).toContain("gemini-3.8-flash");
-    expect(seen[1]).toContain("gemini-3.5-flash");
-    expect(res.servedModel).toBe("gemini-3.5-flash");
+    expect(seen[0]).toContain("gemini-3.5-flash:");
+    expect(seen[1]).toContain("gemini-3.5-flash-lite");
+    expect(res.servedModel).toBe("gemini-3.5-flash-lite");
   });
 
   it("keeps only grounded sources from web research", async () => {
@@ -68,5 +68,13 @@ describe("Gemini provider", () => {
     const res = await geminiProvider.research!({ model: "claude-sonnet-5-5", system: "", user: "x", maxTokens: 100, timeoutMs: 1000, maxSearches: 2 });
     expect(res.sources).toEqual([{ url: "https://a.example", title: "A" }]);
     expect(res.searches).toBe(2);
+  });
+
+  it("skips thinking for low effort tasks and leaves lite models alone", async () => {
+    const { thinkingFor } = await import("@/lib/ai/gemini");
+    expect(thinkingFor("gemini-3.5-flash", "low")).toEqual({ thinkingBudget: 0 });
+    expect(thinkingFor("gemini-3.5-flash", "medium")).toEqual({ thinkingLevel: "low" });
+    expect(thinkingFor("gemini-3.5-flash", "high")).toBeNull();
+    expect(thinkingFor("gemini-3.5-flash-lite", "low")).toBeNull();
   });
 });

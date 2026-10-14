@@ -34,7 +34,7 @@ export function LateReply({ applicationId, days }: { applicationId: string; days
         </span>
         <div className="min-w-0">
           <h2 id="late-title" className="font-display text-lg font-semibold text-ink-900">
-            Heard back late?
+            Heard Back Late?
           </h2>
           <p className="mt-1 text-sm leading-6 text-ink-600">
             {days !== null ? `No word from them in ${days} days, so we marked this No reply.` : "We marked this No reply after 30 days with no word from them."} Employers often reply late. If they did, update it here.
