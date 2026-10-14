@@ -2,7 +2,7 @@ import "server-only";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
-export type LinkResult = { ok: true; text: string; finalUrl: string } | { ok: false; reason: "invalid" | "blocked" | "login" | "too_big" | "failed" };
+export type LinkResult = { ok: true; text: string; finalUrl: string } | { ok: false; reason: "invalid" | "blocked" | "login" | "moved" | "too_big" | "failed" };
 
 const MAX_BYTES = 1_500_000;
 const LOGIN_HOSTS = /(^|\.)(linkedin\.com|glassdoor\.com|facebook\.com|instagram\.com|x\.com|twitter\.com)$/i;
@@ -77,6 +77,14 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
+/** True when a job link with a job number redirects to a page that has lost it. */
+export function movedAway(from: URL, to: URL): boolean {
+  const id = from.pathname.match(/(\d{5,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
+  if (!id) return false;
+  if (to.searchParams.get("error") === "true") return true;
+  return !`${to.pathname}${to.search}`.includes(id) && to.hostname.replace(/^www\./, "") === from.hostname.replace(/^www\./, "");
+}
+
 /**
  * Fetches a job link on the server. Every hop is checked against private addresses,
  * redirects are followed by hand (at most 3), and the body is capped. Pages behind a
@@ -94,7 +102,7 @@ export async function fetchJobLink(raw: string): Promise<LinkResult> {
       res = await fetch(url, {
         redirect: "manual",
         signal: AbortSignal.timeout(8000),
-        headers: { "user-agent": "Mozilla/5.0 (compatible; JobReader/1.0)", accept: "text/html,text/plain;q=0.9" },
+        headers: { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36", accept: "text/html,text/plain;q=0.9", "accept-language": "en-GB,en;q=0.9" },
       });
     } catch {
       return { ok: false, reason: "failed" };
@@ -104,6 +112,9 @@ export async function fetchJobLink(raw: string): Promise<LinkResult> {
       const resolved = next ? await safeUrl(new URL(next, url).toString()) : null;
       if (!resolved) return { ok: false, reason: "blocked" };
       if (LOGIN_HOSTS.test(resolved.hostname) || /login|signin|sign-in|auth/i.test(resolved.pathname)) return { ok: false, reason: "login" };
+      // A job link that redirects to a page without its job number (a careers list, or
+      // "?error=true") means the post was closed or taken down.
+      if (movedAway(url, resolved)) return { ok: false, reason: "moved" };
       url = resolved;
       continue;
     }

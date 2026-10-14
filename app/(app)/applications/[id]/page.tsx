@@ -40,6 +40,8 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
       </Link>
 
       <header className="animate-rise">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={app.status} />
           {app.statusVerified ? (
@@ -55,6 +57,9 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
           {app.sentAt ? ` · Sent ${formatDate(app.sentAt)}` : " · Not sent yet"}
           {app.pack ? ` · ${CHANNEL_LABELS[app.pack.channel]}` : ""}
         </p>
+        </div>
+        <DeleteApplication applicationId={app.id} title={app.title} />
+        </div>
       </header>
 
       {notSent ? (
@@ -148,7 +153,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
               </span>
               <div>
                 <h2 id="post-title" className="text-[0.9375rem] font-semibold text-ink-900">
-                  The Job Post, as You Saw It
+                  The Job Post, as you Saw It
                 </h2>
                 <p className="text-[0.8125rem] text-ink-500">
                   {app.snapshot ? `Saved ${formatDate(app.snapshot.capturedAt)}. Kept even if the advert is taken down.` : "Saved when you send it."}
@@ -193,7 +198,6 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
         <aside className="space-y-3">
           {!notSent ? <StatusUpdate applicationId={app.id} next={nextStatuses(app.status)} /> : null}
           <Timeline events={app.timeline} />
-          <DeleteApplication applicationId={app.id} />
           <p className="flex items-start gap-2 px-1 text-xs leading-5 text-ink-500">
             <ShieldTick size={16} className="mt-px shrink-0" />
             Only you can see this application. It opens without data once you&apos;ve viewed it on this phone.

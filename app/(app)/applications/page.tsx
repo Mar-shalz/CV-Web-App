@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { listApplications } from "@/lib/applications/data";
+import { listSavedJobs } from "@/lib/jobs/data";
 import type { HomeApplication } from "@/lib/home-data";
 import { RecentApplications } from "@/components/home/recent-applications";
 import { ButtonLink } from "@/components/ui/button";
-import { Magicpen, SearchNormal1, Receipt21, InfoCircle, AddCircle, TickCircle } from "@/components/icons";
+import { Magicpen, SearchNormal1, Receipt21, InfoCircle, AddCircle } from "@/components/icons";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 
 export const metadata: Metadata = { title: "Applications" };
@@ -13,21 +14,35 @@ export const metadata: Metadata = { title: "Applications" };
 const INVITED: ApplicationStatus[] = ["assessment", "interview", "second_interview", "offer", "accepted"];
 const FILTERS = [
   { id: "all", label: "All", match: () => true },
-  { id: "waiting", label: "Waiting to hear", match: (s: ApplicationStatus) => s === "sent" },
-  { id: "invited", label: "Invited", match: (s: ApplicationStatus) => INVITED.includes(s) },
-  { id: "closed", label: "Closed", match: (s: ApplicationStatus) => s === "rejected" || s === "no_response" || s === "withdrawn" },
-  { id: "not_sent", label: "Not sent yet", match: (s: ApplicationStatus) => s === "draft" || s === "packed" },
+  { id: "waiting", label: "Waiting to hear", match: (a: HomeApplication) => !a.savedAt && a.status === "sent" },
+  { id: "invited", label: "Invited", match: (a: HomeApplication) => !a.savedAt && INVITED.includes(a.status) },
+  { id: "closed", label: "Closed", match: (a: HomeApplication) => !a.savedAt && (a.status === "rejected" || a.status === "no_response" || a.status === "withdrawn") },
+  { id: "not_sent", label: "Not sent yet", match: (a: HomeApplication) => !a.savedAt && (a.status === "draft" || a.status === "packed") },
+  { id: "saved", label: "Saved for later", match: (a: HomeApplication) => Boolean(a.savedAt) },
 ] as const;
 
-export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; deleted?: string }> }) {
+export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
   const viewer = await requireReadyViewer();
-  const { q, status, deleted } = await searchParams;
-  const all = await listApplications(viewer);
-  const rows: HomeApplication[] = all.map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt, channel: a.pack?.channel ?? null }));
+  const { q, status } = await searchParams;
+  const [all, saved] = await Promise.all([listApplications(viewer), listSavedJobs(viewer)]);
+  const rows: HomeApplication[] = [
+    ...all.map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt, channel: a.pack?.channel ?? null })),
+    ...saved.map((j) => ({ id: j.id, title: j.title, employer: j.employer, status: "draft" as const, sentAt: null, channel: null, savedAt: j.savedAt })),
+  ];
 
   const query = q?.trim().toLowerCase();
   const active = FILTERS.find((f) => f.id === status) ?? FILTERS[0];
-  const items = rows.filter((a) => active.match(a.status)).filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query));
+  const items = rows.filter((a) => active.match(a)).filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query));
+  const search = (
+    <form role="search" action="/applications" className="relative w-full sm:w-72">
+      {active.id !== "all" ? <input type="hidden" name="status" value={active.id} /> : null}
+      <label htmlFor="apps-filter" className="sr-only">
+        Search applications
+      </label>
+      <SearchNormal1 size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+      <input id="apps-filter" name="q" type="search" defaultValue={q ?? ""} placeholder="Search by job or employer" className="min-h-11 w-full rounded-xl border border-ink-200 bg-white pl-10 pr-3 text-[0.9375rem] text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100" />
+    </form>
+  );
 
   return (
     <div className="space-y-3">
@@ -42,50 +57,26 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
         </ButtonLink>
       </header>
 
-      {deleted ? (
-        <p role="status" className="flex animate-pop items-center gap-2 rounded-2xl bg-proof-50 px-4 py-3 text-sm font-medium text-proof-700">
-          <TickCircle size={18} variant="bulk" />
-          Application deleted.
-        </p>
-      ) : null}
-
       {rows.length ? (
         <>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <nav aria-label="Filter by status" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
-              {FILTERS.map((f) => {
-                const on = f.id === active.id;
-                const count = rows.filter((r) => f.match(r.status)).length;
-                return (
-                  <Link
-                    key={f.id}
-                    href={f.id === "all" ? "/applications" : `/applications?status=${f.id}`}
-                    aria-current={on ? "page" : undefined}
-                    className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
-                      on ? "bg-brand-900 text-white" : "bg-white text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"
-                    }`}
-                  >
-                    {f.label}
-                    <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${on ? "bg-white/15" : "bg-ink-75 text-ink-600"}`}>{count}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-            <form role="search" action="/applications" className="relative lg:w-72">
-              {active.id !== "all" ? <input type="hidden" name="status" value={active.id} /> : null}
-              <label htmlFor="apps-filter" className="sr-only">
-                Search applications
-              </label>
-              <SearchNormal1 size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-400" />
-              <input
-                id="apps-filter"
-                name="q"
-                defaultValue={q ?? ""}
-                placeholder="Search by job or employer"
-                className="min-h-12 w-full rounded-2xl border border-ink-200 bg-white pl-11 pr-4 text-[0.9375rem] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
-              />
-            </form>
-          </div>
+          <nav aria-label="Filter by status" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
+            {FILTERS.map((f) => {
+              const on = f.id === active.id;
+              const count = rows.filter((r) => f.match(r)).length;
+              if (f.id === "saved" && !count && !on) return null;
+              return (
+                <Link
+                  key={f.id}
+                  href={f.id === "all" ? "/applications" : `/applications?status=${f.id}`}
+                  aria-current={on ? "page" : undefined}
+                  className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${on ? "bg-brand-900 text-white" : "bg-white text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"}`}
+                >
+                  {f.label}
+                  <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${on ? "bg-white/15" : "bg-ink-75 text-ink-600"}`}>{count}</span>
+                </Link>
+              );
+            })}
+          </nav>
           {query ? (
             <p className="text-sm text-ink-600" role="status">
               {items.length} {items.length === 1 ? "result" : "results"} for &ldquo;{q}&rdquo;.{" "}
@@ -100,11 +91,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
               No reply after 30 days closes an application, not the door. If they get back to you later, open it and update it. An invite opens interview prep.
             </p>
           ) : null}
-          {items.length ? (
-            <RecentApplications items={items} title={active.label === "All" ? "All applications" : active.label} showAll={false} />
-          ) : (
-            <p className="rounded-[var(--radius-card)] border border-dashed border-ink-300 bg-white p-8 text-center text-ink-600">Nothing here right now.</p>
-          )}
+          <RecentApplications items={items} title={active.label === "All" ? "All applications" : active.label} showAll={false} action={search} empty={query ? "No matches. Try another word." : active.id === "saved" ? "No saved jobs." : "Nothing here right now."} />
         </>
       ) : (
         <section className="torn-edge mx-auto max-w-xl rounded-t-[var(--radius-card)] bg-paper p-8 text-center shadow-card">

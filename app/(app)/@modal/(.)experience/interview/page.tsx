@@ -7,7 +7,7 @@ import { MODAL_ROUTES } from "@/components/ui/modal-routes";
 import { InterviewFlow } from "@/components/vault/interview-flow";
 import { ButtonLink } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Find Your Wins" };
+export const metadata: Metadata = { title: "Find your Wins" };
 
 export default async function InterviewModal({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
   const viewer = await requireReadyViewer();

@@ -6,8 +6,11 @@ import { fullCheck, type LegitimacyView } from "@/lib/legitimacy";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 import { DEMO_SCAM } from "@/lib/demo/job";
 
-/** Layer 2 of the scam check, called when the job check opens. Results stream into the page. */
-export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// Web search can take up to 45 seconds, then the findings are structured.
+export const maxDuration = 90;
+
+/** Layer 2 of the scam check, called when the job check opens. Results stream into the page. ?fresh=1 runs it again ("Check again"). */
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await getViewer();
   if (!viewer) return NextResponse.json({ ok: false, error: "Please sign in again." }, { status: 401 });
@@ -40,6 +43,8 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     postHash: job.postHash,
     text: job.rawText ?? "",
     job: job.parsed,
+    sourceUrl: job.sourceUrl,
+    fresh: request.nextUrl.searchParams.get("fresh") === "1",
   });
   return NextResponse.json({ ok: true, view });
 }

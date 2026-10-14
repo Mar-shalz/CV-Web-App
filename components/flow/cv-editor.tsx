@@ -296,7 +296,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
         ) : null}
 
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
-          <h2 className="text-[0.9375rem] font-semibold text-ink-900">Before You Download</h2>
+          <h2 className="text-[0.9375rem] font-semibold text-ink-900">Before you Download</h2>
           {openCount ? (
             <p className="mt-2 flex items-start gap-2 text-[0.8125rem] leading-5 text-care-700">
               <Warning2 size={18} variant="bulk" className="mt-px shrink-0" />

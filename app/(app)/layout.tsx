@@ -55,7 +55,7 @@ export default async function AppLayout({ children, modal }: { children: React.R
                 name="q"
                 type="search"
                 placeholder="Search jobs, employers or applications"
-                className="h-12 w-full rounded-full border border-transparent bg-ink-75 pl-12 pr-4 text-[0.9375rem] text-ink-900 placeholder:text-ink-400 transition-colors focus:border-brand-500 focus:bg-white focus:outline-none"
+                className="h-12 w-full rounded-full border border-transparent bg-ink-75 pl-12 pr-4 text-[0.9375rem] text-ink-900 placeholder:text-ink-350 transition-colors focus:border-brand-500 focus:bg-white focus:outline-none"
               />
             </form>
 

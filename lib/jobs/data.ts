@@ -81,3 +81,25 @@ export async function getJob(viewer: Viewer, id: string): Promise<JobView> {
     postHash: job.post_hash,
   };
 }
+
+export type SavedJob = { id: string; title: string; employer: string; savedAt: string };
+
+/**
+ * Jobs saved for later from the job check (state "saved") that have no application yet,
+ * so they show under Applications (D-122).
+ */
+export async function listSavedJobs(viewer: Viewer): Promise<SavedJob[]> {
+  if (viewer.preview) return [{ id: "demo", title: "Graduate Trainee, Finance", employer: "Northbridge Bank", savedAt: new Date().toISOString() }];
+  const supabase = await createClient();
+  const [{ data: jobs }, { data: apps }] = await Promise.all([
+    supabase.from("jobs").select("id, parsed, captured_at").eq("user_id", viewer.id).eq("state", "saved").order("captured_at", { ascending: false }).limit(100),
+    supabase.from("applications").select("job_id").eq("user_id", viewer.id),
+  ]);
+  const applied = new Set((apps ?? []).map((a) => a.job_id));
+  return (jobs ?? [])
+    .filter((j) => !applied.has(j.id))
+    .map((j) => {
+      const p = jobSchema.safeParse(j.parsed);
+      return { id: j.id, title: (p.success && p.data.title) || "Untitled job", employer: (p.success && p.data.employer_name) || "Employer not named", savedAt: j.captured_at };
+    });
+}

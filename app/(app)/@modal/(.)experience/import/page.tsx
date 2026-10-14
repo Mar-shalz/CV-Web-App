@@ -4,7 +4,7 @@ import { RouteModal } from "@/components/ui/route-modal";
 import { MODAL_ROUTES } from "@/components/ui/modal-routes";
 import { ImportPanel } from "@/components/vault/import-panel";
 
-export const metadata: Metadata = { title: "Upload Your CV" };
+export const metadata: Metadata = { title: "Upload your CV" };
 
 export default async function ImportModal() {
   await requireReadyViewer();

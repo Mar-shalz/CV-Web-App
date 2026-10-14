@@ -1,5 +1,6 @@
 "use server";
 
+import { flash } from "@/lib/toast";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -80,7 +81,10 @@ export async function confirmFromMessage(applicationId: string, input: { to: str
 export async function deleteApplication(applicationId: string): Promise<{ ok: false; error: string } | void> {
   const viewer = await getViewer();
   if (!viewer) return { ok: false, error: "Please sign in again." };
-  if (viewer.preview) redirect("/applications?deleted=1");
+  if (viewer.preview) {
+    await flash("Application deleted.");
+    redirect("/applications");
+  }
   const app = await getApplication(viewer, applicationId);
   if (!app) return { ok: false, error: "We couldn't find this application." };
   const supabase = await createClient();
@@ -96,5 +100,6 @@ export async function deleteApplication(applicationId: string): Promise<{ ok: fa
   }
   revalidatePath("/applications");
   revalidatePath("/home");
-  redirect("/applications?deleted=1");
+  await flash("Application deleted.");
+  redirect("/applications");
 }

@@ -18,7 +18,7 @@ export function TailorHero({ trialReady }: { trialReady: boolean }) {
             {trialReady ? "Your free trial starts here" : "Tailor a CV in about 4 minutes"}
           </p>
           <h2 id="tailor-title" className="mt-4 max-w-xl font-display text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.03em] lg:text-[2.5rem]">
-            Found a Job You Like? Let&apos;s Tailor Your CV to It.
+            Found a Job you Like? Let&apos;s Tailor your CV to It.
           </h2>
           <p className="mt-3 max-w-xl text-[0.9375rem] leading-6 text-white/85 lg:text-base lg:leading-7">
             Add the job description. We check you qualify and that the job looks genuine, then rewrite your CV to match, using only things you

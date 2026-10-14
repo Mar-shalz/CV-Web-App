@@ -22,6 +22,8 @@ for (const root of roots) {
     const lines = readFileSync(file, "utf8").split("\n");
     lines.forEach((line, i) => {
       if (line.trim().startsWith("//") || line.trim().startsWith("*")) return;
+      // Import lines are module paths, not copy (next/dynamic is a file name).
+      if (/^\s*import\s/.test(line)) return;
       const lower = line.toLowerCase();
       for (const ch of banned.characters) if (line.includes(ch)) report(file, i, `em dash`);
       for (const phrase of banned.phrases) {

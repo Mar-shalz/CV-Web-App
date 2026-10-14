@@ -1,5 +1,6 @@
 "use server";
 
+import { flash } from "@/lib/toast";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -117,7 +118,12 @@ export async function setJobState(formData: FormData): Promise<void> {
     }
   }
   if (state === "applying") redirect(`/jobs/${job_id}/cv`);
-  redirect(state === "saved" ? "/applications?status=not_sent" : "/home");
+  if (state === "saved") {
+    await flash("Saved for later. It's here under Applications.");
+    redirect("/applications?status=saved");
+  }
+  await flash("Job skipped.", "info");
+  redirect("/home");
 }
 
 const surveySchema = z.object({ survey: z.enum(["verdict_helpful", "send_as_is", "applied_anyway"]), answer: z.enum(["yes", "no", "small_edits"]), job_id: z.string().optional() });

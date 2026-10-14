@@ -6,7 +6,7 @@ import { getViewer } from "@/lib/auth/viewer";
 import { MARKETS } from "@/lib/config";
 import { regionOf } from "@/lib/markets";
 
-export const metadata: Metadata = { title: "Set Up Your Job Search" };
+export const metadata: Metadata = { title: "Set Up your Job Search" };
 
 export default async function SetupPage() {
   const viewer = await getViewer();

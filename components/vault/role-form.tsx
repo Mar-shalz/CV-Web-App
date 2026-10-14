@@ -143,7 +143,7 @@ export function RoleForm({ role, defaultKind = "job", onDone, onCancel }: { role
       {!role && HAS_WORK.includes(kind) ? (
         <section aria-labelledby="did-title" className="rounded-2xl border border-ink-150 bg-ink-50 p-4">
           <h3 id="did-title" className="text-sm font-semibold text-ink-900">
-            What Did You Do There? <span className="font-normal text-ink-500">(optional, you can add more later)</span>
+            What Did you Do There? <span className="font-normal text-ink-500">(optional, you can add more later)</span>
           </h3>
           <p className="mt-1 text-[0.8125rem] leading-5 text-ink-600">Add one thing at a time. Each one becomes one line on your CV. Say what you did and, if you can, how many or how often.</p>
           {things.length ? (
@@ -192,7 +192,7 @@ export function RoleForm({ role, defaultKind = "job", onDone, onCancel }: { role
               <Add size={18} />
               {things.length ? "Add this one too" : "Add this one"}
             </button>
-            <VoiceRecorder compact onText={(t) => setDraft((cur) => (cur.trim() ? `${cur.trim()} ${t}` : t))} />
+            <VoiceRecorder compact polish={{}} onText={(t) => setDraft((cur) => (cur.trim() ? `${cur.trim()} ${t}` : t))} />
           </div>
         </section>
       ) : null}

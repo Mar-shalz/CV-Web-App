@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/components/ui/toaster";
 import { useRef, useState, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { inputClass } from "@/components/ui/field";
@@ -37,7 +38,6 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
   // Saving needs the job (post or link) and the exact CV that went; title and employer are read from the job.
   const hasJob = post.trim().length >= 80 || /^https?:\/\/\S+\.\S+/.test(link.trim());
   const ready = hasJob && Boolean(file) && Boolean(sentOn);
-  const missing = [!hasJob ? "the job post or its link" : null, !file ? "the CV you sent" : null].filter(Boolean);
 
   function pick(f: File | null | undefined) {
     if (!f) return;
@@ -80,6 +80,7 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
         return;
       }
       if (inModal) router.back();
+      toast("Application saved. We'll check in with you.");
       setTimeout(() => router.push(`/applications/${data.applicationId}`), inModal ? 60 : 0);
     } catch {
       setError("You seem to be offline. Try again when you're connected.");
@@ -196,7 +197,6 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
         </fieldset>
       </div>
 
-      {!ready && missing.length ? <p className="text-[0.8125rem] text-ink-600">To save, add {missing.join(" and ")}.</p> : null}
       <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={!ready || busy} aria-busy={busy || undefined}>
         {busy ? (link.trim() && post.trim().length < 80 ? "Reading the job and saving…" : "Saving…") : "Save this application"}
         {!busy ? <ArrowRight size={20} /> : null}

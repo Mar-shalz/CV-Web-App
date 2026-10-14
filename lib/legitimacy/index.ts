@@ -10,11 +10,12 @@ import { LIMITS } from "@/lib/config";
 import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { track } from "@/lib/analytics/server";
+import { wikidataCompany, hiringBoard, isAtsHost, domainOf } from "./company";
 
 export type LegitimacySignal = { id: string; severity: Severity | "ok"; text: string; evidence: string | null; sourceUrl: string | null };
 /** One line of "What we checked": passed, failed, or couldn't check (with why). */
 export type LegitimacyCheck = { key: string; label: string; status: "pass" | "fail" | "unknown"; detail: string; sourceUrl: string | null };
-export type LegitimacyView = { state: ScamState; headline: string; signals: LegitimacySignal[]; checks: LegitimacyCheck[]; cached: boolean; checkedAt: string };
+export type LegitimacyView = { state: ScamState; headline: string; signals: LegitimacySignal[]; checks: LegitimacyCheck[]; cached: boolean; checkedAt: string; retry?: boolean };
 
 const NEWS = ["punchng.com", "premiumtimesng.com", "guardian.ng", "vanguardngr.com", "thecable.ng", "channelstv.com", "businessday.ng", "dailytrust.com", "saharareporters.com", "tribuneonlineng.com", "thisdaylive.com", "leadership.ng", "nairametrics.com", "techcabal.com", "arise.tv"];
 const FORUMS = ["nairaland.com", "reddit.com", "quora.com"];
@@ -53,10 +54,11 @@ async function cacLookup(name: string): Promise<Finding | null> {
   return null;
 }
 
-function headlineFor(state: ScamState, signals: LegitimacySignal[], officialDomain: string | null): string {
+function headlineFor(state: ScamState, signals: LegitimacySignal[], official: Finding | undefined, retry: boolean): string {
   if (state === "red_flags") return signals.find((s) => s.severity === "red")?.text ?? "We found red flags in this post. Don't pay or share personal details.";
-  if (state === "verified") return `Found on the official careers page${officialDomain ? ` at ${officialDomain}` : ""}. Even so, never pay to apply.`;
-  return "We couldn't find this job on the company's official careers page. That doesn't prove it's fake. Check their official site before you send your details.";
+  if (state === "verified") return `${official?.text.replace(/^Yes\. /, "") ?? "Found on the company's own website."} Even so, never pay to apply.`;
+  if (retry) return "Web search wasn't available just now, so some checks couldn't run. The ones we could run are below. Try again in a few minutes.";
+  return "We couldn't confirm this job on the company's own website or hiring page. That doesn't prove it's fake. Check their official site before you send your details.";
 }
 
 /**
@@ -94,7 +96,8 @@ function view(layer: Signal[], findings: Finding[], cached: boolean, checkedAt: 
     }),
   ].sort((a, b) => order[a.severity]! - order[b.severity]!);
   const official = findings.find((f) => f.id === "L2-01" && f.result === "found" && f.sourceType === "official");
-  return { state, headline: headlineFor(state, signals, host(official?.sourceUrl) ?? null), signals, checks: checklist(findings, job, live), cached, checkedAt };
+  const retry = findings.some((f) => f.note === "search_unavailable");
+  return { state, headline: headlineFor(state, signals, official, retry), signals, checks: checklist(findings, job, live), cached, checkedAt, retry };
 }
 
 /** Layer 1 only: instant, free, offline friendly. Shown before the live lookup returns. */
@@ -102,131 +105,171 @@ export function quickCheck(text: string, job: ParsedJob): LegitimacyView {
   return view(layer1(text, job), [], false, new Date().toISOString(), job, true);
 }
 
+/** A cached check from before D-118 has no "company exists" line; it is run again. */
+const current = (findings: Finding[]) => findings.some((f) => f.id === "L2-09");
+const searchDown = (findings: Finding[]) => findings.some((f) => f.note === "search_unavailable");
+const NO_SEARCH = "Web search wasn't available just now, so we couldn't look. Try again in a few minutes.";
+/** Job sites where anyone can post under a company's name; neither proof nor a warning. */
+const JOB_SITES = /(^|\.)(linkedin\.com|indeed\.com|jobberman\.com|myjobmag\.com|hotnigerianjobs\.com|ngcareers\.com|glassdoor\.com)$/i;
+
 /**
- * The full check (Build pack section 9): Layer 1 rules, then the live lookup through
- * web search, RDAP and the registry. Cached 7 days per post (shared across users,
- * since job posts hold no personal data). The final state is computed in code.
+ * The full check (Build pack section 9): Layer 1 rules, then the live lookup. The
+ * company record (Wikidata), its own hiring board, RDAP and the domain match run in
+ * code and need no search (D-118); web search adds warnings and scam reports. A check
+ * whose search failed is kept 15 minutes, not 7 days, so "Check again" works. Cached
+ * per post and shared across users, since job posts hold no personal data. The final
+ * state is computed in code.
  */
 export async function fullCheck(
   supabase: SupabaseClient,
-  ctx: { userId: string; jobId: string; postHash: string; text: string; job: ParsedJob },
+  ctx: { userId: string; jobId: string; postHash: string; text: string; job: ParsedJob; sourceUrl?: string | null; fresh?: boolean },
 ): Promise<LegitimacyView> {
-  const { userId, jobId, postHash, text, job } = ctx;
+  const { userId, jobId, postHash, text, job, sourceUrl = null, fresh = false } = ctx;
   const layer = layer1(text, job);
   const now = new Date();
 
-  // 1. This user's cached check, then anyone's check of the same post.
-  const { data: own } = await supabase.from("legitimacy_checks").select("lookup_findings, created_at, cached_until").eq("job_id", jobId).gt("cached_until", now.toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (own) return view(layer, own.lookup_findings as Finding[], true, own.created_at, job);
-  if (isSupabaseConfigured() && !isPreviewMode() && (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)) {
-    const admin = createAdminClient();
-    const { data: same } = await admin.from("jobs").select("id").eq("post_hash", postHash).neq("id", jobId).limit(20);
-    if (same?.length) {
-      const { data: shared } = await admin.from("legitimacy_checks").select("lookup_findings, created_at").in("job_id", same.map((j) => j.id)).gt("cached_until", now.toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (shared) {
-        await supabase.from("legitimacy_checks").insert({ job_id: jobId, user_id: userId, rule_flags: layer, lookup_findings: shared.lookup_findings, state: scamState(layer, shared.lookup_findings as Finding[]), cached_until: new Date(now.getTime() + 7 * 86_400_000).toISOString() });
-        return view(layer, shared.lookup_findings as Finding[], true, shared.created_at, job);
+  // 1. This user's cached check, then anyone's complete check of the same post.
+  if (!fresh) {
+    const { data: own } = await supabase.from("legitimacy_checks").select("lookup_findings, created_at, cached_until").eq("job_id", jobId).gt("cached_until", now.toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (own && current(own.lookup_findings as Finding[])) return view(layer, own.lookup_findings as Finding[], true, own.created_at, job);
+    if (isSupabaseConfigured() && !isPreviewMode() && (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+      const admin = createAdminClient();
+      const { data: same } = await admin.from("jobs").select("id").eq("post_hash", postHash).neq("id", jobId).limit(20);
+      if (same?.length) {
+        const { data: shared } = await admin.from("legitimacy_checks").select("lookup_findings, created_at").in("job_id", same.map((j) => j.id)).gt("cached_until", now.toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        const found = shared?.lookup_findings as Finding[] | undefined;
+        if (shared && found && current(found) && !searchDown(found)) {
+          await supabase.from("legitimacy_checks").insert({ job_id: jobId, user_id: userId, rule_flags: layer, lookup_findings: found, state: scamState(layer, found), cached_until: new Date(now.getTime() + 7 * 86_400_000).toISOString() });
+          return view(layer, found, true, shared.created_at, job);
+        }
       }
     }
   }
 
-  // 2. Known domains: the post's claimed domain, or a government agency's official ones.
-  const agency = matchAgency(job.employer_name);
-  const officialDomains = [...(agency?.domains ?? []), ...(job.employer_domain_claimed ? [job.employer_domain_claimed.toLowerCase()] : [])];
-  const routeHosts = [job.how_to_apply.email, job.how_to_apply.url, ...job.contacts.emails].map(host).filter((h): h is string => Boolean(h) && !freeEmail.domains.includes(h!));
+  const employer = job.employer_name?.trim() || null;
+  const agency = matchAgency(employer);
+  const routes = [job.how_to_apply.email, job.how_to_apply.url, ...job.contacts.emails].filter((v): v is string => Boolean(v));
   const findings: Finding[] = [];
 
-  // L2-02 in code when we can decide it.
-  if (officialDomains.length && routeHosts.length) {
-    const allMatch = routeHosts.every((h) => officialDomains.some((d) => within(h, d)));
-    findings.push(
-      allMatch
-        ? { id: "L2-02", result: "match", text: "The contact and apply addresses match the employer's own website.", sourceUrl: null, sourceType: null }
-        : { id: "L2-02", result: "mismatch", text: "The contact or apply address isn't on the employer's own website. Check it on their official site.", sourceUrl: null, sourceType: null },
-    );
-  }
-
-  // L2-04 domain age, L2-03 registry.
-  const domain = job.employer_domain_claimed ?? routeHosts[0] ?? null;
-  const [age, cac] = await Promise.all([domain ? domainAgeDays(domain) : Promise.resolve(null), cacLookup(job.employer_name ?? "")]);
-  if (age !== null && age < 90) findings.push({ id: "L2-04", result: "warning", text: `The website ${domain} was registered only ${age} days ago.`, sourceUrl: null, sourceType: "registry" });
+  // 2. In parallel: the company record, and the web search (the slow part).
+  const brief = [
+    `Employer: ${employer ?? "not named"}`,
+    `Job title: ${job.title ?? "not stated"}`,
+    job.employer_domain_claimed ? `Domain the post claims: ${job.employer_domain_claimed}` : null,
+    job.how_to_apply.email ? `Apply by email to: ${job.how_to_apply.email}` : null,
+    job.how_to_apply.url ? `Apply link: ${job.how_to_apply.url}` : null,
+    sourceUrl ? `Where the person found the post: ${sourceUrl}` : null,
+    job.contacts.phones.length ? `Phone numbers in the post: ${job.contacts.phones.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const [record, research, cac] = await Promise.all([
+    agency ? Promise.resolve(null) : wikidataCompany(employer),
+    employer || routes.length ? runResearch({ name: "legitimacy_search", model: "claude-sonnet-5-5", user: brief, maxSearches: LIMITS.legitimacy.max_searches, userId, promptVersion: "v2" }) : Promise.resolve(null),
+    cacLookup(employer ?? ""),
+  ]);
+  const structured = research?.ok ? await runTask("legitimacy_lookup", { employer: employer ?? "not named", title: job.title ?? "not stated", sources: research.sources, notes: research.notes }, { userId }) : null;
+  const company = structured?.ok ? structured.data.company : null;
+  const searched = Boolean(structured?.ok);
   if (cac) findings.push(cac);
 
-  // L2-01, 05, 06, 07, 08 through web search, then structured with cited sources only.
-  if (job.employer_name || routeHosts.length) {
-    const brief = [
-      `Employer: ${job.employer_name ?? "not named"}`,
-      `Job title: ${job.title ?? "not stated"}`,
-      job.employer_domain_claimed ? `Domain the post claims: ${job.employer_domain_claimed}` : null,
-      job.how_to_apply.email ? `Apply by email to: ${job.how_to_apply.email}` : null,
-      job.how_to_apply.url ? `Apply link: ${job.how_to_apply.url}` : null,
-      job.contacts.phones.length ? `Phone numbers in the post: ${job.contacts.phones.join(", ")}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    const research = await runResearch({ name: "legitimacy_search", model: "claude-sonnet-5-5", user: brief, maxSearches: LIMITS.legitimacy.max_searches, userId, promptVersion: "v2" });
-    if (research.ok) {
-      const structured = await runTask(
-        "legitimacy_lookup",
-        { employer: job.employer_name ?? "not named", title: job.title ?? "not stated", sources: research.sources, notes: research.notes },
-        { userId },
-      );
-      if (structured.ok) {
-        // The company's own website, as the search found it, decides the domain check when the post didn't claim one.
-        const c = structured.data.company;
-        const foundDomain = c.official_domain?.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] ?? null;
-        if (foundDomain && !officialDomains.length) officialDomains.push(foundDomain);
-        const allRoutes = [job.how_to_apply.email, job.how_to_apply.url, ...job.contacts.emails].map(host).filter((h): h is string => Boolean(h));
-        if (foundDomain && allRoutes.length && !findings.some((x) => x.id === "L2-02")) {
-          const free = allRoutes.find((h) => freeEmail.domains.includes(h));
-          const ok = allRoutes.every((h) => within(h, foundDomain));
-          findings.push(
-            ok
-              ? { id: "L2-02", result: "match", text: `The email and apply link are on the company's own website, ${foundDomain}.`, sourceUrl: null, sourceType: null }
-              : { id: "L2-02", result: "mismatch", text: free ? `The post uses a ${free} address, not an address at ${foundDomain}. Real employers usually use their own.` : `The contact or apply address isn't on ${foundDomain}, the company's own website.`, sourceUrl: null, sourceType: null },
-          );
-        }
-        if (c.founded_year) {
-          const years = new Date().getFullYear() - c.founded_year;
-          const src = c.founded_source_index ? research.sources[c.founded_source_index - 1] : undefined;
-          findings.push({
-            id: "L2-10",
-            result: years < 1 ? "warning" : "found",
-            text: years < 1 ? `The company started in ${c.founded_year}, less than a year ago.` : `Around since ${c.founded_year}, about ${years} ${years === 1 ? "year" : "years"}.`,
-            sourceUrl: src?.url ?? null,
-            sourceType: null,
-          });
-        }
-        const nameToken = (job.employer_name ?? "").toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).find((w) => w.length >= 4);
-        for (const f of structured.data.findings) {
-          if (f.id === "L2-02" && findings.some((x) => x.id === "L2-02")) continue; // code already decided
-          const src = f.source_index ? research.sources[f.source_index - 1] : undefined;
-          const h = host(src?.url);
-          const sourceType: Finding["sourceType"] = !h
-            ? null
-            : FORUMS.some((d) => within(h, d))
-              ? "forum"
-              : NEWS.some((d) => within(h, d))
-                ? "news"
-                : h.endsWith("cac.gov.ng")
-                  ? "registry"
-                  : officialDomains.some((d) => within(h, d)) || (!officialDomains.length && Boolean(nameToken && h.includes(nameToken)))
-                    ? "official"
-                    : null;
-          findings.push({ id: f.id, result: f.result, text: f.text, sourceUrl: src?.url ?? null, sourceType });
-        }
-      }
+  // 3. The company's own website: a government body's known domains, the company record, what the search found, then what the post claims.
+  const searchDomain = company?.official_domain ? domainOf(company.official_domain) : null;
+  const officialDomains = [...new Set([...(agency?.domains ?? []), record?.domain, searchDomain, job.employer_domain_claimed?.toLowerCase()].filter((d): d is string => Boolean(d)))];
+  const mainDomain = officialDomains[0] ?? null;
+
+  // L2-09 Does the company exist?
+  if (agency) findings.push({ id: "L2-09", result: "found", text: `Yes. ${agency.name ?? employer} is a government body.`, sourceUrl: agency.domains?.[0] ? `https://${agency.domains[0]}` : null, sourceType: "official" });
+  else if (record) findings.push({ id: "L2-09", result: "found", text: `Yes. ${record.label}${record.description ? `, ${record.description}` : ""}.${record.domain ? ` Official website: ${record.domain}.` : ""}`, sourceUrl: record.sourceUrl, sourceType: "registry" });
+  else if (company?.exists === "yes") findings.push({ id: "L2-09", result: "found", text: `Yes. We found ${employer} online${searchDomain ? `, with its own website at ${searchDomain}` : ""}.`, sourceUrl: searchDomain ? `https://${searchDomain}` : null, sourceType: null });
+  else if (company?.exists === "no") findings.push({ id: "L2-09", result: "not_found", text: `We found no trace of a company called ${employer} online. Be careful.`, sourceUrl: null, sourceType: null });
+  else if (!employer) findings.push({ id: "L2-09", result: "unknown", text: "The post doesn't name the company, so we couldn't look it up.", sourceUrl: null, sourceType: null });
+  else if (searched) findings.push({ id: "L2-09", result: "unknown", text: `We couldn't find a public record of ${employer}. Small and new firms often have none, so check their website or office yourself.`, sourceUrl: null, sourceType: null });
+  else findings.push({ id: "L2-09", result: "unknown", text: `${employer} isn't in the open company records we check, and ${NO_SEARCH.charAt(0).toLowerCase()}${NO_SEARCH.slice(1)}`, sourceUrl: null, sourceType: null, note: "search_unavailable" });
+
+  // L2-10 How long has it been around? The company record, then the search, then the age of its website.
+  const founded = record?.founded ?? company?.founded_year ?? null;
+  if (founded) {
+    const years = now.getFullYear() - founded;
+    const src = record?.founded ? record.sourceUrl : company?.founded_source_index && research?.ok ? research.sources[company.founded_source_index - 1]?.url : undefined;
+    findings.push({ id: "L2-10", result: years < 1 ? "warning" : "found", text: years < 1 ? `It started in ${founded}, less than a year ago.` : `Since ${founded}, about ${years} ${years === 1 ? "year" : "years"}.`, sourceUrl: src ?? null, sourceType: record?.founded ? "registry" : null });
+  }
+  const ageDomain = mainDomain ?? job.employer_domain_claimed ?? null;
+  const days = ageDomain ? await domainAgeDays(ageDomain) : null;
+  if (!founded && days !== null && ageDomain) {
+    const year = new Date(now.getTime() - days * 86_400_000).getFullYear();
+    const years = Math.floor(days / 365);
+    findings.push({ id: "L2-10", result: days < 365 ? "warning" : "found", text: days < 365 ? `Its website ${ageDomain} was set up less than a year ago.` : `Its website ${ageDomain} has existed since ${year}, about ${years} ${years === 1 ? "year" : "years"}. That's the best guide we found to the company's age.`, sourceUrl: null, sourceType: "registry" });
+  }
+  if (days !== null && days < 90 && ageDomain) findings.push({ id: "L2-04", result: "warning", text: `The website ${ageDomain} was registered only ${days} days ago.`, sourceUrl: null, sourceType: "registry" });
+
+  // L2-02 Are the email and apply link on the company's own website? A link to the company's own
+  // board on a hiring service counts as theirs; general job sites are left out of the comparison.
+  const boards = [sourceUrl, job.how_to_apply.url].map((u) => hiringBoard(u, employer)).filter((b): b is NonNullable<typeof b> => Boolean(b));
+  const ownBoard = boards.find((b) => b.matchesEmployer) ?? null;
+  const toCompare = routes.map(host).filter((h): h is string => Boolean(h) && !JOB_SITES.test(h!) && !(ownBoard && isAtsHost(h!)));
+  if (toCompare.length && mainDomain) {
+    const free = toCompare.find((h) => freeEmail.domains.includes(h));
+    const ok = toCompare.every((h) => officialDomains.some((d) => within(h, d)));
+    findings.push(
+      ok
+        ? { id: "L2-02", result: "match", text: `Yes. They're on ${mainDomain}, the company's own website${ownBoard ? `, or its own ${ownBoard.service} hiring page` : ""}.`, sourceUrl: null, sourceType: null }
+        : { id: "L2-02", result: "mismatch", text: free ? `The post uses a ${free} address, not one at ${mainDomain}. Real employers usually use their own.` : `The contact or apply address isn't on ${mainDomain}, the company's own website. Check it on their official site.`, sourceUrl: null, sourceType: null },
+    );
+  } else if (!toCompare.length && ownBoard) {
+    findings.push({ id: "L2-02", result: "match", text: `Yes. You apply on the company's own ${ownBoard.service} hiring page.`, sourceUrl: job.how_to_apply.url ?? sourceUrl, sourceType: null });
+  } else if (toCompare.length) {
+    const free = toCompare.find((h) => freeEmail.domains.includes(h));
+    findings.push({ id: "L2-02", result: "unknown", text: free ? `The post uses a ${free} address. We couldn't confirm the company's own website to compare, so ask for an official address.` : "We couldn't confirm the company's own website to compare.", sourceUrl: null, sourceType: null });
+  }
+
+  // L2-01 Did the company post it? Its own website or hiring board decides it in code.
+  const onOwnSite = [sourceUrl, job.how_to_apply.url].map(host).find((h) => h && officialDomains.some((d) => within(h, d)));
+  if (onOwnSite) findings.push({ id: "L2-01", result: "found", text: `Yes. It's on the company's own website, ${onOwnSite}.`, sourceUrl: sourceUrl ?? job.how_to_apply.url, sourceType: "official" });
+  else if (ownBoard) findings.push({ id: "L2-01", result: "found", text: `Yes. It's on ${employer}'s own ${ownBoard.service} hiring page, which only the company can post to.`, sourceUrl: sourceUrl && hiringBoard(sourceUrl, employer) ? sourceUrl : job.how_to_apply.url, sourceType: "official" });
+
+  // 4. The search's findings, for anything code hasn't decided.
+  const nameToken = (employer ?? "").toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).find((w) => w.length >= 4);
+  if (structured?.ok && research?.ok) {
+    for (const f of structured.data.findings) {
+      if (findings.some((x) => x.id === f.id)) continue; // code already decided it
+      const src = f.source_index ? research.sources[f.source_index - 1] : undefined;
+      const h = host(src?.url);
+      const sourceType: Finding["sourceType"] = !h
+        ? null
+        : FORUMS.some((d) => within(h, d))
+          ? "forum"
+          : NEWS.some((d) => within(h, d))
+            ? "news"
+            : h.endsWith("cac.gov.ng")
+              ? "registry"
+              : officialDomains.some((d) => within(h, d)) || (!officialDomains.length && Boolean(nameToken && h.includes(nameToken)))
+                ? "official"
+                : null;
+      findings.push({ id: f.id, result: f.result, text: f.text, sourceUrl: src?.url ?? null, sourceType });
     }
+  }
+  if (!findings.some((f) => f.id === "L2-01")) {
+    const onJobSite = sourceUrl && JOB_SITES.test(host(sourceUrl) ?? "");
+    findings.push(
+      searched
+        ? { id: "L2-01", result: "not_found", text: onJobSite ? `It's on ${host(sourceUrl)}, where anyone can post. We didn't find it on the company's own careers page.` : "We didn't find it on the company's own careers page.", sourceUrl: null, sourceType: null }
+        : { id: "L2-01", result: "unknown", text: onJobSite ? `It's on ${host(sourceUrl)}, where anyone can post, and ${NO_SEARCH.charAt(0).toLowerCase()}${NO_SEARCH.slice(1)}` : `We couldn't search the company's careers page. ${NO_SEARCH.split(", so ")[0]}.`, sourceUrl: null, sourceType: null, note: searched ? undefined : "search_unavailable" },
+    );
+  }
+  if (!searched) {
+    for (const id of ["L2-05", "L2-06"] as const) if (!findings.some((f) => f.id === id)) findings.push({ id, result: "unknown", text: NO_SEARCH, sourceUrl: null, sourceType: null, note: "search_unavailable" });
   }
 
   const state = scamState(layer, findings);
+  const down = searchDown(findings);
   await supabase.from("legitimacy_checks").insert({
     job_id: jobId,
     user_id: userId,
     rule_flags: layer,
     lookup_findings: findings,
     state: state === "red_flags" ? "red_flags" : state,
-    cached_until: new Date(now.getTime() + 7 * 86_400_000).toISOString(),
+    cached_until: new Date(now.getTime() + (down ? 15 * 60_000 : 7 * 86_400_000)).toISOString(),
   });
   const all = [...layer.map((s) => s.severity), ...findings.map(findingSeverity)];
   await track("legitimacy_checked", { state, red_count: all.filter((s) => s === "red").length, amber_count: all.filter((s) => s === "amber").length, cached: false }, userId);

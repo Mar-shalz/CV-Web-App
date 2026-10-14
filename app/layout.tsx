@@ -6,6 +6,7 @@ import { APP, APP_NAME } from "@/lib/config";
 import { Suspense } from "react";
 import { ServiceWorker } from "@/components/shell/service-worker";
 import { NavProgress } from "@/components/shell/nav-progress";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 // Lufga is the product font (founder's choice, D-018). These are the vendor's DEMO
@@ -60,6 +61,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </a>
         <Suspense fallback={null}>
           <NavProgress />
+          <Toaster />
         </Suspense>
         {children}
         <ServiceWorker />

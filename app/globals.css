@@ -33,6 +33,7 @@
   --color-ink-600: #475569;
   --color-ink-500: #586679;
   --color-ink-400: #8a97ab;
+  --color-ink-350: #aeb8c7; /* placeholders only: clearly lighter than typed text (D-126) */
   --color-ink-300: #cbd5e1;
   --color-ink-200: #e2e8f0;
   --color-ink-150: #e9edf3;
@@ -216,7 +217,8 @@ body {
 /* Example text in empty fields is lighter than typed text, so a field never looks filled in. */
 input::placeholder,
 textarea::placeholder {
-  color: var(--color-ink-400);
+  color: var(--color-ink-350);
+  font-weight: 400;
   opacity: 1;
 }
 
@@ -411,3 +413,8 @@ html[data-navigating] { cursor: progress; }
   0% { transform: translateY(-40px); }
   100% { transform: translateY(150px); }
 }
+
+/* Toasts drop in from the top (D-121). */
+.toast { animation: toast-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-14px) scale(0.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }

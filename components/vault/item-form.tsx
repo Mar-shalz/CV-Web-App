@@ -7,8 +7,8 @@ import { SubmitButton } from "@/components/auth/submit-button";
 import { FormError } from "@/components/auth/form-error";
 import type { VaultItem } from "@/lib/vault/data";
 import type { Ownership } from "@/lib/vault/schema";
-import { CloseSquare } from "@/components/icons";
-import { VoiceRecorder } from "./voice-recorder";
+import { CloseSquare, MagicStar } from "@/components/icons";
+import { VoiceRecorder, type SpokenMeta } from "./voice-recorder";
 
 const OWN: { id: Ownership; label: string; hint: string }[] = [
   { id: "did", label: "I did it", hint: "Your own work" },
@@ -21,6 +21,8 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
   const [added, setAdded] = useState(0);
   const [own, setOwn] = useState<Ownership>(item?.ownership ?? "did");
   const [text, setText] = useState(item?.text ?? "");
+  // What they said out loud, kept as the source, and the tidied line it became (D-125).
+  const [voice, setVoice] = useState<{ spoken: string; tidied: string; showing: "tidied" | "spoken" } | null>(null);
   const [state, action] = useActionState<VaultActionState, FormData>(async (prev, fd) => {
     const res = await saveItem(prev, fd);
     if (res?.ok) {
@@ -30,6 +32,7 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
         setAdded((n) => n + 1);
         setText("");
         setOwn("did");
+        setVoice(null);
       }
     }
     return res;
@@ -63,6 +66,7 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
       <FormError message={state?.error} />
       <input type="hidden" name="role_id" value={roleId} />
       {item ? <input type="hidden" name="item_id" value={item.id} /> : null}
+      {voice ? <input type="hidden" name="spoken" value={voice.spoken} /> : null}
       {!item ? (
         <p className="rounded-xl bg-brand-50 px-3 py-2 text-[0.8125rem] leading-5 text-brand-800">
           {added ? `Added ${added}. Add the next one, or tap Done.` : "One achievement at a time. Each one becomes one line on your CV."}
@@ -80,7 +84,32 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
         placeholder="For example: Opened about 15 customer accounts a day and checked each customer's documents."
         className={`${inputClass} resize-y py-3 leading-6`}
       />
-      <VoiceRecorder compact onText={(t) => setText((cur) => (cur.trim() ? `${cur.trim()} ${t}` : t))} />
+      <VoiceRecorder
+        compact
+        polish={{ roleId }}
+        onText={(t, meta?: SpokenMeta) => {
+          const joined = text.trim() ? `${text.trim()} ${t}` : t;
+          setText(joined);
+          if (meta) setVoice((v) => ({ spoken: v ? `${v.spoken} ${meta.spoken}` : meta.spoken, tidied: joined, showing: "tidied" }));
+        }}
+      />
+      {voice && voice.spoken !== voice.tidied ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-ink-50 px-3 py-2 text-[0.8125rem] leading-5 text-ink-700">
+          <MagicStar size={16} variant="bulk" className="shrink-0 text-brand-600" />
+          <span className="min-w-0 flex-1">{voice.showing === "tidied" ? "We wrote this up from what you said. Check it says what you did." : "These are your exact words."}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const next = voice.showing === "tidied" ? "spoken" : "tidied";
+              setText(next === "spoken" ? voice.spoken : voice.tidied);
+              setVoice({ ...voice, showing: next });
+            }}
+            className="min-h-9 rounded-lg px-2 font-semibold text-brand-700 hover:bg-brand-50"
+          >
+            {voice.showing === "tidied" ? "Use my exact words" : "Use the tidied version"}
+          </button>
+        </div>
+      ) : null}
       {text.length > 10 && !hasNumber ? (
         <p className="text-xs text-care-700">Add a number if you can: how many, how often, how much. A rough number is fine; write &ldquo;about&rdquo;.</p>
       ) : null}

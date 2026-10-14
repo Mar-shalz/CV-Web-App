@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { flash } from "@/lib/toast";
+import { missingTable } from "@/lib/admin/messages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isPreviewMode } from "@/lib/env";
@@ -39,6 +41,7 @@ export async function resolveReport(formData: FormData): Promise<void> {
   await db.from("truth_reports").update({ status: outcome.data, resolved_at: new Date().toISOString(), resolved_by: staff.id }).eq("id", id.data);
   await logAdminAction(staff, outcome.data === "resolved" ? "resolve" : "dismiss", "truth_reports", id.data);
   revalidatePath("/admin/reviews");
+  await flash(outcome.data === "resolved" ? "Report marked as fixed." : "Report dismissed.", outcome.data === "resolved" ? "ok" : "info");
 }
 
 export async function publishRuleSet(formData: FormData): Promise<void> {
@@ -51,6 +54,7 @@ export async function publishRuleSet(formData: FormData): Promise<void> {
   await db.from(table.data).update({ published_at: new Date().toISOString() }).eq("version", version.data).not("reviewed_at", "is", null);
   await logAdminAction(staff, "publish", table.data, version.data);
   revalidatePath("/admin/rules");
+  await flash("Published. The app uses this version now.");
 }
 
 const memberSchema = z.object({ email: z.string().trim().toLowerCase().pipe(z.email()), role: z.enum(ADMIN_ROLES) });
@@ -97,6 +101,7 @@ export async function pauseMember(formData: FormData): Promise<void> {
   const { error } = await createAdminClient().from("admin_members").update({ paused_at: new Date().toISOString() }).eq("user_id", target.id);
   if (!error) await logAdminAction(staff, "pause_member", "admin_members", target.id, { role: target.role });
   revalidatePath("/admin/team");
+  await flash(error ? "Couldn't pause their access. Try again." : "Access paused.", error ? "error" : "ok");
 }
 
 export async function reactivateMember(formData: FormData): Promise<void> {
@@ -109,6 +114,7 @@ export async function reactivateMember(formData: FormData): Promise<void> {
   if (error) ({ error } = await db.from("admin_members").update({ revoked_at: null }).eq("user_id", id.data));
   if (!error) await logAdminAction(staff, "reactivate_member", "admin_members", id.data);
   revalidatePath("/admin/team");
+  await flash(error ? "Couldn't reactivate their access. Try again." : "Access reactivated.", error ? "error" : "ok");
 }
 
 /** Delete: off the team for good. Their app account stays; add them again any time. */
@@ -120,6 +126,7 @@ export async function deleteMember(formData: FormData): Promise<void> {
   const { error } = await createAdminClient().from("admin_members").delete().eq("user_id", target.id);
   if (!error) await logAdminAction(staff, "delete_member", "admin_members", target.id, { role: target.role });
   revalidatePath("/admin/team");
+  await flash(error ? "Couldn't remove them. Try again." : "Removed from the team.", error ? "error" : "info");
 }
 
 const LINK = /^\/[A-Za-z0-9/_?=&.#-]*$/;
@@ -139,10 +146,14 @@ const messageSchema = z.object({
 
 /**
  * Sends an update to the Updates panel: an announcement to everyone (or one group), or a
- * message to one person found by email. Logged without the message text.
+ * message to one person found by email. "Save as draft" keeps it for later instead.
+ * Every message is kept in the history (admin_messages) so it can be recalled (D-123).
+ * The audit log records the action without the message text.
  */
 export async function sendUpdate(_prev: AdminActionState, formData: FormData): Promise<AdminActionState> {
   const staff = await requireAdmin("messages");
+  const draft = formData.get("intent") === "draft";
+  const draftId = uuid.safeParse(formData.get("draft_id"));
   const parsed = messageSchema.safeParse({
     to: formData.get("to"),
     email: formData.get("email") || undefined,
@@ -153,36 +164,84 @@ export async function sendUpdate(_prev: AdminActionState, formData: FormData): P
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
   const m = parsed.data;
-  if (staff.preview) return { ok: "Preview: nothing was sent." };
+  if (staff.preview) return { ok: draft ? "Preview: nothing was saved." : "Preview: nothing was sent." };
   const db = createAdminClient();
+  const record = { audience: m.to, recipient_email: m.to === "person" ? (m.email ?? null) : null, title: m.title, body: m.body, link: m.link ?? null, days: m.to === "person" ? null : (m.days ?? null), updated_at: new Date().toISOString() };
 
+  if (draft) {
+    const { error } = draftId.success
+      ? await db.from("admin_messages").update(record).eq("id", draftId.data).eq("status", "draft")
+      : await db.from("admin_messages").insert({ ...record, created_by: staff.id, status: "draft" });
+    if (missingTable(error)) return { error: "Drafts need the latest database update. Run the migration file in Supabase (see GO_LIVE.md), then try again." };
+    if (error) return { error: "Couldn't save the draft." };
+    await logAdminAction(staff, "save_draft", "admin_messages", draftId.success ? draftId.data : null);
+    revalidatePath("/admin/messages");
+    await flash("Draft saved.");
+    redirect("/admin/messages");
+  }
+
+  let sent: { recipient_id?: string; notification_id?: string; announcement_id?: string } = {};
   if (m.to === "person") {
     if (!m.email) return { error: "Add the person's email." };
     const { data: user } = await db.from("users").select("id").eq("email", m.email).maybeSingle();
     if (!user) return { error: "No account uses that email." };
-    const { error } = await db.from("notifications").insert({ user_id: user.id, kind: "message", title: m.title, body: m.body, link: m.link ?? null });
-    if (error) return { error: "Couldn't send the message." };
+    const { data: note, error } = await db.from("notifications").insert({ user_id: user.id, kind: "message", title: m.title, body: m.body, link: m.link ?? null }).select("id").single();
+    if (error || !note) return { error: "Couldn't send the message." };
+    sent = { recipient_id: user.id, notification_id: note.id };
     await logAdminAction(staff, "message_person", "notifications", user.id);
-    revalidatePath("/admin/messages");
-    return { ok: "Sent. It shows in their Updates panel." };
+  } else {
+    const ends = m.days ? new Date(Date.now() + m.days * 86_400_000).toISOString() : null;
+    const { data, error } = await db.from("announcements").insert({ title: m.title, body: m.body, link: m.link ?? null, audience: m.to, ends_at: ends, created_by: staff.id }).select("id").single();
+    if (error || !data) return { error: "Couldn't send the update." };
+    sent = { announcement_id: data.id };
+    await logAdminAction(staff, "announce", "announcements", data.id, { audience: m.to, days: m.days ?? null });
   }
-
-  const ends = m.days ? new Date(Date.now() + m.days * 86_400_000).toISOString() : null;
-  const { data, error } = await db.from("announcements").insert({ title: m.title, body: m.body, link: m.link ?? null, audience: m.to, ends_at: ends, created_by: staff.id }).select("id").single();
-  if (error || !data) return { error: "Couldn't send the update." };
-  await logAdminAction(staff, "announce", "announcements", data.id, { audience: m.to, days: m.days ?? null });
+  // The history: a sent draft becomes the sent message; otherwise a new row. Never blocks the send.
+  const done = { ...record, ...sent, status: "sent", sent_at: new Date().toISOString() };
+  if (draftId.success) await db.from("admin_messages").update(done).eq("id", draftId.data);
+  else await db.from("admin_messages").insert({ ...done, created_by: staff.id });
   revalidatePath("/admin/messages");
-  return { ok: "Sent. It shows in the Updates panel now." };
+  await flash(m.to === "person" ? "Message sent. It's in their Updates panel." : "Update sent. It shows in the Updates panel now.");
+  redirect("/admin/messages");
 }
 
-/** Takes an announcement down straight away. */
-export async function endAnnouncement(formData: FormData): Promise<void> {
+/**
+ * Recalls a sent message: a group update stops showing at once; a message to one person
+ * is taken out of their Updates panel. It stays in the history, marked recalled.
+ */
+export async function recallMessage(formData: FormData): Promise<void> {
+  const staff = await requireAdmin("messages");
+  const raw = String(formData.get("id") ?? "");
+  if (staff.preview) return;
+  const db = createAdminClient();
+  const now = new Date().toISOString();
+  if (raw.startsWith("a:") && uuid.safeParse(raw.slice(2)).success) {
+    await db.from("announcements").update({ ends_at: now }).eq("id", raw.slice(2));
+    await logAdminAction(staff, "recall_message", "announcements", raw.slice(2));
+  } else if (raw.startsWith("n:") && uuid.safeParse(raw.slice(2)).success) {
+    await db.from("notifications").delete().eq("id", raw.slice(2)).eq("kind", "message");
+    await logAdminAction(staff, "recall_message", "notifications", raw.slice(2));
+  } else if (uuid.safeParse(raw).success) {
+    const { data: msg } = await db.from("admin_messages").select("id, announcement_id, notification_id, recipient_id").eq("id", raw).maybeSingle();
+    if (!msg) return;
+    if (msg.announcement_id) await db.from("announcements").update({ ends_at: now }).eq("id", msg.announcement_id);
+    if (msg.notification_id) await db.from("notifications").delete().eq("id", msg.notification_id).eq("kind", "message");
+    await db.from("admin_messages").update({ status: "recalled", recalled_at: now, updated_at: now }).eq("id", raw);
+    await logAdminAction(staff, "recall_message", "admin_messages", raw);
+  } else return;
+  revalidatePath("/admin/messages");
+  await flash("Message recalled. It no longer shows in the app.");
+}
+
+export async function deleteDraft(formData: FormData): Promise<void> {
   const staff = await requireAdmin("messages");
   const id = uuid.safeParse(formData.get("id"));
   if (staff.preview || !id.success) return;
-  await createAdminClient().from("announcements").update({ ends_at: new Date().toISOString() }).eq("id", id.data);
-  await logAdminAction(staff, "end_announcement", "announcements", id.data);
+  await createAdminClient().from("admin_messages").delete().eq("id", id.data).eq("status", "draft");
+  await logAdminAction(staff, "delete_draft", "admin_messages", id.data);
   revalidatePath("/admin/messages");
+  await flash("Draft deleted.", "info");
+  redirect("/admin/messages");
 }
 
 const freeSchema = z.object({
@@ -223,6 +282,7 @@ export async function revokeFreeAccess(formData: FormData): Promise<void> {
   await createAdminClient().from("free_access").update({ revoked_at: new Date().toISOString() }).eq("id", id.data);
   await logAdminAction(staff, "revoke_free_access", "free_access", id.data);
   revalidatePath("/admin/payments");
+  await flash("Free access removed.", "info");
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +336,7 @@ export async function restoreUser(formData: FormData): Promise<void> {
   await logAdminAction(staff, "restore", "users", id.data);
   revalidatePath(`/admin/users/${id.data}`);
   revalidatePath("/admin/users");
+  await flash("Account restored. They can sign in again.");
 }
 
 /**

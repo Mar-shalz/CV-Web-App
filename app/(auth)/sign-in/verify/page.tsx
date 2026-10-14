@@ -7,7 +7,7 @@ import { VerifyForm } from "@/components/auth/verify-form";
 import { ArrowLeft } from "@/components/icons";
 import { LIMITS } from "@/lib/config";
 
-export const metadata: Metadata = { title: "Check Your Email" };
+export const metadata: Metadata = { title: "Check your Email" };
 
 function maskEmail(email: string): string {
   const [user, domain] = email.split("@");
@@ -22,7 +22,7 @@ export default async function VerifyPage() {
   return (
     <AuthShell
       step={1}
-      title="Check Your Email"
+      title="Check your Email"
       subtitle={
         <>
           We sent an email to <span className="font-semibold text-ink-900">{maskEmail(email)}</span>. Enter the {LIMITS.auth.otp_length} digit code from it, or tap the sign in link in that email on this device.

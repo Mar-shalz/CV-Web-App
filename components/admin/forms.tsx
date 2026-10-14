@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
+import type { MessageDraft } from "@/lib/admin/messages";
 import { addMember, grantFreeAccess, markRefunded, sendUpdate, type AdminActionState } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { inputClass } from "@/components/ui/field";
@@ -89,14 +91,37 @@ const AUDIENCES = [
 ] as const;
 
 /** Sends to the Updates panel behind the bell. Shows a preview of what people will see. */
-export function SendUpdateForm() {
+/** Send or Save as draft from one form; only the tapped button shows it's busy. */
+function IntentButton({ intent, inactive, children, busy, primary }: { intent: "send" | "draft"; inactive: boolean; children: React.ReactNode; busy: string; primary?: boolean }) {
+  const { pending, data } = useFormStatus();
+  const mine = pending && data?.get("intent") === intent;
+  return (
+    <button
+      type="submit"
+      name="intent"
+      value={intent}
+      aria-disabled={inactive || pending || undefined}
+      aria-busy={mine || undefined}
+      onClick={(e) => {
+        if (inactive || pending) e.preventDefault();
+      }}
+      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold transition-colors active:scale-[0.98] aria-disabled:cursor-not-allowed ${primary ? "bg-brand-600 text-white hover:bg-brand-700 aria-disabled:bg-ink-150 aria-disabled:text-ink-500" : "border border-ink-200 bg-white text-ink-800 hover:bg-ink-50 aria-disabled:text-ink-400"}`}
+    >
+      {mine ? <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" /> : null}
+      {mine ? busy : children}
+    </button>
+  );
+}
+
+export function SendUpdateForm({ draft = null }: { draft?: MessageDraft | null }) {
   const [state, action] = useActionState<AdminActionState, FormData>(sendUpdate, undefined);
-  const [to, setTo] = useState<string>("everyone");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  const [to, setTo] = useState<string>(draft?.audience ?? "everyone");
+  const [title, setTitle] = useState(draft?.title ?? "");
+  const [body, setBody] = useState(draft?.body ?? "");
   const ready = title.trim().length >= 3 && body.trim().length >= 3;
   return (
     <form action={action} className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {draft ? <input type="hidden" name="draft_id" value={draft.id} /> : null}
       <div className="space-y-4">
         <fieldset>
           <legend className="text-sm font-semibold text-ink-900">Who gets it</legend>
@@ -114,7 +139,7 @@ export function SendUpdateForm() {
             <label htmlFor="u-email" className="text-sm font-semibold text-ink-900">
               Their account email
             </label>
-            <input id="u-email" name="email" type="email" className={`${inputClass} mt-2`} placeholder="name@gmail.com" />
+            <input id="u-email" name="email" type="email" defaultValue={draft?.email ?? ""} className={`${inputClass} mt-2`} placeholder="name@gmail.com" />
           </div>
         ) : null}
         <div>
@@ -135,21 +160,29 @@ export function SendUpdateForm() {
             <label htmlFor="u-link" className="text-sm font-semibold text-ink-900">
               Link in the app <span className="font-normal text-ink-500">(optional)</span>
             </label>
-            <input id="u-link" name="link" className={`${inputClass} mt-2`} placeholder="/pass" />
+            <input id="u-link" name="link" defaultValue={draft?.link ?? ""} className={`${inputClass} mt-2`} placeholder="/pass" />
           </div>
           {to !== "person" ? (
             <div>
               <label htmlFor="u-days" className="text-sm font-semibold text-ink-900">
                 Show for <span className="font-normal text-ink-500">(days, optional)</span>
               </label>
-              <input id="u-days" name="days" type="number" min={1} max={90} className={`${inputClass} mt-2`} placeholder="Until you end it" />
+              <input id="u-days" name="days" type="number" min={1} max={90} defaultValue={draft?.days ?? ""} className={`${inputClass} mt-2`} placeholder="Until you end it" />
             </div>
           ) : null}
         </div>
-        <div className="flex items-center gap-3">
-          <SubmitButton pendingLabel="Sending" inactive={!ready}>
-            Send
-          </SubmitButton>
+        <div className="flex flex-wrap items-center gap-2">
+          <IntentButton intent="send" inactive={!ready} busy="Sending" primary>
+            {draft ? "Send now" : "Send"}
+          </IntentButton>
+          <IntentButton intent="draft" inactive={!ready} busy="Saving">
+            {draft ? "Save changes" : "Save as draft"}
+          </IntentButton>
+          {draft ? (
+            <a href="/admin/messages" className="inline-flex min-h-12 items-center rounded-2xl px-4 text-sm font-semibold text-ink-600 hover:bg-ink-75">
+              Cancel
+            </a>
+          ) : null}
           <Result state={state} />
         </div>
       </div>

@@ -40,7 +40,7 @@ Tone shifts with the moment, voice does not:
 10. **British spelling.** organise, programme, licence (noun).
 11. **Numbers:** digits always ("3 days", "5 CVs"). Naira as ₦5,000. Dates as 12 Oct 2026, in Lagos time. No percentages on user screens for match or fit.
 12. **Links describe the destination.** "How we protect your data", never "Learn more".
-13. **Headings use Title Case** (founder's rule, 14 Oct 2026): every word starts with a capital except short joining words in the middle (a, an, and, as, at, by, for, in, of, on, or, the, to). The last word is always capitalised. "Tailor Your CV to a Job", "What They Asked For". Applies to page and section headings, modal titles, menu items and the browser tab. Buttons, labels and body text stay in sentence case. Acronyms keep their capitals (CV, NYSC).
+13. **Headings use Title Case** (founder's rule, 14 Oct 2026): every word starts with a capital except short joining words in the middle (a, an, and, as, at, by, for, in, of, on, or, the, to) and "you" and "your" (founder's rule, round 13). The last word is always capitalised. "Tailor your CV to a Job", "What They Asked For". Applies to page and section headings, modal titles, menu items and the browser tab. Buttons, labels and body text stay in sentence case. Acronyms keep their capitals (CV, NYSC).
 14. **Waiting states are honest.** Say what is happening now, show a running clock, and give a real range ("Usually 10 to 40 seconds"), never a single promise that can be wrong.
 
 ## 4. Words we use

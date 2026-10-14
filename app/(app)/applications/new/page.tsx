@@ -15,7 +15,7 @@ export default async function LogApplicationPage() {
         Applications
       </Link>
       <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Add an Application You Already Sent</h1>
+        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Add an Application you Already Sent</h1>
         <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">Made your CV somewhere else? Keep it here with the job, and we&apos;ll check in and help you prepare when they reply.</p>
       </header>
       <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-7">

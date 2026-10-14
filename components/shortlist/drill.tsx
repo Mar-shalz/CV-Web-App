@@ -48,7 +48,7 @@ export function Drill({ applicationId, initial, attempts, voice }: { application
             <span className="mx-auto grid size-14 place-items-center rounded-3xl bg-brand-50 text-brand-700">
               <MessageQuestion size={28} variant="bulk" />
             </span>
-            <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">What Will They Ask You?</h2>
+            <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">What Will They Ask you?</h2>
             <p className="mx-auto mt-2 max-w-md text-[0.9375rem] leading-6 text-ink-600">
               Panels pick lines from your CV and ask you to defend them. We&apos;ll find the likely questions from this job and the exact CV you sent, then you practise.
             </p>
@@ -167,7 +167,7 @@ function QuestionCard({ n, q, open, onToggle, applicationId, voice, tries }: { n
                 rows={5}
                 maxLength={6000}
                 placeholder="Answer the way you'd say it in the room"
-                className="mt-2 w-full resize-y rounded-2xl border border-ink-200 bg-white p-4 text-[0.9375rem] leading-6 text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
+                className="mt-2 w-full resize-y rounded-2xl border border-ink-200 bg-white p-4 text-[0.9375rem] leading-6 text-ink-900 placeholder:text-ink-350 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
               />
               {error ? (
                 <p role="alert" className="mt-2 text-sm text-flag-700">

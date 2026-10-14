@@ -1,7 +1,9 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { Badge } from "@/components/ui/status";
 import type { HomeApplication } from "@/lib/home-data";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { ArrowRight2, Sms, DocumentText, Global } from "@/components/icons";
+import { ArrowRight2, Sms, DocumentText, Global, Archive } from "@/components/icons";
 import { formatDate } from "@/lib/format";
 
 const CHANNEL = {
@@ -10,13 +12,14 @@ const CHANNEL = {
   portal: { icon: Global, label: "Employer website" },
 } as const;
 
-export function RecentApplications({ items, title = "Recent applications", showAll = true }: { items: HomeApplication[]; title?: string; showAll?: boolean }) {
+export function RecentApplications({ items, title = "Recent applications", showAll = true, action, empty }: { items: HomeApplication[]; title?: string; showAll?: boolean; action?: ReactNode; empty?: ReactNode }) {
   return (
     <section aria-labelledby="recent-title" className="h-full rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card">
-      <div className="flex min-h-12 items-center justify-between gap-3 px-5 pt-5">
+      <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 px-5 pt-5">
         <h2 id="recent-title" className="text-lg font-semibold text-ink-900">
           {title}
         </h2>
+        {action}
         {showAll ? (
         <Link href="/applications" className="inline-flex min-h-12 items-center gap-1 rounded-xl px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50">
           See all
@@ -30,36 +33,35 @@ export function RecentApplications({ items, title = "Recent applications", showA
         <span>Status</span>
         <span className="w-5" />
       </div>
+      {!items.length && empty ? <div className="border-t border-ink-100 p-8 text-center text-ink-600">{empty}</div> : null}
       <ul className="stagger divide-y divide-ink-100 px-2 pb-2 lg:px-0">
         {items.map((a, i) => {
           const ch = a.channel ? CHANNEL[a.channel] : null;
-          const Icon = ch?.icon ?? DocumentText;
+          const Icon = a.savedAt ? Archive : (ch?.icon ?? DocumentText);
+          const badge = a.savedAt ? <Badge tone="brand" icon={<Archive size={16} variant="bulk" />}>Saved for later</Badge> : <StatusBadge status={a.status} />;
+          const when = a.savedAt ? `Saved ${formatDate(a.savedAt)}` : a.sentAt ? formatDate(a.sentAt) : "Not sent yet";
           return (
             <li key={a.id} style={{ ["--i" as string]: i }}>
               <Link
-                href={`/applications/${a.id}`}
+                href={a.savedAt ? `/jobs/${a.id}/check` : `/applications/${a.id}`}
                 className="group grid min-h-[76px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors hover:bg-ink-50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-4 lg:rounded-none lg:px-5"
               >
                 <span className="flex min-w-0 items-center gap-3.5 max-lg:contents">
                   <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">
                     <Icon size={20} />
-                    <span className="sr-only">{ch?.label ?? "Application"}</span>
+                    <span className="sr-only">{a.savedAt ? "Saved job" : (ch?.label ?? "Application")}</span>
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-[0.9375rem] font-semibold text-ink-900">{a.title}</span>
                     <span className="block truncate text-[0.8125rem] text-ink-500">
                       {a.employer}
-                      <span className="lg:hidden">{a.sentAt ? ` · ${formatDate(a.sentAt)}` : " · Not sent yet"}</span>
+                      <span className="lg:hidden"> · {when}</span>
                     </span>
-                    <span className="mt-1.5 block lg:hidden">
-                      <StatusBadge status={a.status} />
-                    </span>
+                    <span className="mt-1.5 block lg:hidden">{badge}</span>
                   </span>
                 </span>
-                <span className="hidden text-sm text-ink-600 lg:block">{a.sentAt ? formatDate(a.sentAt) : "Not sent yet"}</span>
-                <span className="hidden lg:block">
-                  <StatusBadge status={a.status} />
-                </span>
+                <span className="hidden text-sm text-ink-600 lg:block">{when}</span>
+                <span className="hidden lg:block">{badge}</span>
                 <ArrowRight2 size={18} className="nudge text-ink-400" />
               </Link>
             </li>

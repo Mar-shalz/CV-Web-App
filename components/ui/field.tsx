@@ -3,7 +3,7 @@ import { Danger } from "@/components/icons";
 
 // Filled inputs, as in the reference: soft grey well, white with a blue ring on focus.
 export const inputClass =
-  "block w-full min-h-14 rounded-2xl border border-transparent bg-ink-75 px-4 text-base text-ink-900 placeholder:text-ink-400 placeholder:font-normal transition-[background-color,border-color,box-shadow] duration-200 hover:bg-ink-100 focus:border-brand-500 focus:bg-white focus:shadow-[0_0_0_4px_rgb(52_97_240/0.14)] focus:outline-none aria-[invalid=true]:border-flag-600 aria-[invalid=true]:bg-flag-50/40";
+  "block w-full min-h-14 rounded-2xl border border-transparent bg-ink-75 px-4 text-base text-ink-900 placeholder:text-ink-350 placeholder:font-normal transition-[background-color,border-color,box-shadow] duration-200 hover:bg-ink-100 focus:border-brand-500 focus:bg-white focus:shadow-[0_0_0_4px_rgb(52_97_240/0.14)] focus:outline-none aria-[invalid=true]:border-flag-600 aria-[invalid=true]:bg-flag-50/40";
 
 export function Field({
   id,

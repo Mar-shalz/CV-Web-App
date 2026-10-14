@@ -4,6 +4,7 @@ import { getSpeechProvider } from "@/lib/speech";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 import { getVault } from "@/lib/vault/data";
 import { isPreviewMode } from "@/lib/env";
+import { polishSpoken } from "@/lib/vault/polish";
 
 const PREVIEW_TRANSCRIPT = "During my SIWES at the bank I opened about fifteen customer accounts a day, and I helped the head teller balance the cash at close of business.";
 
@@ -17,7 +18,11 @@ export async function POST(request: NextRequest) {
   const provider = getSpeechProvider();
   if (!provider) {
     // Local preview only: a sample transcript so the voice flow can be reviewed without a provider.
-    if (isPreviewMode()) return NextResponse.json({ ok: true, text: PREVIEW_TRANSCRIPT });
+    if (isPreviewMode()) {
+      const form = await request.formData().catch(() => null);
+      if (form?.get("polish") === "achievement") return NextResponse.json({ ok: true, text: "Opened about 15 customer accounts a day during SIWES at the bank, and helped the head teller balance the cash at close of business.", spoken: PREVIEW_TRANSCRIPT, polished: true });
+      return NextResponse.json({ ok: true, text: PREVIEW_TRANSCRIPT });
+    }
     return NextResponse.json({ ok: false, error: "Voice answers aren't switched on yet. Type your answer instead." }, { status: 501 });
   }
   if (!(await allow("interview"))) return NextResponse.json({ ok: false, error: RATE_LIMITED_MESSAGE }, { status: 429 });
@@ -34,6 +39,15 @@ export async function POST(request: NextRequest) {
   let bytes: Buffer | null = Buffer.from(await audio.arrayBuffer());
   try {
     const { text } = await provider.transcribe(bytes, { mimeType: audio.type || "audio/webm", language: "en", vocabulary });
+    bytes = null;
+    // Achievements: tidied into a clear line first (D-125). What they said is sent too, so they can switch back.
+    if (form.get("polish") === "achievement") {
+      const roleId = String(form.get("role_id") ?? "");
+      const role = vault.roles.find((r) => r.id === roleId);
+      const roleLine = role ? [role.title, role.organisation].filter(Boolean).join(" at ") || null : String(form.get("role") ?? "").slice(0, 200) || null;
+      const tidy = await polishSpoken(text, roleLine, viewer.id);
+      return NextResponse.json({ ok: true, text: tidy.text, spoken: text, polished: tidy.polished });
+    }
     return NextResponse.json({ ok: true, text });
   } catch {
     return NextResponse.json({ ok: false, error: "We couldn't hear that clearly. Try again somewhere quieter, or type your answer." }, { status: 502 });

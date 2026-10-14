@@ -8,6 +8,9 @@ import { ROLE_KINDS, OWNERSHIP, EMPLOYMENT_TYPES, EMPLOYMENT_KINDS } from "@/lib
 import { toDate } from "@/lib/vault/dates";
 import { extractMetrics } from "@/lib/vault/metrics";
 import { lintCopy } from "@/lib/copy-lint";
+import { sortItems } from "@/lib/vault/order";
+import { flash } from "@/lib/toast";
+import { generalCv, type GeneralCvResult } from "@/lib/cv/general";
 
 export type VaultActionState = { ok?: boolean; error?: string } | undefined;
 
@@ -42,6 +45,7 @@ export async function confirmItem(formData: FormData): Promise<void> {
   const itemId = id.safeParse(formData.get("item_id"));
   if (!supabase || !itemId.success) return;
   await supabase.from("vault_items").update({ confirmed_at: new Date().toISOString() }).eq("id", itemId.data).eq("user_id", viewer.id);
+  await flash("Achievement confirmed. It can go on your CV now.");
   done();
 }
 
@@ -54,6 +58,7 @@ export async function confirmRole(formData: FormData): Promise<void> {
   if (formData.get("with_items") === "1") {
     await supabase.from("vault_items").update({ confirmed_at: new Date().toISOString() }).eq("role_id", roleId.data).eq("user_id", viewer.id).is("confirmed_at", null);
   }
+  await flash(formData.get("with_items") === "1" ? "All confirmed." : "Details confirmed.");
   done();
 }
 
@@ -137,6 +142,7 @@ export async function saveRole(_prev: VaultActionState, formData: FormData): Pro
       .insert(things.map((t) => ({ user_id: viewer.id, role_id: savedId, text: t, ownership: "did", metrics: extractMetrics(t), confirmed_at: now, source_type: "text", source_quote: t, skills: [] })));
     if (error) return { error: "The role is saved, but we couldn't save what you did. Add it from the role card." };
   }
+  await flash(roleId.success ? "Changes saved." : "Role added to your experience.");
   return done();
 }
 
@@ -145,7 +151,7 @@ const itemSchema = z.object({
   ownership: z.enum(OWNERSHIP),
 });
 
-/** Add or edit an item in the user's own words. Their words are the source, so it's confirmed. */
+/** Add or edit an item in the user's own words. Their words are the source, so it's confirmed. When they said it, what they said is kept as the source. */
 export async function saveItem(_prev: VaultActionState, formData: FormData): Promise<VaultActionState> {
   const { viewer, supabase } = await ctx();
   const parsed = itemSchema.safeParse({ text: formData.get("text"), ownership: formData.get("ownership") });
@@ -153,6 +159,7 @@ export async function saveItem(_prev: VaultActionState, formData: FormData): Pro
   const banned = lintCopy(parsed.data.text).filter((i) => i.kind === "phrase");
   if (banned.length) return { error: `Try plainer words than "${banned[0]?.match}". Say what you did and what changed.` };
   if (!supabase) return { ok: true };
+  const spoken = String(formData.get("spoken") ?? "").trim().slice(0, 2000) || null;
   const row = {
     text: parsed.data.text,
     ownership: parsed.data.ownership,
@@ -161,17 +168,57 @@ export async function saveItem(_prev: VaultActionState, formData: FormData): Pro
   };
   const itemId = id.safeParse(formData.get("item_id"));
   if (itemId.success) {
-    const { error } = await supabase.from("vault_items").update(row).eq("id", itemId.data).eq("user_id", viewer.id);
+    const { error } = await supabase.from("vault_items").update(spoken ? { ...row, source_type: "voice", source_quote: spoken } : row).eq("id", itemId.data).eq("user_id", viewer.id);
     if (error) return { error: "We couldn't save that. Try again." };
+    await flash("Achievement saved.");
   } else {
     const roleId = id.safeParse(formData.get("role_id"));
     if (!roleId.success) return { error: "Pick the role this belongs to." };
-    const { error } = await supabase
-      .from("vault_items")
-      .insert({ ...row, user_id: viewer.id, role_id: roleId.data, source_type: "text", source_quote: parsed.data.text, skills: [] });
+    const base = { ...row, user_id: viewer.id, role_id: roleId.data, source_type: spoken ? "voice" : "text", source_quote: spoken ?? parsed.data.text, skills: [] };
+    // New ones go to the top of the role's list (D-119); before that column exists, the end.
+    const { data: first } = await supabase.from("vault_items").select("*").eq("role_id", roleId.data).eq("user_id", viewer.id).order("position", { ascending: true, nullsFirst: false }).limit(1).maybeSingle();
+    const top = first && typeof (first as { position?: number | null }).position === "number" ? (first as { position: number }).position - 1 : -1;
+    let { error } = await supabase.from("vault_items").insert({ ...base, position: top });
+    if (missingColumn(error)) ({ error } = await supabase.from("vault_items").insert(base));
     if (error) return { error: "We couldn't save that. Try again." };
+    await flash("Achievement added.");
   }
   return done();
+}
+
+const missingColumn = (e: { code?: string } | null) => Boolean(e && (e.code === "PGRST204" || e.code === "42703"));
+
+/**
+ * Moves an achievement up or down within its role (D-119). The whole role's list is
+ * renumbered, so the order is always exact. The CV writer and My Experience use it.
+ */
+export async function moveItem(formData: FormData): Promise<void> {
+  const { viewer, supabase } = await ctx();
+  const itemId = id.safeParse(formData.get("item_id"));
+  const dir = formData.get("dir") === "up" ? -1 : 1;
+  if (!supabase || !itemId.success) return;
+  const { data: item } = await supabase.from("vault_items").select("role_id").eq("id", itemId.data).eq("user_id", viewer.id).maybeSingle();
+  if (!item) return;
+  const { data: rows, error } = await supabase.from("vault_items").select("*").eq("role_id", item.role_id).eq("user_id", viewer.id).order("created_at");
+  if (error || !rows) return;
+  const list = sortItems(rows as { id: string; position?: number | null; created_at: string }[]).map((r) => r.id);
+  const at = list.indexOf(itemId.data);
+  const to = at + dir;
+  if (at < 0 || to < 0 || to >= list.length) return;
+  [list[at], list[to]] = [list[to]!, list[at]!];
+  const results = await Promise.all(list.map((rid, n) => supabase.from("vault_items").update({ position: n }).eq("id", rid).eq("user_id", viewer.id)));
+  if (results.some((r) => r.error)) {
+    await flash("We couldn't move it just now. Try again.", "error");
+    return;
+  }
+  done();
+}
+
+/** Writes (or reuses) a general CV from everything confirmed, ready to download (D-124). */
+export async function makeGeneralCv(): Promise<GeneralCvResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  return generalCv(viewer);
 }
 
 export async function deleteItem(formData: FormData): Promise<void> {
@@ -179,6 +226,7 @@ export async function deleteItem(formData: FormData): Promise<void> {
   const itemId = id.safeParse(formData.get("item_id"));
   if (!supabase || !itemId.success) return;
   await supabase.from("vault_items").delete().eq("id", itemId.data).eq("user_id", viewer.id);
+  await flash("Achievement removed.", "info");
   done();
 }
 
@@ -187,5 +235,6 @@ export async function deleteRole(formData: FormData): Promise<void> {
   const roleId = id.safeParse(formData.get("role_id"));
   if (!supabase || !roleId.success) return;
   await supabase.from("vault_roles").delete().eq("id", roleId.data).eq("user_id", viewer.id);
+  await flash("Removed from your experience.", "info");
   done();
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { LegitimacyCheck, LegitimacyView } from "@/lib/legitimacy";
-import { ShieldSearch, ShieldTick, TickCircle, Danger, Warning2, InfoCircle, ExportSquare, CloseCircle, MinusCircle } from "@/components/icons";
+import { ShieldSearch, ShieldTick, TickCircle, Danger, Warning2, InfoCircle, ExportSquare, CloseCircle, MinusCircle, Refresh } from "@/components/icons";
 
 const STATE = {
   verified: { tone: "bg-proof-50 text-proof-700 ring-proof-100", icon: ShieldTick, title: "Looks genuine on the checks we could run" },
@@ -65,10 +65,11 @@ export function ScamCheck({ jobId, initial, large = false }: { jobId: string; in
   const [view, setView] = useState<LegitimacyView>(initial);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [round, setRound] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/jobs/${jobId}/legitimacy`, { method: "POST" })
+    fetch(`/api/jobs/${jobId}/legitimacy${round ? "?fresh=1" : ""}`, { method: "POST" })
       .then((r) => r.json())
       .then((d: { ok: boolean; view?: LegitimacyView }) => {
         if (!alive) return;
@@ -80,7 +81,13 @@ export function ScamCheck({ jobId, initial, large = false }: { jobId: string; in
     return () => {
       alive = false;
     };
-  }, [jobId]);
+  }, [jobId, round]);
+
+  const again = () => {
+    setLoading(true);
+    setFailed(false);
+    setRound((n) => n + 1);
+  };
 
   const s = STATE[view.state];
   const Icon = s.icon;
@@ -89,9 +96,11 @@ export function ScamCheck({ jobId, initial, large = false }: { jobId: string; in
 
   return (
     <section aria-labelledby="scam-title" aria-busy={loading} className={`rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card ${large ? "p-5 lg:p-6" : "p-5"}`}>
-      <h2 id="scam-title" className="flex items-center gap-2 text-[0.9375rem] font-semibold text-ink-900">
-        <ShieldSearch size={20} variant="bulk" className="text-brand-600" />
-        Is this job real?
+      <h2 id="scam-title" className={`flex items-center gap-2.5 font-display font-semibold tracking-[-0.02em] text-ink-900 ${large ? "text-[1.375rem] leading-8 lg:text-[1.625rem]" : "text-[1.25rem] leading-7"}`}>
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600">
+          <ShieldSearch size={24} variant="bulk" />
+        </span>
+        Is This Job Real?
       </h2>
       <div aria-live="polite">
         {loading && view.state !== "red_flags" ? (
@@ -134,7 +143,15 @@ export function ScamCheck({ jobId, initial, large = false }: { jobId: string; in
           ))}
         </ul>
 
-        {failed && !loading ? <p className="mt-2 text-xs text-ink-500">The live check couldn&apos;t finish. Try again later; the checks above still apply.</p> : null}
+        {(failed || view.retry) && !loading ? (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-ink-50 px-3.5 py-3">
+            <p className="text-[0.8125rem] leading-5 text-ink-700">{failed ? "The live check couldn't finish. The checks above still apply." : "Some checks need web search, which was busy."}</p>
+            <button type="button" onClick={again} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-3.5 text-sm font-semibold text-brand-700 ring-1 ring-ink-150 hover:bg-brand-50">
+              <Refresh size={16} />
+              Check again
+            </button>
+          </div>
+        ) : null}
         <p className="mt-3 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">We describe what we found online. We can&apos;t prove a job is real, so never pay to apply and never share your BVN or bank PIN.</p>
       </div>
     </section>

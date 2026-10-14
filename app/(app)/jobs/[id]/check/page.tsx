@@ -113,7 +113,7 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
 function VerdictSkeleton() {
   return (
     <WorkingNotice
-      title="Checking Your CV Against This Job"
+      title="Checking your CV Against This Job"
       steps={["Reading what the job asks for", "Matching it with your experience", "Checking the rules for this kind of job", "Writing our advice"]}
       estimate="Usually 10 to 40 seconds"
       stepSeconds={7}
@@ -260,7 +260,7 @@ async function MatchList({ promise, vault }: { promise: Promise<FinalVerdict>; v
     <section aria-labelledby="match-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 id="match-title" className="text-lg font-semibold text-ink-900">
-          How Your Experience Matches
+          How your Experience Matches
         </h2>
         <span className="text-sm text-ink-500">
           {met} of {v.requirements.length} met

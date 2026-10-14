@@ -1,4 +1,5 @@
 import "server-only";
+import { sortItems } from "./order";
 import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
 import { LIMITS } from "@/lib/config";
@@ -60,6 +61,8 @@ type ItemRow = {
   source_quote: string | null;
   source_type: VaultItem["sourceType"];
   confirmed_at: string | null;
+  created_at: string;
+  position?: number | null;
 };
 
 const KIND_ORDER: RoleKind[] = ["job", "nysc_ppa", "internship_siwes", "volunteer", "project", "education", "certification", "licence"];
@@ -87,10 +90,11 @@ export async function getVault(viewer: Viewer): Promise<Vault> {
   const [{ data: roles }, { data: items }] = await Promise.all([
     // "*" so a new column (employment type) never breaks reads before its migration runs.
     supabase.from("vault_roles").select("*").eq("user_id", viewer.id),
-    supabase.from("vault_items").select("id, role_id, text, metrics, skills, ownership, source_quote, source_type, confirmed_at").eq("user_id", viewer.id).order("created_at"),
+    // "*" here too, so the order column (D-119) is read when it exists and never breaks reads before.
+    supabase.from("vault_items").select("*").eq("user_id", viewer.id).order("created_at"),
   ]);
   const byRole = new Map<string | null, VaultItem[]>();
-  for (const i of (items ?? []) as ItemRow[]) {
+  for (const i of sortItems((items ?? []) as ItemRow[])) {
     const list = byRole.get(i.role_id) ?? [];
     list.push({
       id: i.id,

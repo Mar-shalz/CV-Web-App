@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/components/ui/toaster";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
@@ -44,6 +45,7 @@ export function StatusUpdate({ applicationId, next }: { applicationId: string; n
     if (!res.ok) return setError(res.error);
     if (res.shortlist) return router.push(`/applications/${applicationId}/shortlist`);
     setDone(label);
+    toast(`Updated: ${label}.`);
     setSuggestion(null);
     setMessage("");
     router.refresh();
@@ -127,7 +129,7 @@ export function StatusUpdate({ applicationId, next }: { applicationId: string; n
             rows={5}
             maxLength={6000}
             placeholder="Paste the email or SMS from the employer here"
-            className="w-full resize-y rounded-2xl border border-ink-200 bg-white p-4 text-[0.9375rem] leading-6 text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
+            className="w-full resize-y rounded-2xl border border-ink-200 bg-white p-4 text-[0.9375rem] leading-6 text-ink-900 placeholder:text-ink-350 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
           />
           <Button className="mt-2 w-full" onClick={read} disabled={busy || message.trim().length < 10} aria-busy={busy || undefined}>
             <MagicStar size={20} variant="bulk" />

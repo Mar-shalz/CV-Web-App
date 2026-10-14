@@ -5,15 +5,21 @@ import { requireReadyViewer } from "@/lib/auth/viewer";
 import { getVault } from "@/lib/vault/data";
 import { RoleCard } from "@/components/vault/role-card";
 import { ReadinessMeter, VaultActions } from "@/components/vault/vault-header";
-import { ImportPanel } from "@/components/vault/import-panel";
-import { Warning2, ArrowRight, ShieldTick } from "@/components/icons";
+import lazy from "next/dynamic";
+import { DownloadCv } from "@/components/vault/download-cv";
+import { Warning2, ArrowRight, ShieldTick, ArrowDown2 } from "@/components/icons";
 
 export const metadata: Metadata = { title: "My Experience" };
 
+// Only the empty state uses the upload panel, so its code loads only then.
+const ImportPanel = lazy(() => import("@/components/vault/import-panel").then((m) => m.ImportPanel));
+// Writing a CV from the whole experience can take up to a minute.
+export const maxDuration = 120;
+
 const GROUPS = [
-  { title: "Work and experience", kinds: ["job", "nysc_ppa", "internship_siwes", "volunteer", "project"] },
+  { title: "Work and Experience", kinds: ["job", "nysc_ppa", "internship_siwes", "volunteer", "project"] },
   { title: "Education", kinds: ["education"] },
-  { title: "Certifications and licences", kinds: ["certification", "licence"] },
+  { title: "Certifications and Licences", kinds: ["certification", "licence"] },
 ] as const;
 
 export default async function VaultPage({ searchParams }: { searchParams: Promise<{ preview?: string }> }) {
@@ -26,7 +32,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
     return (
       <div className="mx-auto max-w-3xl space-y-3">
         <header className="animate-rise">
-          <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Add Your Experience</h1>
+          <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Add your Experience</h1>
           <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">
             Everything your CV is built from: your roles, what you did, and your own words. Start with your old CV, even a photo of the printout.
           </p>
@@ -54,6 +60,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">My Experience</h1>
           <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Every line on your CV comes from here. Only confirmed achievements are used.</p>
         </div>
+        <DownloadCv ready={vault.confirmedItems > 0} />
       </header>
 
       <div style={{ "--i": 1 } as CSSProperties} className="grid gap-3">
@@ -75,20 +82,26 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
         </Link>
       ) : null}
 
+      {/* Each section folds on its own (D-119). Cards sit at the top of their row, so opening one never stretches the card beside it. */}
       {GROUPS.map((g, gi) => {
         const roles = vault.roles.filter((r) => (g.kinds as readonly string[]).includes(r.kind));
         if (!roles.length) return null;
         return (
-          <section key={g.title} style={{ "--i": 3 + gi } as CSSProperties} aria-labelledby={`g-${gi}`}>
-            <h2 id={`g-${gi}`} className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-ink-500">
-              {g.title}
-            </h2>
-            <div className="grid gap-3 2xl:grid-cols-2">
+          <details key={g.title} open style={{ "--i": 3 + gi } as CSSProperties} className="group/section">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-xl py-1 pr-1 [&::-webkit-details-marker]:hidden">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-500">{g.title}</h2>
+              <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-ink-600">{roles.length}</span>
+              <span className="ml-auto grid size-9 place-items-center rounded-lg text-ink-500 transition-colors group-hover/section:bg-ink-75">
+                <ArrowDown2 size={16} className="transition-transform duration-200 group-open/section:rotate-180" />
+                <span className="sr-only">Show or hide {g.title.toLowerCase()}</span>
+              </span>
+            </summary>
+            <div className="mt-1 grid items-start gap-3 2xl:grid-cols-2">
               {roles.map((r) => (
                 <RoleCard key={r.id} role={r} />
               ))}
             </div>
-          </section>
+          </details>
         );
       })}
 

@@ -9,6 +9,8 @@ export type Finding = {
   text: string;
   sourceUrl: string | null;
   sourceType: "official" | "registry" | "news" | "forum" | null;
+  /** Set when web search was down, so the screen offers "Check again". */
+  note?: "search_unavailable";
 };
 
 export type ScamState = "verified" | "unverified" | "red_flags";

@@ -66,7 +66,7 @@ export default async function PaymentResultPage({ searchParams }: { searchParams
             <span aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600 [animation-duration:1.4s]" />
             <Clock size={34} variant="bulk" />
           </span>
-          <h1 className="mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Confirming Your Payment</h1>
+          <h1 className="mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.02em] text-ink-900">Confirming your Payment</h1>
           <p className="mt-2 text-[0.9375rem] leading-6 text-ink-600">Card payments confirm in seconds. Bank transfers and USSD can take a few minutes. This page updates by itself.</p>
           <p className="mt-2 text-sm text-ink-500">You can leave this page. Your pass switches on as soon as Paystack confirms.</p>
           <AutoRefresh />

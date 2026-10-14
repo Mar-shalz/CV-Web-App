@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { TickCircle, Warning2, MinusCircle, Danger } from "@/components/icons";
 
 // Back office headings use Title Case, with short joining words kept small (founder's
-// rule: and, of, or, the; plus the usual a, an, to, in, on, for, by, at). Emails and
+// rule: and, of, or, the, you, your; plus the usual a, an, to, in, on, for, by, at). Emails and
 // paths are left exactly as written.
-const SMALL = new Set(["and", "of", "or", "the", "a", "an", "to", "in", "on", "for", "by", "at"]);
+const SMALL = new Set(["and", "of", "or", "the", "a", "an", "to", "in", "on", "for", "by", "at", "you", "your"]);
 export function titleCase(text: string): string {
   if (/[@/]/.test(text)) return text;
   return text

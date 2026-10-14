@@ -1,5 +1,6 @@
 "use server";
 
+import { flash } from "@/lib/toast";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -46,6 +47,7 @@ export async function saveProfile(_prev: SettingsState, formData: FormData): Pro
   const { error } = await supabase.from("profiles").update({ ...rest, phone: full }).eq("user_id", viewer.id);
   if (error) return { error: "We couldn't save your details. Try again." };
   revalidatePath("/settings");
+  await flash("Your details are saved.");
   return { ok: true };
 }
 

@@ -184,7 +184,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
       <aside className="space-y-3">
         <section aria-labelledby="checklist-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
           <h2 id="checklist-title" className="text-[0.9375rem] font-semibold text-ink-900">
-            Before You Press Send
+            Before you Press Send
           </h2>
           <ul className="mt-3 space-y-1">
             {pack.checklist.map((c, i) => (

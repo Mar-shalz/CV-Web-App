@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { runTask } from "@/lib/ai";
 import { EMPTY_JOB, jobSchema, type ParsedJob } from "./schema";
 import { fetchJobLink } from "./fetch-link";
+import { readKnownBoard } from "./boards";
 import { geminiReadJobLink } from "@/lib/ai/gemini";
 import { detectDestination } from "@/lib/rules/destination";
 import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
@@ -61,7 +62,18 @@ export async function captureJob(supabase: SupabaseClient, userId: string, targe
       break;
     }
     case "link": {
+      // Job boards with their own public feed first (LinkedIn, Greenhouse, Lever and others).
+      const board = await readKnownBoard(input.url);
+      if (board && !board.ok) return { ok: false, error: `${board.board} says this job is no longer there. It may have closed or been taken down. If you still have the advert, paste its text instead.`, fallback: "paste" };
+      if (board?.ok && board.text.length >= 80) {
+        sourceUrl = board.finalUrl;
+        rawText = board.text.slice(0, 40_000);
+        postHash = hash(rawText);
+        parseInput = { kind: "text", text: rawText, postHash, today };
+        break;
+      }
       const res = await fetchJobLink(input.url);
+      if (!res.ok && res.reason === "moved") return { ok: false, error: "That link now opens a different page, so the job has probably closed or been taken down. If you still have the advert, paste its text instead.", fallback: "paste" };
       if (res.ok) {
         sourceUrl = res.finalUrl;
         rawText = res.text;
@@ -117,7 +129,15 @@ export async function captureJob(supabase: SupabaseClient, userId: string, targe
   if (!parsed && parseInput) {
     const res = await runTask("parse_job", parseInput, { userId });
     if (res.ok) {
-      if (!res.data.is_job_post) return { ok: false, error: "This doesn't look like a job advert. Check it and try again, or type the details yourself." };
+      if (!res.data.is_job_post)
+        return {
+          ok: false,
+          error:
+            input.mode === "link"
+              ? "That link opens a page with no job advert on it. The job may have closed, or the link may go to a list of jobs. Open it to check, or paste the job text instead."
+              : "This doesn't look like a job advert. Check it and try again, or type the details yourself.",
+          fallback: input.mode === "link" ? "paste" : undefined,
+        };
       parsed = res.data;
     }
   }

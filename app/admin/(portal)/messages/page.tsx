@@ -1,67 +1,116 @@
+import Link from "next/link";
 import { requireAdmin, logAdminAction } from "@/lib/admin/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { endAnnouncement } from "@/app/admin/actions";
+import { can } from "@/lib/admin/permissions";
+import { messageHistory, getDraft, type SentMessage } from "@/lib/admin/messages";
+import { recallMessage, deleteDraft } from "@/app/admin/actions";
 import { PageHeader, Panel, StatusPill, Table, Td } from "@/components/admin/ui";
 import { SendUpdateForm } from "@/components/admin/forms";
 import { formatDate } from "@/lib/format";
 import { PendingButton } from "@/components/ui/pending-button";
+import { Edit2 } from "@/components/icons";
 
 export const metadata = { title: "Messages to Users" };
 
-const AUDIENCE: Record<string, string> = { everyone: "Everyone", trial: "Free trial", pass: "Pass holders", no_pass: "No pass" };
+const AUDIENCE: Record<string, string> = { everyone: "Everyone", trial: "Free trial", pass: "Pass holders", no_pass: "No pass", person: "One person" };
 
-// Read once per request on the server; kept out of render for the purity rule.
-function nowMs() {
-  return new Date().getTime();
-}
+const STATE: Record<SentMessage["state"], { status: "good" | "warn" | "none" | "bad"; label: (m: SentMessage) => string }> = {
+  showing: { status: "good", label: (m) => (m.until ? `Showing until ${formatDate(m.until)}` : "Showing") },
+  ended: { status: "none", label: () => "Ended" },
+  delivered: { status: "good", label: () => "Delivered, not read" },
+  read: { status: "good", label: () => "Read" },
+  recalled: { status: "none", label: () => "Recalled" },
+};
 
-type Row = { id: string; title: string; audience: string; starts_at: string; ends_at: string | null };
-
-export default async function AdminMessages() {
+export default async function AdminMessages({ searchParams }: { searchParams: Promise<{ draft?: string }> }) {
   const staff = await requireAdmin("messages");
-  let rows: Row[] = [];
+  const { draft: draftId } = await searchParams;
+  const full = can(staff.role, "users.manage");
+  let drafts: Awaited<ReturnType<typeof messageHistory>>["drafts"] = [];
+  let sent: SentMessage[] = [];
+  let historyReady = true;
+  let editing = null;
   if (!staff.preview) {
-    const { data } = await createAdminClient().from("announcements").select("id, title, audience, starts_at, ends_at").order("starts_at", { ascending: false }).limit(30);
-    rows = (data ?? []) as Row[];
+    [{ drafts, sent, historyReady }, editing] = await Promise.all([messageHistory(full), draftId ? getDraft(draftId) : Promise.resolve(null)]);
     await logAdminAction(staff, "view", "announcements");
   } else {
-    rows = [{ id: "demo", title: "Graduate programme season is here", audience: "everyone", starts_at: "2026-10-12T09:00:00.000Z", ends_at: null }];
+    sent = [
+      { id: "demo", audience: "everyone", to: "everyone", title: "Graduate programme season is here", sentAt: "2026-10-12T09:00:00.000Z", by: "Victor", state: "showing", until: null, canRecall: true },
+      { id: "demo2", audience: "person", to: "to•••@gm•••.com", title: "Your CV is ready", sentAt: "2026-10-11T09:00:00.000Z", by: "Victor", state: "read", until: null, canRecall: true },
+    ];
   }
-  const now = nowMs();
 
   return (
     <>
       <PageHeader
         title="Messages to users"
-        intro="Send an update to the Updates panel behind the bell: to everyone, to one group, or to one person. Payment receipts and pass and trial reminders go out on their own."
+        intro="Send an update to the Updates panel behind the bell: to everyone, to one group, or to one person. Save it as a draft to finish later. Payment receipts and pass and trial reminders go out on their own."
       />
-      <Panel title="New message">
-        <SendUpdateForm />
+      <Panel title={editing ? "Edit draft" : "New message"}>
+        <SendUpdateForm key={editing?.id ?? "new"} draft={editing} />
       </Panel>
-      <Panel title="Sent to groups">
-        <Table caption="Announcements" head={["Title", "Who", "Sent", "Status", ""]}>
-          {rows.map((r) => {
-            const live = !r.ends_at || new Date(r.ends_at).getTime() > now;
-            return (
-              <tr key={r.id}>
-                <Td className="font-medium text-ink-900">{r.title}</Td>
-                <Td>{AUDIENCE[r.audience] ?? r.audience}</Td>
-                <Td className="text-ink-500">{formatDate(r.starts_at)}</Td>
-                <Td>
-                  <StatusPill status={live ? "good" : "none"} label={live ? (r.ends_at ? `Showing until ${formatDate(r.ends_at)}` : "Showing") : "Ended"} />
-                </Td>
-                <Td>
-                  {live ? (
-                    <form action={endAnnouncement}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <PendingButton pendingLabel="Ending" className="min-h-11 rounded-xl px-3 text-sm font-semibold text-flag-700 hover:bg-flag-50">End now</PendingButton>
-                    </form>
-                  ) : null}
-                </Td>
-              </tr>
-            );
-          })}
-        </Table>
+
+      {drafts.length ? (
+        <Panel title={`Drafts (${drafts.length})`}>
+          <ul className="divide-y divide-ink-100">
+            {drafts.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink-900">{d.title}</p>
+                  <p className="text-xs text-ink-500">
+                    To {AUDIENCE[d.audience]?.toLowerCase() ?? d.audience} · Saved {formatDate(d.updatedAt)}
+                  </p>
+                </div>
+                <Link href={`/admin/messages?draft=${d.id}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-50 px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-100">
+                  <Edit2 size={16} />
+                  Open
+                </Link>
+                <form action={deleteDraft}>
+                  <input type="hidden" name="id" value={d.id} />
+                  <PendingButton pendingLabel="Deleting" className="min-h-11 rounded-xl px-3 text-sm font-semibold text-ink-500 hover:bg-flag-50 hover:text-flag-700">
+                    Delete
+                  </PendingButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      ) : null}
+
+      <Panel title="Sent Messages">
+        {!historyReady ? (
+          <p className="border-b border-ink-100 bg-care-50 px-5 py-2.5 text-xs text-care-700">Run the latest database update (GO_LIVE.md) to keep drafts and full history. Messages already sent still show below.</p>
+        ) : null}
+        {sent.length ? (
+          <Table caption="Sent messages" head={["Title", "To", "Sent", "By", "Status", ""]}>
+            {sent.map((m) => {
+              const st = STATE[m.state];
+              return (
+                <tr key={m.id}>
+                  <Td className="font-medium text-ink-900">{m.title}</Td>
+                  <Td>{m.audience === "person" ? m.to : (AUDIENCE[m.audience] ?? m.audience)}</Td>
+                  <Td className="text-ink-500">{formatDate(m.sentAt)}</Td>
+                  <Td className="text-ink-500">{m.by ?? "Team"}</Td>
+                  <Td>
+                    <StatusPill status={st.status} label={st.label(m)} />
+                  </Td>
+                  <Td>
+                    {m.canRecall ? (
+                      <form action={recallMessage}>
+                        <input type="hidden" name="id" value={m.id} />
+                        <PendingButton pendingLabel="Recalling" className="min-h-11 rounded-xl px-3 text-sm font-semibold text-flag-700 hover:bg-flag-50">
+                          Recall
+                        </PendingButton>
+                      </form>
+                    ) : null}
+                  </Td>
+                </tr>
+              );
+            })}
+          </Table>
+        ) : (
+          <p className="p-5 text-sm text-ink-500">Nothing sent yet.</p>
+        )}
+        <p className="border-t border-ink-100 px-5 py-2.5 text-xs leading-5 text-ink-500">Recall takes a message out of the app straight away. If someone already read it, they may remember it.</p>
       </Panel>
     </>
   );

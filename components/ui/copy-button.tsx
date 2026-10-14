@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { Copy, TickCircle } from "@/components/icons";
+import { toast } from "./toaster";
 
 export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
       await navigator.clipboard.writeText(value);
+      toast(`Copied the ${label}.`);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {}
@@ -36,6 +38,7 @@ export function CopyField({ value, label, className = "" }: { value: string; lab
   async function copy() {
     try {
       await navigator.clipboard.writeText(value);
+      toast(`Copied the ${label}.`);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {}

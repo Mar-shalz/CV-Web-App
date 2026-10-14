@@ -62,7 +62,7 @@ export function ImportPanel() {
   }
 
   if (phase.kind === "working") {
-    return <WorkingNotice title="Reading Your CV" steps={STEPS} estimate="Usually 15 to 40 seconds" stepSeconds={8} />;
+    return <WorkingNotice title="Reading your CV" steps={STEPS} estimate="Usually 15 to 40 seconds" stepSeconds={8} />;
   }
 
   const tabs: { id: Mode; label: string; icon: typeof DocumentUpload }[] = [

@@ -5,7 +5,7 @@ import { voiceEnabled } from "@/lib/speech";
 import { InterviewFlow } from "@/components/vault/interview-flow";
 import { ButtonLink } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Find Your Wins" };
+export const metadata: Metadata = { title: "Find your Wins" };
 
 export default async function InterviewPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
   const viewer = await requireReadyViewer();
@@ -15,7 +15,7 @@ export default async function InterviewPage({ searchParams }: { searchParams: Pr
   return (
     <div className="mx-auto max-w-3xl space-y-3">
       <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Let&apos;s Find the Wins Your CV Forgot</h1>
+        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Let&apos;s Find the Wins your CV Forgot</h1>
         <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">
           One question at a time about one role. Answer like you&apos;re telling a friend. Stop whenever you like; we&apos;ll pick up where you left off.
         </p>

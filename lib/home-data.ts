@@ -12,6 +12,8 @@ export type HomeApplication = {
   status: ApplicationStatus;
   sentAt: string | null;
   channel: "email" | "form" | "portal" | null;
+  /** A job saved for later, not an application yet: opens its job check. */
+  savedAt?: string;
 };
 
 export type HomeData = {

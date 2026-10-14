@@ -47,7 +47,7 @@ export function DebriefForm({ applicationId, voice, existing }: { applicationId:
         </div>
         {result.questions.length ? (
           <>
-            <h3 className="mt-5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Questions You Were Asked</h3>
+            <h3 className="mt-5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Questions you Were Asked</h3>
             <ol className="stagger mt-2 space-y-2">
               {result.questions.map((q, i) => (
                 <li key={q.text} style={{ ["--i" as string]: i }} className="flex gap-3 rounded-2xl bg-ink-50 p-3.5">
@@ -105,7 +105,7 @@ export function DebriefForm({ applicationId, voice, existing }: { applicationId:
         rows={8}
         maxLength={8000}
         placeholder="They asked me to introduce myself, then about my SIWES at the bank. It was 3 people on Zoom..."
-        className="mt-2 w-full resize-y rounded-2xl border border-ink-200 bg-white p-4 text-[0.9375rem] leading-6 text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
+        className="mt-2 w-full resize-y rounded-2xl border border-ink-200 bg-white p-4 text-[0.9375rem] leading-6 text-ink-900 placeholder:text-ink-350 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
       />
 
       <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl bg-ink-50 p-4">

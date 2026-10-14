@@ -13,7 +13,10 @@ type State = { kind: "idle" } | { kind: "recording"; seconds: number } | { kind:
  * transcription. Offline, the recording waits on this phone and goes when the
  * connection is back. Audio is never stored on our side.
  */
-export function VoiceRecorder({ onText, disabled, compact = false }: { onText: (text: string) => void; disabled?: boolean; compact?: boolean }) {
+export type SpokenMeta = { spoken: string; polished: boolean };
+
+/** With `polish`, what they say about an achievement comes back tidied into a clear line (D-125), with their exact words alongside. */
+export function VoiceRecorder({ onText, disabled, compact = false, polish }: { onText: (text: string, meta?: SpokenMeta) => void; disabled?: boolean; compact?: boolean; polish?: { roleId?: string; role?: string } }) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [levels, setLevels] = useState<number[]>(Array(24).fill(0.1));
   const rec = useRef<MediaRecorder | null>(null);
@@ -26,9 +29,14 @@ export function VoiceRecorder({ onText, disabled, compact = false }: { onText: (
     setState({ kind: "sending" });
     const body = new FormData();
     body.append("audio", blob, "answer.webm");
+    if (polish) {
+      body.append("polish", "achievement");
+      if (polish.roleId) body.append("role_id", polish.roleId);
+      if (polish.role) body.append("role", polish.role);
+    }
     try {
       const res = await fetch("/api/speech/transcribe", { method: "POST", body });
-      const data = (await res.json()) as { ok: boolean; text?: string; error?: string };
+      const data = (await res.json()) as { ok: boolean; text?: string; spoken?: string; polished?: boolean; error?: string };
       if (!data.ok || !data.text) {
         setState({ kind: "error", message: data.error ?? "We couldn't hear that clearly. Try again, or type your answer." });
         return;
@@ -37,7 +45,7 @@ export function VoiceRecorder({ onText, disabled, compact = false }: { onText: (
       try {
         sessionStorage.removeItem(QUEUE_KEY);
       } catch {}
-      onText(data.text);
+      onText(data.text, data.spoken ? { spoken: data.spoken, polished: Boolean(data.polished) } : undefined);
       setState({ kind: "idle" });
     } catch {
       // Offline: keep the recording and send it when the network returns.
@@ -126,7 +134,7 @@ export function VoiceRecorder({ onText, disabled, compact = false }: { onText: (
           className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-50 px-3.5 text-sm font-semibold text-brand-800 ring-1 ring-brand-100 transition-colors hover:bg-brand-100 disabled:cursor-progress disabled:opacity-70"
         >
           {state.kind === "sending" ? <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" /> : <Microphone2 size={18} variant="bulk" />}
-          {state.kind === "sending" ? "Writing down what you said" : "Say it instead"}
+          {state.kind === "sending" ? (polish ? "Writing it up from what you said" : "Writing down what you said") : "Say it instead"}
         </button>
         {state.kind === "error" ? (
           <span className="text-[0.8125rem] text-flag-700" role="alert">

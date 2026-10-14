@@ -99,3 +99,31 @@ revoke all on public.price_clicks from anon, authenticated;
 -- 11. CV top-up: more tailored CVs during a job hunt pass (prices and amounts in
 -- config/prices.json). Activates through the same verified Paystack webhook.
 alter type public.pass_type add value if not exists 'cv_topup';
+
+-- 12. Back office messages: history of everything sent (groups and one person), drafts,
+-- and recall. A recalled message is taken out of the person's Updates panel. Staff only:
+-- read and written with the service role from the back office.
+create table if not exists public.admin_messages (
+  id uuid primary key default gen_random_uuid(),
+  created_by uuid references public.users (id) on delete set null,
+  audience text not null check (audience in ('everyone', 'trial', 'pass', 'no_pass', 'person')),
+  recipient_id uuid references public.users (id) on delete set null,
+  recipient_email text check (char_length(recipient_email) <= 160),
+  title text not null check (char_length(title) between 1 and 120),
+  body text not null check (char_length(body) between 1 and 600),
+  link text check (link is null or link ~ '^/[A-Za-z0-9/_?=&.#-]*$'),
+  days int check (days between 1 and 90),
+  status text not null default 'draft' check (status in ('draft', 'sent', 'recalled')),
+  announcement_id uuid references public.announcements (id) on delete set null,
+  notification_id uuid,
+  sent_at timestamptz,
+  recalled_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists admin_messages_created_idx on public.admin_messages (created_at desc);
+alter table public.admin_messages enable row level security;
+revoke all on public.admin_messages from anon, authenticated;
+
+-- 13. People can put the achievements in each role in their own order.
+alter table public.vault_items add column if not exists position int;

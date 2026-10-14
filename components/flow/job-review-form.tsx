@@ -55,10 +55,16 @@ export function JobReviewForm({
       <section className={`rounded-2xl p-4 ${picking ? "border border-brand-200 bg-brand-50" : "bg-ink-75"}`} aria-live="polite">
         {picking ? (
           <div className="space-y-3">
-            <p className="flex items-center gap-2 text-sm font-semibold text-ink-900">
-              <Global size={20} variant="bulk" className="text-brand-600" />
-              Where is this job?
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+                <Global size={20} variant="bulk" className="text-brand-600" />
+                Where is this job?
+              </p>
+              {/* Leaves the choice as it was, so "Change" is never a one way door. */}
+              <button type="button" onClick={() => setPicking(false)} className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-ink-600 hover:bg-white hover:text-ink-900">
+                {ask && dest === destination ? `Keep ${label(dest)}` : "Cancel"}
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
               {alternatives.map((c) => (
                 <button

@@ -18,7 +18,8 @@ export async function passCvUsage(viewer: Viewer): Promise<PassUsage | null> {
   const { data: pass } = await supabase.from("passes").select("starts_at").eq("user_id", viewer.id).eq("type", "job_hunt_30d").eq("status", "active").lte("starts_at", now).gt("ends_at", now).order("starts_at", { ascending: false }).limit(1).maybeSingle();
   if (!pass?.starts_at) return null;
   const [{ count: used }, topups] = await Promise.all([
-    supabase.from("cv_versions").select("id", { count: "exact", head: true }).eq("user_id", viewer.id).gte("created_at", pass.starts_at),
+    // Tailored CVs only: the general CV from My Experience doesn't count (D-124).
+    supabase.from("cv_versions").select("id", { count: "exact", head: true }).eq("user_id", viewer.id).not("job_id", "is", null).gte("created_at", pass.starts_at),
     // Fails harmlessly before the migration adds the cv_topup type.
     supabase.from("passes").select("id", { count: "exact", head: true }).eq("user_id", viewer.id).eq("type", "cv_topup").eq("status", "active").gte("created_at", pass.starts_at),
   ]);
