@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Receipts: tailor your CV to this job",
+  "short_name": "Receipts",
+  "version": "0.1.0",
+  "description": "Send the job you're looking at to Receipts: check if it's real, see if you fit, and get a CV tailored to it.",
+  "action": { "default_popup": "popup.html", "default_title": "Send this job to Receipts", "default_icon": { "128": "icon.png" } },
+  "icons": { "128": "icon.png" },
+  "permissions": ["activeTab", "scripting"],
+  "minimum_chrome_version": "110"
+}

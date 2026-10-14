@@ -1,3 +1,4 @@
+import { RemoveSaved } from "@/components/applications/remove-saved";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -144,7 +145,10 @@ async function VerdictHero({ promise, viewer, job }: { promise: Promise<FinalVer
       Get the pass to tailor your CV
     </Link>
   );
-  const save = (
+  // Already saved: take it off the list from here, without going through the rest (D-130).
+  const save = job.state === "saved" ? (
+    <RemoveSaved jobId={job.id} title={job.parsed.title ?? "This job"} variant="button" />
+  ) : (
     <form action={setJobState}>
       <input type="hidden" name="job_id" value={job.id} />
       <input type="hidden" name="state" value="saved" />

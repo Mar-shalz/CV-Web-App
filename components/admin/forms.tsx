@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { MessageDraft } from "@/lib/admin/messages";
-import { addMember, grantFreeAccess, markRefunded, sendUpdate, type AdminActionState } from "@/app/admin/actions";
+import { addMember, findUsers, grantFreeAccess, markRefunded, sendUpdate, type AdminActionState, type UserHit } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { inputClass } from "@/components/ui/field";
 import { ADMIN_ROLES, ROLE_LABELS } from "@/lib/admin/permissions";
+import { TickCircle } from "@/components/icons";
 
 function Result({ state }: { state: AdminActionState }) {
   if (!state) return null;
@@ -91,6 +92,122 @@ const AUDIENCES = [
 ] as const;
 
 /** Sends to the Updates panel behind the bell. Shows a preview of what people will see. */
+/**
+ * "One person": type a name or email and pick from the people who match (D-132), so a
+ * message can't go to a mistyped address. Keyboard: arrows to move, Enter to pick, Escape to close.
+ */
+function RecipientField({ email, setEmail, recipient, setRecipient, error }: { email: string; setEmail: (v: string) => void; recipient: UserHit | null; setRecipient: (u: UserHit | null) => void; error?: string }) {
+  const [hits, setHits] = useState<UserHit[]>([]);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const [searching, setSearching] = useState(false);
+  const listId = useId();
+  const seq = useRef(0);
+
+  useEffect(() => {
+    const q = email.trim();
+    if (recipient || q.length < 2) return;
+    const n = ++seq.current;
+    const t = setTimeout(async () => {
+      setSearching(true);
+      const found = await findUsers(q).catch(() => []);
+      if (n !== seq.current) return;
+      setSearching(false);
+      setHits(found);
+      setActive(0);
+      setOpen(true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [email, recipient]);
+
+  const pick = (u: UserHit) => {
+    setRecipient(u);
+    setEmail(u.email);
+    setOpen(false);
+  };
+  const showList = open && !recipient && email.trim().length >= 2;
+
+  return (
+    <div className="relative">
+      <label htmlFor="u-email" className="text-sm font-semibold text-ink-900">
+        Who <span className="font-normal text-ink-500">(type their name or email, then pick them)</span>
+      </label>
+      <input
+        id="u-email"
+        name="email"
+        type="text"
+        role="combobox"
+        aria-expanded={showList}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={showList && hits[active] ? `${listId}-${active}` : undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? "u-email-error" : undefined}
+        autoComplete="off"
+        spellCheck={false}
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          if (recipient) setRecipient(null);
+        }}
+        onFocus={() => hits.length && setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onKeyDown={(e) => {
+          if (!showList || !hits.length) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActive((a) => (a + 1) % hits.length);
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((a) => (a - 1 + hits.length) % hits.length);
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            const u = hits[active];
+            if (u) pick(u);
+          } else if (e.key === "Escape") setOpen(false);
+        }}
+        className={`${inputClass} mt-2 ${recipient ? "border-proof-600 bg-proof-50/40" : ""}`}
+        placeholder="Start typing a name or email"
+      />
+      {recipient ? <input type="hidden" name="recipient_id" value={recipient.id} /> : null}
+      {recipient ? (
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-proof-700">
+          <TickCircle size={14} variant="bulk" />
+          {recipient.name ? `${recipient.name}, ` : ""}picked from your users
+        </p>
+      ) : null}
+      {error ? (
+        <p id="u-email-error" role="alert" className="mt-1.5 text-[0.8125rem] font-medium text-flag-700">
+          {error}
+        </p>
+      ) : null}
+      {showList ? (
+        <ul id={listId} role="listbox" className="absolute inset-x-0 z-30 mt-1.5 max-h-72 animate-pop overflow-y-auto rounded-2xl border border-ink-150 bg-white p-1.5 shadow-raised">
+          {searching && !hits.length ? <li className="px-3 py-2.5 text-sm text-ink-500">Searching…</li> : null}
+          {!searching && !hits.length ? <li className="px-3 py-2.5 text-sm text-ink-500">No one matches. Check the spelling.</li> : null}
+          {hits.map((u, i) => (
+            <li
+              key={u.id}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === active}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                pick(u);
+              }}
+              onMouseEnter={() => setActive(i)}
+              className={`flex min-h-12 cursor-pointer flex-col justify-center rounded-xl px-3 py-1.5 ${i === active ? "bg-brand-50" : ""}`}
+            >
+              <span className="text-sm font-semibold text-ink-900">{u.name ?? u.email}</span>
+              {u.name ? <span className="text-xs text-ink-500">{u.email}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 /** Send or Save as draft from one form; only the tapped button shows it's busy. */
 function IntentButton({ intent, inactive, children, busy, primary }: { intent: "send" | "draft"; inactive: boolean; children: React.ReactNode; busy: string; primary?: boolean }) {
   const { pending, data } = useFormStatus();
@@ -118,7 +235,13 @@ export function SendUpdateForm({ draft = null }: { draft?: MessageDraft | null }
   const [to, setTo] = useState<string>(draft?.audience ?? "everyone");
   const [title, setTitle] = useState(draft?.title ?? "");
   const [body, setBody] = useState(draft?.body ?? "");
-  const ready = title.trim().length >= 3 && body.trim().length >= 3;
+  // Controlled, so a failed send never wipes what was typed.
+  const [email, setEmail] = useState(draft?.email ?? "");
+  const [recipient, setRecipient] = useState<UserHit | null>(null);
+  const [link, setLink] = useState(draft?.link ?? "");
+  const [days, setDays] = useState(draft?.days ? String(draft.days) : "");
+  const ready = title.trim().length >= 3 && body.trim().length >= 3 && (to !== "person" || email.trim().length >= 3);
+  const emailError = state?.field === "email" ? state.error : undefined;
   return (
     <form action={action} className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_320px]">
       {draft ? <input type="hidden" name="draft_id" value={draft.id} /> : null}
@@ -134,14 +257,7 @@ export function SendUpdateForm({ draft = null }: { draft?: MessageDraft | null }
             ))}
           </div>
         </fieldset>
-        {to === "person" ? (
-          <div>
-            <label htmlFor="u-email" className="text-sm font-semibold text-ink-900">
-              Their account email
-            </label>
-            <input id="u-email" name="email" type="email" defaultValue={draft?.email ?? ""} className={`${inputClass} mt-2`} placeholder="name@gmail.com" />
-          </div>
-        ) : null}
+        {to === "person" ? <RecipientField email={email} setEmail={setEmail} recipient={recipient} setRecipient={setRecipient} error={emailError} /> : null}
         <div>
           <label htmlFor="u-title" className="text-sm font-semibold text-ink-900">
             Title
@@ -160,14 +276,14 @@ export function SendUpdateForm({ draft = null }: { draft?: MessageDraft | null }
             <label htmlFor="u-link" className="text-sm font-semibold text-ink-900">
               Link in the app <span className="font-normal text-ink-500">(optional)</span>
             </label>
-            <input id="u-link" name="link" defaultValue={draft?.link ?? ""} className={`${inputClass} mt-2`} placeholder="/pass" />
+            <input id="u-link" name="link" value={link} onChange={(e) => setLink(e.target.value)} className={`${inputClass} mt-2`} placeholder="/pass" />
           </div>
           {to !== "person" ? (
             <div>
               <label htmlFor="u-days" className="text-sm font-semibold text-ink-900">
                 Show for <span className="font-normal text-ink-500">(days, optional)</span>
               </label>
-              <input id="u-days" name="days" type="number" min={1} max={90} defaultValue={draft?.days ?? ""} className={`${inputClass} mt-2`} placeholder="Until you end it" />
+              <input id="u-days" name="days" type="number" min={1} max={90} value={days} onChange={(e) => setDays(e.target.value)} className={`${inputClass} mt-2`} placeholder="Until you end it" />
             </div>
           ) : null}
         </div>
@@ -183,7 +299,7 @@ export function SendUpdateForm({ draft = null }: { draft?: MessageDraft | null }
               Cancel
             </a>
           ) : null}
-          <Result state={state} />
+          <Result state={emailError ? undefined : state} />
         </div>
       </div>
       <div>

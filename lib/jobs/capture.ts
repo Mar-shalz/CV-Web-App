@@ -12,7 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { APP } from "@/lib/config";
 
 export type CaptureInput =
-  | { mode: "paste"; text: string }
+  | { mode: "paste"; text: string; sourceUrl?: string }
   | { mode: "link"; url: string }
   | { mode: "file"; bytes: Buffer; name: string; type: string }
   | { mode: "screenshot"; bytes: Buffer; type: string };
@@ -57,6 +57,7 @@ export async function captureJob(supabase: SupabaseClient, userId: string, targe
   switch (input.mode) {
     case "paste": {
       rawText = input.text.trim().slice(0, 40_000);
+      sourceUrl = input.sourceUrl ?? null;
       postHash = hash(rawText);
       parseInput = { kind: "text", text: rawText, postHash, today };
       break;

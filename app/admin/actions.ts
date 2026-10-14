@@ -10,10 +10,10 @@ import { createClient } from "@/lib/supabase/server";
 import { isPreviewMode } from "@/lib/env";
 import { removeUserFiles } from "@/lib/account/files";
 import { logAdminAction, requireAdmin } from "@/lib/admin/auth";
-import { ADMIN_ROLES } from "@/lib/admin/permissions";
+import { ADMIN_ROLES, can, maskEmail } from "@/lib/admin/permissions";
 import { notify } from "@/lib/notifications/data";
 
-export type AdminActionState = { ok?: string; error?: string } | undefined;
+export type AdminActionState = { ok?: string; error?: string; field?: string } | undefined;
 
 const uuid = z.uuid();
 
@@ -166,7 +166,15 @@ export async function sendUpdate(_prev: AdminActionState, formData: FormData): P
   const m = parsed.data;
   if (staff.preview) return { ok: draft ? "Preview: nothing was saved." : "Preview: nothing was sent." };
   const db = createAdminClient();
-  const record = { audience: m.to, recipient_email: m.to === "person" ? (m.email ?? null) : null, title: m.title, body: m.body, link: m.link ?? null, days: m.to === "person" ? null : (m.days ?? null), updated_at: new Date().toISOString() };
+  const record: { audience: string; recipient_email: string | null; title: string; body: string; link: string | null; days: number | null; updated_at: string } = { audience: m.to, recipient_email: m.to === "person" ? (m.email ?? null) : null, title: m.title, body: m.body, link: m.link ?? null, days: m.to === "person" ? null : (m.days ?? null), updated_at: new Date().toISOString() };
+
+  // Picked from the suggestions: the person's id, so a typo can't send it to the wrong account.
+  const recipientId = uuid.safeParse(formData.get("recipient_id"));
+  if (m.to === "person" && recipientId.success) {
+    const { data: picked } = await db.from("users").select("id, email").eq("id", recipientId.data).maybeSingle();
+    if (!picked) return { error: "That account no longer exists. Search again.", field: "email" };
+    record.recipient_email = picked.email;
+  }
 
   if (draft) {
     const { error } = draftId.success
@@ -182,9 +190,9 @@ export async function sendUpdate(_prev: AdminActionState, formData: FormData): P
 
   let sent: { recipient_id?: string; notification_id?: string; announcement_id?: string } = {};
   if (m.to === "person") {
-    if (!m.email) return { error: "Add the person's email." };
-    const { data: user } = await db.from("users").select("id").eq("email", m.email).maybeSingle();
-    if (!user) return { error: "No account uses that email." };
+    if (!record.recipient_email) return { error: "Add the person's email, or pick them from the list.", field: "email" };
+    const { data: user } = await db.from("users").select("id").eq("email", record.recipient_email).maybeSingle();
+    if (!user) return { error: "No account uses that email. Check it, or pick the person from the list.", field: "email" };
     const { data: note, error } = await db.from("notifications").insert({ user_id: user.id, kind: "message", title: m.title, body: m.body, link: m.link ?? null }).select("id").single();
     if (error || !note) return { error: "Couldn't send the message." };
     sent = { recipient_id: user.id, notification_id: note.id };
@@ -291,10 +299,10 @@ export async function revokeFreeAccess(formData: FormData): Promise<void> {
 
 /** Signs staff out, back to the sign in page. */
 export async function signOutAdmin(): Promise<void> {
-  if (isPreviewMode()) redirect("/sign-in?signed_out=1");
+  if (isPreviewMode()) redirect("/admin/sign-in?signed_out=1");
   const supabase = await createClient();
   await supabase.auth.signOut().catch(() => {});
-  redirect("/sign-in?signed_out=1");
+  redirect("/admin/sign-in?signed_out=1");
 }
 
 /** Team members can't be paused or deleted here: remove them from the team first. */
@@ -362,4 +370,42 @@ export async function deleteUserAccount(_prev: AdminActionState, formData: FormD
   await logAdminAction(staff, "delete_account", "users", id.data);
   revalidatePath("/admin/users");
   redirect("/admin/users?deleted=1");
+}
+
+export type UserHit = { id: string; email: string; name: string | null };
+
+/**
+ * People for the "One person" field, as the name or email is typed (D-132). At most 8,
+ * from 2 characters. Full emails only for roles that may see them; others see a masked
+ * email and send by picking the person.
+ */
+export async function findUsers(query: string): Promise<UserHit[]> {
+  const staff = await requireAdmin("messages");
+  const q = String(query ?? "")
+    .trim()
+    .toLowerCase()
+    .slice(0, 80);
+  if (q.length < 2) return [];
+  if (staff.preview)
+    return [
+      { id: "00000000-0000-4000-8000-000000000001", email: "tolu.adebayo@gmail.com", name: "Tolu Adebayo" },
+      { id: "00000000-0000-4000-8000-000000000002", email: "tobi.okafor@yahoo.com", name: "Tobi Okafor" },
+    ].filter((u) => `${u.email} ${u.name}`.toLowerCase().includes(q));
+  // The text is matched as text: wildcards and escapes in it are neutralised.
+  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const db = createAdminClient();
+  const [byEmail, byName] = await Promise.all([
+    db.from("users").select("id, email, full_name").ilike("email", like).order("email").limit(8),
+    db.from("users").select("id, email, full_name").ilike("full_name", like).order("full_name").limit(8),
+  ]);
+  const seen = new Set<string>();
+  const full = can(staff.role, "users.manage");
+  const hits: UserHit[] = [];
+  for (const u of [...(byEmail.data ?? []), ...(byName.data ?? [])]) {
+    if (seen.has(u.id) || hits.length >= 8) continue;
+    seen.add(u.id);
+    hits.push({ id: u.id, email: full ? u.email : maskEmail(u.email), name: u.full_name ?? null });
+  }
+  if (hits.length) await logAdminAction(staff, "view", "users", null, { purpose: "message_lookup", results: hits.length });
+  return hits;
 }

@@ -34,8 +34,8 @@ export default async function AdminMessages({ searchParams }: { searchParams: Pr
     await logAdminAction(staff, "view", "announcements");
   } else {
     sent = [
-      { id: "demo", audience: "everyone", to: "everyone", title: "Graduate programme season is here", sentAt: "2026-10-12T09:00:00.000Z", by: "Victor", state: "showing", until: null, canRecall: true },
-      { id: "demo2", audience: "person", to: "to•••@gm•••.com", title: "Your CV is ready", sentAt: "2026-10-11T09:00:00.000Z", by: "Victor", state: "read", until: null, canRecall: true },
+      { id: "demo", audience: "everyone", to: "everyone", title: "Graduate programme season is here", body: "Big banks open their graduate programmes this month. Check your CV and tailor it to each one.", link: "/jobs/new", sentAt: "2026-10-12T09:00:00.000Z", by: "Victor", state: "showing", until: null, canRecall: true },
+      { id: "demo2", audience: "person", to: "to•••@gm•••.com", title: "Your CV is ready", body: "We fixed the problem with your upload. Try it again.", link: null, sentAt: "2026-10-11T09:00:00.000Z", by: "Victor", state: "read", until: null, canRecall: true },
     ];
   }
 
@@ -86,7 +86,19 @@ export default async function AdminMessages({ searchParams }: { searchParams: Pr
               const st = STATE[m.state];
               return (
                 <tr key={m.id}>
-                  <Td className="font-medium text-ink-900">{m.title}</Td>
+                  <Td className="max-w-[28rem] text-ink-900">
+                    {/* The message as people saw it, one tap away (founder, round 14). */}
+                    <details className="group/msg">
+                      <summary className="cursor-pointer list-none font-medium hover:text-brand-700 [&::-webkit-details-marker]:hidden">
+                        {m.title}
+                        <span className="ml-1.5 text-xs font-semibold text-brand-700 group-open/msg:hidden">Read</span>
+                      </summary>
+                      <div className="mt-2 rounded-xl bg-ink-50 p-3 text-[0.8125rem] leading-5 text-ink-700">
+                        <p className="whitespace-pre-line">{m.body ?? "No message text."}</p>
+                        {m.link ? <p className="mt-1.5 text-xs text-ink-500">Link: {m.link}</p> : null}
+                      </div>
+                    </details>
+                  </Td>
                   <Td>{m.audience === "person" ? m.to : (AUDIENCE[m.audience] ?? m.audience)}</Td>
                   <Td className="text-ink-500">{formatDate(m.sentAt)}</Td>
                   <Td className="text-ink-500">{m.by ?? "Team"}</Td>

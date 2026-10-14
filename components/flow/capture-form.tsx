@@ -26,6 +26,27 @@ const DRAFT_KEY = "capture-draft-v1";
 
 const STEPS = ["Reading the job", "Finding the requirements", "Checking how to apply"];
 
+/**
+ * A job sent from the browser extension (D-133): the page's text and address ride in the
+ * part of the link after "#", which never reaches a server or its logs. Read once, then
+ * cleared from the address bar. The text is untrusted job post data, like any paste.
+ */
+function takeHandoff(): { text: string; url: string | null } | null {
+  if (!location.hash.startsWith("#ext=")) return null;
+  const raw = location.hash.slice(5);
+  history.replaceState(null, "", location.pathname + location.search);
+  try {
+    const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+    const json = new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
+    const d = JSON.parse(json) as { text?: unknown; url?: unknown };
+    const text = typeof d.text === "string" ? d.text.slice(0, 40_000) : "";
+    const url = typeof d.url === "string" && /^https?:\/\//.test(d.url) ? d.url.slice(0, 400) : null;
+    return text.trim().length >= 40 ? { text, url } : null;
+  } catch {
+    return null;
+  }
+}
+
 export function CaptureForm({ initialMode = "paste", initialError, purpose = "tailor" }: { initialMode?: Mode; initialError?: string; purpose?: "tailor" | "real" }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -36,6 +57,7 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [tried, setTried] = useState(false);
+  const [from, setFrom] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [sizeError, setSizeError] = useState<string | undefined>();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -43,13 +65,20 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
   // Never lose input: the draft lives on this phone until the job is saved. It is
   // restored after hydration (the server can't see localStorage), hence the effect.
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const sent = takeHandoff();
+    if (sent) {
+      setMode("paste");
+      setText(sent.text);
+      setFrom(sent.url ?? "");
+      return;
+    }
     try {
       const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "null");
-      /* eslint-disable react-hooks/set-state-in-effect */
       if (d?.text) setText(d.text);
       if (d?.url) setUrl(d.url);
-      /* eslint-enable react-hooks/set-state-in-effect */
     } catch {}
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
   useEffect(() => {
     try {
@@ -84,6 +113,7 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
     const body = new FormData();
     body.append("mode", mode);
     if (mode === "paste") body.append("text", text);
+    if (mode === "paste" && from) body.append("source_url", from);
     if (mode === "link") body.append("url", url);
     if ((mode === "file" || mode === "screenshot") && file) {
       const attached = await attachFile(body, mode === "screenshot" ? await compressImage(file) : file);
@@ -136,6 +166,14 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
       <FormError message={error} />
+      {from !== null && mode === "paste" ? (
+        <p role="status" className="flex items-start gap-2.5 rounded-2xl bg-brand-50 px-3.5 py-3 text-sm leading-5 text-brand-800 ring-1 ring-brand-100">
+          <TickCircle size={20} variant="bulk" className="mt-px shrink-0 text-brand-600" />
+          <span>
+            Copied from the page you had open{from ? ` (${(() => { try { return new URL(from).hostname.replace(/^www\./, ""); } catch { return "the web"; } })()})` : ""}. Check it&apos;s the whole job, then carry on.
+          </span>
+        </p>
+      ) : null}
 
       <fieldset>
         <legend className="text-sm font-semibold text-ink-900">How do you want to add it?</legend>

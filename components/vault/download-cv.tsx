@@ -34,7 +34,8 @@ export function DownloadCv({ ready }: { ready: boolean }) {
           ref.current?.showModal();
           if (!busy) setOpened((n) => n + 1);
         }}
-        className="cta-sheen inline-flex min-h-12 items-center gap-2 rounded-2xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-[var(--shadow-cta)] transition-colors hover:bg-brand-700 active:scale-[0.98]"
+        // Outlined, so it never competes with "Tailor my CV", the main action (founder, round 14).
+        className="inline-flex min-h-12 items-center gap-2 rounded-2xl border-[1.5px] border-brand-600 bg-white px-5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 active:scale-[0.98]"
       >
         <DocumentDownload size={20} variant="bulk" />
         Download my CV

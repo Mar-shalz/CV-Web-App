@@ -7,6 +7,7 @@ import { RoleCard } from "@/components/vault/role-card";
 import { ReadinessMeter, VaultActions } from "@/components/vault/vault-header";
 import lazy from "next/dynamic";
 import { DownloadCv } from "@/components/vault/download-cv";
+import { RoleColumns } from "@/components/vault/role-columns";
 import { Warning2, ArrowRight, ShieldTick, ArrowDown2 } from "@/components/icons";
 
 export const metadata: Metadata = { title: "My Experience" };
@@ -82,7 +83,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
         </Link>
       ) : null}
 
-      {/* Each section folds on its own (D-119). Cards sit at the top of their row, so opening one never stretches the card beside it. */}
+      {/* Each section folds on its own (D-119). On wide screens the two columns move independently (D-131). */}
       {GROUPS.map((g, gi) => {
         const roles = vault.roles.filter((r) => (g.kinds as readonly string[]).includes(r.kind));
         if (!roles.length) return null;
@@ -96,11 +97,11 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
                 <span className="sr-only">Show or hide {g.title.toLowerCase()}</span>
               </span>
             </summary>
-            <div className="mt-1 grid items-start gap-3 2xl:grid-cols-2">
+            <RoleColumns>
               {roles.map((r) => (
                 <RoleCard key={r.id} role={r} />
               ))}
-            </div>
+            </RoleColumns>
           </details>
         );
       })}

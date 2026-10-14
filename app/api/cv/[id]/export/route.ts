@@ -12,8 +12,8 @@ import { track } from "@/lib/analytics/server";
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 /**
- * Downloads a CV. Open flags never block it (they're logged). Files are stored privately
- * and served through a signed link that expires in 10 minutes.
+ * Downloads a CV. Open flags never block it (they're logged). The file is sent in the
+ * response; a private copy is stored for the application's record.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,21 +32,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const filename = `${cv.doc.fileBase}.${type}`;
   const mime = type === "pdf" ? "application/pdf" : DOCX;
 
-  if (viewer.preview) {
-    return new NextResponse(new Uint8Array(bytes), { headers: { "content-type": mime, "content-disposition": `attachment; filename="${filename}"`, "cache-control": "no-store" } });
-  }
+  const file = new NextResponse(new Uint8Array(bytes), { headers: { "content-type": mime, "content-disposition": `attachment; filename="${filename}"`, "cache-control": "private, no-store" } });
+  if (viewer.preview) return file;
 
+  // The file goes straight back to the phone (D-128). A private copy is kept as well, so the
+  // application holds exactly what was sent; if that copy fails, the download still works.
   const supabase = await createClient();
   const path = `${viewer.id}/${cv.id}.${type}`;
   const { error } = await supabase.storage.from("cv-exports").upload(path, bytes, { contentType: mime, upsert: true });
-  if (error) return NextResponse.json({ error: "We couldn't prepare your file. Try again." }, { status: 500 });
-  if (!cv.locked) await supabase.from("cv_versions").update(type === "pdf" ? { pdf_path: path } : { docx_path: path }).eq("id", cv.id).eq("user_id", viewer.id);
+  if (!error && !cv.locked) await supabase.from("cv_versions").update(type === "pdf" ? { pdf_path: path } : { docx_path: path }).eq("id", cv.id).eq("user_id", viewer.id);
 
   const open = openFlags(cv.doc);
   if (open) await track("cv_downloaded_with_flags", { open_flags_count: open }, viewer.id);
   await track("cv_exported", { format: cv.doc.format, file_type: type }, viewer.id);
-
-  const { data: signed } = await supabase.storage.from("cv-exports").createSignedUrl(path, 600, { download: filename });
-  if (!signed?.signedUrl) return NextResponse.json({ error: "We couldn't prepare your file." }, { status: 500 });
-  return NextResponse.redirect(signed.signedUrl, 303);
+  return file;
 }

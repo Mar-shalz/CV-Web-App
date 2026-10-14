@@ -8,7 +8,6 @@ import { ROLE_KINDS, OWNERSHIP, EMPLOYMENT_TYPES, EMPLOYMENT_KINDS } from "@/lib
 import { toDate } from "@/lib/vault/dates";
 import { extractMetrics } from "@/lib/vault/metrics";
 import { lintCopy } from "@/lib/copy-lint";
-import { sortItems } from "@/lib/vault/order";
 import { flash } from "@/lib/toast";
 import { generalCv, type GeneralCvResult } from "@/lib/cv/general";
 
@@ -189,28 +188,21 @@ export async function saveItem(_prev: VaultActionState, formData: FormData): Pro
 const missingColumn = (e: { code?: string } | null) => Boolean(e && (e.code === "PGRST204" || e.code === "42703"));
 
 /**
- * Moves an achievement up or down within its role (D-119). The whole role's list is
- * renumbered, so the order is always exact. The CV writer and My Experience use it.
+ * Saves the order of one role's achievements, from reorder mode (D-119, D-131). The ids
+ * must be exactly that role's achievements; the whole list is renumbered.
  */
-export async function moveItem(formData: FormData): Promise<void> {
+export async function reorderItems(roleId: string, orderedIds: string[]): Promise<{ ok: false; error: string } | void> {
   const { viewer, supabase } = await ctx();
-  const itemId = id.safeParse(formData.get("item_id"));
-  const dir = formData.get("dir") === "up" ? -1 : 1;
-  if (!supabase || !itemId.success) return;
-  const { data: item } = await supabase.from("vault_items").select("role_id").eq("id", itemId.data).eq("user_id", viewer.id).maybeSingle();
-  if (!item) return;
-  const { data: rows, error } = await supabase.from("vault_items").select("*").eq("role_id", item.role_id).eq("user_id", viewer.id).order("created_at");
-  if (error || !rows) return;
-  const list = sortItems(rows as { id: string; position?: number | null; created_at: string }[]).map((r) => r.id);
-  const at = list.indexOf(itemId.data);
-  const to = at + dir;
-  if (at < 0 || to < 0 || to >= list.length) return;
-  [list[at], list[to]] = [list[to]!, list[at]!];
-  const results = await Promise.all(list.map((rid, n) => supabase.from("vault_items").update({ position: n }).eq("id", rid).eq("user_id", viewer.id)));
-  if (results.some((r) => r.error)) {
-    await flash("We couldn't move it just now. Try again.", "error");
-    return;
-  }
+  if (!supabase) return; // preview: sample data isn't stored
+  const role = id.safeParse(roleId);
+  const ids = z.array(id).max(60).safeParse(orderedIds);
+  if (!role.success || !ids.success) return { ok: false, error: "We couldn't save that order. Try again." };
+  const { data: rows } = await supabase.from("vault_items").select("id").eq("role_id", role.data).eq("user_id", viewer.id);
+  const have = new Set((rows ?? []).map((r) => r.id as string));
+  if (have.size !== ids.data.length || !ids.data.every((x) => have.has(x))) return { ok: false, error: "This list changed somewhere else. Close it and try again." };
+  const results = await Promise.all(ids.data.map((rid, n) => supabase.from("vault_items").update({ position: n }).eq("id", rid).eq("user_id", viewer.id)));
+  if (results.some((r) => r.error)) return { ok: false, error: "We couldn't save that order. Try again." };
+  await flash("Order saved. Your CV uses it.");
   done();
 }
 

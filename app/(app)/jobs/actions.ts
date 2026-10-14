@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/toast";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth/viewer";
@@ -102,4 +104,28 @@ export async function saveJobReview(_prev: ReviewState, formData: FormData): Pro
   );
   if (dest.fallbackNote) await track("country_requested", { country: r.destination }, viewer.id);
   redirect(`/jobs/${r.job_id}/check`);
+}
+
+/**
+ * Removes a job saved for later, without going through the rest of the flow (D-130).
+ * Only jobs with no application: a sent one is part of their record. Its check and
+ * advice go with it.
+ */
+export async function removeSavedJob(jobId: string): Promise<{ ok: false; error: string } | void> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  const id = z.uuid().safeParse(jobId);
+  if (viewer.preview) {
+    await flash("Removed from saved jobs.", "info");
+    redirect("/applications");
+  }
+  if (!id.success) return { ok: false, error: "We couldn't find that job." };
+  const supabase = await createClient();
+  const { count } = await supabase.from("applications").select("id", { count: "exact", head: true }).eq("job_id", id.data).eq("user_id", viewer.id);
+  if (count) return { ok: false, error: "This job has an application, so it stays. Delete the application instead." };
+  const { error } = await supabase.from("jobs").delete().eq("id", id.data).eq("user_id", viewer.id).eq("state", "saved");
+  if (error) return { ok: false, error: "We couldn't remove it just now. Try again." };
+  revalidatePath("/applications");
+  await flash("Removed from saved jobs.", "info");
+  redirect("/applications?status=saved");
 }

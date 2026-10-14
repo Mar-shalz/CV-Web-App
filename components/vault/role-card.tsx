@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { confirmItem, confirmRole, deleteItem, deleteRole, moveItem } from "@/app/(app)/experience/actions";
+import { confirmItem, confirmRole, deleteItem, deleteRole } from "@/app/(app)/experience/actions";
 import type { VaultItem, VaultRole } from "@/lib/vault/data";
 import { ROLE_KIND_LABELS, EMPLOYMENT_LABELS } from "@/lib/vault/schema";
 import { rangeLabel } from "@/lib/vault/dates";
@@ -11,8 +11,9 @@ import lazy from "next/dynamic";
 // the first load budget (300KB).
 const RoleForm = lazy(() => import("./role-form").then((m) => m.RoleForm));
 const ItemForm = lazy(() => import("./item-form").then((m) => m.ItemForm));
+const ReorderList = lazy(() => import("./reorder-list").then((m) => m.ReorderList));
 import { Badge } from "@/components/ui/status";
-import { AddCircle, ArrowDown2, ArrowUp2, Edit2, Trash, TickCircle, Warning2, Briefcase, Book1, Award, Teacher, Building4, People, Lamp, Microphone2 } from "@/components/icons";
+import { AddCircle, ArrowDown2, Sort, Edit2, Trash, TickCircle, Warning2, Briefcase, Book1, Award, Teacher, Building4, People, Lamp, Microphone2 } from "@/components/icons";
 import { PendingButton } from "@/components/ui/pending-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -51,6 +52,7 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
   const open = isRecordOnly || opened;
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [reordering, setReordering] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const Icon = KIND_ICON[role.kind];
@@ -176,7 +178,7 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
           ) : null}
 
           {/* Adding sits above the list, so a new achievement is one tap away however long the list is (D-119). */}
-          {!isRecordOnly ? (
+          {!isRecordOnly && !reordering ? (
             <div className="border-t border-ink-100 p-3 lg:px-5">
               {adding ? (
                 <div className="animate-rise rounded-2xl bg-brand-50/50 p-3 ring-1 ring-brand-100">
@@ -201,6 +203,12 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
                       </span>
                     </span>
                   </button>
+                  {role.items.length > 1 ? (
+                    <button type="button" onClick={() => setReordering(true)} className="inline-flex min-h-14 items-center gap-2 rounded-2xl border border-ink-150 bg-white px-4 text-sm font-semibold text-ink-700 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800">
+                      <Sort size={20} />
+                      Reorder
+                    </button>
+                  ) : null}
                   {mode === "review" && unchecked > 1 ? (
                     <form action={confirmRole}>
                       <input type="hidden" name="role_id" value={role.id} />
@@ -215,10 +223,12 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
             </div>
           ) : null}
 
-          {role.items.length ? (
+          {reordering ? (
+            <ReorderList roleId={role.id} items={role.items} onDone={() => setReordering(false)} />
+          ) : role.items.length ? (
             <ul className="divide-y divide-ink-100 border-t border-ink-100">
-              {role.items.map((item, n) => (
-                <ItemRow key={item.id} item={item} roleId={role.id} first={n === 0} last={n === role.items.length - 1} />
+              {role.items.map((item) => (
+                <ItemRow key={item.id} item={item} roleId={role.id} />
               ))}
             </ul>
           ) : null}
@@ -228,37 +238,7 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
   );
 }
 
-/** Up and down arrows: big enough to tap, and they work without a mouse, unlike dragging. */
-function MoveButtons({ itemId, first, last }: { itemId: string; first: boolean; last: boolean }) {
-  if (first && last) return null;
-  return (
-    <form action={moveItem} className="flex shrink-0 flex-col gap-0.5" aria-label="Move this achievement">
-      <input type="hidden" name="item_id" value={itemId} />
-      <PendingButton
-        name="dir"
-        value="up"
-        pendingLabel=""
-        disabled={first}
-        aria-label="Move up"
-        className="grid size-9 place-items-center rounded-lg text-ink-500 hover:bg-ink-75 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-30"
-      >
-        <ArrowUp2 size={16} />
-      </PendingButton>
-      <PendingButton
-        name="dir"
-        value="down"
-        pendingLabel=""
-        disabled={last}
-        aria-label="Move down"
-        className="grid size-9 place-items-center rounded-lg text-ink-500 hover:bg-ink-75 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-30"
-      >
-        <ArrowDown2 size={16} />
-      </PendingButton>
-    </form>
-  );
-}
-
-function ItemRow({ item, roleId, first, last }: { item: VaultItem; roleId: string; first: boolean; last: boolean }) {
+function ItemRow({ item, roleId }: { item: VaultItem; roleId: string }) {
   const [editing, setEditing] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const noNumber = item.metrics.length === 0 && !/\d/.test(item.text);
@@ -313,7 +293,6 @@ function ItemRow({ item, roleId, first, last }: { item: VaultItem; roleId: strin
             </form>
           </div>
         </div>
-        <MoveButtons itemId={item.id} first={first} last={last} />
       </div>
     </li>
   );

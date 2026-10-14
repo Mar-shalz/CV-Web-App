@@ -40,8 +40,6 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
       </Link>
 
       <header className="animate-rise">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={app.status} />
           {app.statusVerified ? (
@@ -51,14 +49,17 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
             </span>
           ) : null}
         </div>
-        <h1 className="mt-3 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">{app.title}</h1>
-        <p className="mt-1 text-[0.9375rem] text-ink-600">
-          {app.employer}
-          {app.sentAt ? ` · Sent ${formatDate(app.sentAt)}` : " · Not sent yet"}
-          {app.pack ? ` · ${CHANNEL_LABELS[app.pack.channel]}` : ""}
-        </p>
-        </div>
-        <DeleteApplication applicationId={app.id} title={app.title} />
+        {/* Delete sits on the right, level with the job title and the line under it (founder, round 14). */}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">{app.title}</h1>
+            <p className="mt-1 text-[0.9375rem] text-ink-600">
+              {app.employer}
+              {app.sentAt ? ` · Sent ${formatDate(app.sentAt)}` : " · Not sent yet"}
+              {app.pack ? ` · ${CHANNEL_LABELS[app.pack.channel]}` : ""}
+            </p>
+          </div>
+          <DeleteApplication applicationId={app.id} title={app.title} />
         </div>
       </header>
 

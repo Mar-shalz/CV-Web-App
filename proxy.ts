@@ -31,16 +31,24 @@ export async function proxy(incoming: NextRequest) {
   const { response, user } = await updateSession(request);
   const path = request.nextUrl.pathname;
 
-  if (!user && APP_PREFIXES.some((p) => path.startsWith(p))) {
+  // The back office has its own sign in (D-127); it decides itself what a signed in visitor sees.
+  const adminSignIn = path === "/admin/sign-in" || path.startsWith("/admin/sign-in/");
+  if (!user && !adminSignIn && APP_PREFIXES.some((p) => path.startsWith(p))) {
     const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    // The normal sign in page; from the back office it returns there afterwards.
-    url.search = path.startsWith("/admin") ? "?to=admin" : "";
+    url.pathname = path.startsWith("/admin") ? "/admin/sign-in" : "/sign-in";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  // Old back office links to the app's sign in go to the back office's own.
+  if (path === "/sign-in" && request.nextUrl.searchParams.get("to") === "admin") {
+    const url = request.nextUrl.clone();
+    url.pathname = user ? "/admin" : "/admin/sign-in";
+    url.search = "";
     return NextResponse.redirect(url);
   }
   if (user && AUTH_PREFIXES.some((p) => path.startsWith(p)) && !request.nextUrl.searchParams.has("signed_out")) {
     const url = request.nextUrl.clone();
-    url.pathname = request.nextUrl.searchParams.get("to") === "admin" ? "/admin" : request.nextUrl.searchParams.get("from") === "price" ? "/pass" : "/home";
+    url.pathname = request.nextUrl.searchParams.get("from") === "price" ? "/pass" : "/home";
     url.search = "";
     return NextResponse.redirect(url);
   }

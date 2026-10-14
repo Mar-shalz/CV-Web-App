@@ -30,5 +30,7 @@ export async function readCaptureForm(form: FormData, take?: Take): Promise<Capt
   }
   const text = String(form.get("text") ?? "").trim();
   if (text.length < 80) return { error: "Paste the full job description. It looks a bit short." };
-  return { mode: "paste", text };
+  // Where the text came from, when the browser extension sent it (D-133).
+  const source = String(form.get("source_url") ?? "").trim();
+  return { mode: "paste", text, sourceUrl: /^https?:\/\/\S+\.\S+$/.test(source) && source.length <= 400 ? source : undefined };
 }

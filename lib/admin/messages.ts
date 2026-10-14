@@ -9,6 +9,8 @@ export type SentMessage = {
   audience: string;
   to: string;
   title: string;
+  body: string | null;
+  link: string | null;
   sentAt: string;
   by: string | null;
   state: "showing" | "ended" | "delivered" | "read" | "recalled";
@@ -47,8 +49,8 @@ export async function messageHistory(fullEmails: boolean): Promise<{ drafts: Mes
   const now = Date.now();
   const [msgs, anns, notes] = await Promise.all([
     db.from("admin_messages").select("*").order("created_at", { ascending: false }).limit(100),
-    db.from("announcements").select("id, title, audience, starts_at, ends_at, created_by").order("starts_at", { ascending: false }).limit(60),
-    db.from("notifications").select("id, user_id, title, created_at, read_at").eq("kind", "message").order("created_at", { ascending: false }).limit(100),
+    db.from("announcements").select("id, title, body, link, audience, starts_at, ends_at, created_by").order("starts_at", { ascending: false }).limit(60),
+    db.from("notifications").select("id, user_id, title, body, link, created_at, read_at").eq("kind", "message").order("created_at", { ascending: false }).limit(100),
   ]);
   const historyReady = !missingTable(msgs.error);
   const rows = (msgs.data ?? []) as MsgRow[];
@@ -76,6 +78,8 @@ export async function messageHistory(fullEmails: boolean): Promise<{ drafts: Mes
       audience: r.audience,
       to: r.audience === "person" ? emailOf(r.recipient_email ?? userById.get(r.recipient_id ?? "")?.email) : r.audience,
       title: r.title,
+      body: r.body,
+      link: r.link,
       sentAt: r.sent_at ?? r.created_at,
       by: who(r.created_by),
       state,
@@ -86,11 +90,11 @@ export async function messageHistory(fullEmails: boolean): Promise<{ drafts: Mes
   for (const a of anns.data ?? []) {
     if (usedAnn.has(a.id)) continue;
     const live = !a.ends_at || new Date(a.ends_at).getTime() > now;
-    sent.push({ id: `a:${a.id}`, audience: a.audience, to: a.audience, title: a.title, sentAt: a.starts_at, by: who(a.created_by), state: live ? "showing" : "ended", until: a.ends_at, canRecall: live });
+    sent.push({ id: `a:${a.id}`, audience: a.audience, to: a.audience, title: a.title, body: a.body ?? null, link: a.link ?? null, sentAt: a.starts_at, by: who(a.created_by), state: live ? "showing" : "ended", until: a.ends_at, canRecall: live });
   }
   for (const n of notes.data ?? []) {
     if (usedNote.has(n.id)) continue;
-    sent.push({ id: `n:${n.id}`, audience: "person", to: emailOf(userById.get(n.user_id)?.email), title: n.title, sentAt: n.created_at, by: null, state: n.read_at ? "read" : "delivered", until: null, canRecall: true });
+    sent.push({ id: `n:${n.id}`, audience: "person", to: emailOf(userById.get(n.user_id)?.email), title: n.title, body: n.body ?? null, link: n.link ?? null, sentAt: n.created_at, by: null, state: n.read_at ? "read" : "delivered", until: null, canRecall: true });
   }
   sent.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
 

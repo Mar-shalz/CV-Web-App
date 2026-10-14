@@ -35,6 +35,8 @@ jobs:
       - run: npm test
       # ESLint, then copy lint (banned phrases and em dashes in UI copy).
       - run: npm run lint
+      # Known high or critical vulnerabilities in the packages the app ships with fail the build (D-134).
+      - run: npm audit --omit=dev --audit-level=high
 
   build:
     name: Build and first load budget

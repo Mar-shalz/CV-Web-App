@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/status";
+import { RemoveSaved } from "@/components/applications/remove-saved";
 import type { HomeApplication } from "@/lib/home-data";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ArrowRight2, Sms, DocumentText, Global, Archive } from "@/components/icons";
@@ -41,10 +42,10 @@ export function RecentApplications({ items, title = "Recent applications", showA
           const badge = a.savedAt ? <Badge tone="brand" icon={<Archive size={16} variant="bulk" />}>Saved for later</Badge> : <StatusBadge status={a.status} />;
           const when = a.savedAt ? `Saved ${formatDate(a.savedAt)}` : a.sentAt ? formatDate(a.sentAt) : "Not sent yet";
           return (
-            <li key={a.id} style={{ ["--i" as string]: i }}>
+            <li key={a.id} style={{ ["--i" as string]: i }} className={a.savedAt ? "flex items-center gap-1 pr-1 lg:pr-3" : undefined}>
               <Link
                 href={a.savedAt ? `/jobs/${a.id}/check` : `/applications/${a.id}`}
-                className="group grid min-h-[76px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors hover:bg-ink-50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-4 lg:rounded-none lg:px-5"
+                className="group min-w-0 flex-1 grid min-h-[76px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors hover:bg-ink-50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-4 lg:rounded-none lg:px-5"
               >
                 <span className="flex min-w-0 items-center gap-3.5 max-lg:contents">
                   <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">
@@ -64,6 +65,7 @@ export function RecentApplications({ items, title = "Recent applications", showA
                 <span className="hidden lg:block">{badge}</span>
                 <ArrowRight2 size={18} className="nudge text-ink-400" />
               </Link>
+              {a.savedAt ? <RemoveSaved jobId={a.id} title={a.title} /> : null}
             </li>
           );
         })}

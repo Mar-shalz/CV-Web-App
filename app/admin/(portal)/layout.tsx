@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getViewer } from "@/lib/auth/viewer";
 import { Logo } from "@/components/brand/logo";
 import { AdminNav, AdminMobileNav } from "@/components/admin/admin-nav";
 import { SubmitButton } from "@/components/auth/submit-button";
@@ -13,8 +14,12 @@ export const metadata: Metadata = { title: { default: "Back Office", template: "
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const staff = await getStaff();
-  // Signed in but not on the team: a plain 404. Signed out visits go to the normal sign in (proxy.ts).
-  if (!staff) notFound();
+  // Signed out visits go to the back office sign in (proxy.ts). Signed in with an account
+  // that isn't on the team: the sign in page says so and offers to switch accounts (D-127).
+  if (!staff) {
+    if (await getViewer()) redirect("/admin/sign-in");
+    notFound();
+  }
   const allowed = PERMISSIONS.filter((p) => can(staff.role, p));
 
   return (

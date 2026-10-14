@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Viewer } from "@/lib/auth/viewer";
-import { captureJob } from "@/lib/jobs/capture";
+import { captureJob, type CaptureInput } from "@/lib/jobs/capture";
 import { EMPTY_JOB, type ParsedJob } from "@/lib/jobs/schema";
 import { nextCheckIn, scheduleKind } from "./schedule";
 import { matchAgency } from "@/lib/rules/scam/layer1";
@@ -14,6 +14,8 @@ export type LogInput = {
   employer: string;
   post: string | null;
   link: string | null;
+  /** The post as a photo, screenshot or file (D-129). */
+  jobFile?: Extract<CaptureInput, { mode: "file" | "screenshot" }> | null;
   sentOn: string; // YYYY-MM-DD
   channel: "email" | "form" | "portal" | "other";
   cv: { bytes: Buffer; name: string; type: string } | null;
@@ -32,6 +34,10 @@ export async function logExternalApplication(supabase: SupabaseClient, viewer: V
   if (input.post && input.post.length >= 80) {
     const res = await captureJob(supabase, viewer.id, viewer.targetMarkets, { mode: "paste", text: input.post });
     if (res.ok) jobId = res.jobId;
+  } else if (input.jobFile) {
+    const res = await captureJob(supabase, viewer.id, viewer.targetMarkets, input.jobFile);
+    if (res.ok) jobId = res.jobId;
+    else if (!input.title || !input.employer) return { ok: false, error: `${res.error} Or type the job title and employer.` };
   } else if (input.link) {
     // The same link reading as tailoring, Google fallback included.
     const res = await captureJob(supabase, viewer.id, viewer.targetMarkets, { mode: "link", url: input.link });

@@ -127,3 +127,10 @@ revoke all on public.admin_messages from anon, authenticated;
 
 -- 13. People can put the achievements in each role in their own order.
 alter table public.vault_items add column if not exists position int;
+
+-- 14. Downloading the same CV again replaces its stored copy, which needs an update rule
+-- on people's own files (same folder rule as the others).
+drop policy if exists "own files update" on storage.objects;
+create policy "own files update" on storage.objects for update to authenticated
+  using (bucket_id in ('job-uploads', 'cv-exports') and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id in ('job-uploads', 'cv-exports') and (storage.foldername(name))[1] = (select auth.uid())::text);
