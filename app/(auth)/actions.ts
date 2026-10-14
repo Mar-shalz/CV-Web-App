@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { isPreviewMode } from "@/lib/env";
 import { LEGAL, LIMITS, MARKETS } from "@/lib/config";
 import { marketsFor } from "@/lib/markets";
@@ -15,9 +16,11 @@ export type FormState = { error?: string; fieldErrors?: Record<string, string>; 
 // The email between "send code" and "enter code" lives in a short lived httpOnly
 // cookie, never in the URL (D-003).
 const OTP_COOKIE = "rcpt_otp_email";
-// Set when sign in starts from the back office's own sign in (/admin/sign-in), so it returns to /admin.
+// Set when sign in starts from the back office's own sign in (/admin/sign-in). The back office
+// keeps its own session (D-136), so its sign in uses its own client and callback.
 const DEST_COOKIE = "rcpt_dest";
 const isAdminDest = (formData?: FormData | null) => formData?.get("dest") === "admin";
+const authClient = (admin: boolean) => (admin ? createAdminSessionClient() : createClient());
 
 async function origin(): Promise<string> {
   const h = await headers();
@@ -35,10 +38,10 @@ const GENERIC_AUTH_ERROR = "We couldn't sign you in just now. Check your connect
 export async function signInWithGoogle(_prev?: FormState, formData?: FormData): Promise<FormState> {
   const admin = isAdminDest(formData);
   if (isPreviewMode()) redirect(admin ? "/admin" : "/onboarding/consent");
-  const supabase = await createClient();
+  const supabase = await authClient(admin);
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${await origin()}/auth/callback${admin ? "?dest=admin" : ""}`, queryParams: { prompt: "select_account" } },
+    options: { redirectTo: `${await origin()}${admin ? "/admin/auth/callback" : "/auth/callback"}`, queryParams: { prompt: "select_account" } },
   });
   if (error || !data.url) return { error: GENERIC_AUTH_ERROR };
   redirect(data.url);
@@ -58,10 +61,11 @@ export async function sendEmailCode(_prev: FormState, formData: FormData): Promi
   const admin = isAdminDest(formData);
 
   if (!isPreviewMode()) {
-    const supabase = await createClient();
+    const supabase = await authClient(admin);
     // The email carries a 6 digit code when the template has {{ .Token }}, and a sign in
     // link either way; the link lands on /auth/callback (D-069).
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: await linkTarget(admin) } });
+    // The back office never creates accounts: a team member is added to an existing one.
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: !admin, emailRedirectTo: await linkTarget(admin) } });
     if (error) {
       if (error.status === 429) return { error: "Too many codes asked for. Wait a minute, then try again." };
       return { error: GENERIC_AUTH_ERROR };
@@ -82,7 +86,7 @@ export async function sendEmailCode(_prev: FormState, formData: FormData): Promi
 }
 
 async function linkTarget(admin: boolean): Promise<string> {
-  return `${await origin()}/auth/callback?method=email${admin ? "&dest=admin" : ""}`;
+  return `${await origin()}${admin ? "/admin/auth/callback" : "/auth/callback"}?method=email`;
 }
 
 export async function resendEmailCode(): Promise<FormState> {
@@ -91,8 +95,8 @@ export async function resendEmailCode(): Promise<FormState> {
   const admin = jar.get(DEST_COOKIE)?.value === "admin";
   if (!email) redirect(admin ? "/admin/sign-in" : "/sign-in");
   if (isPreviewMode()) return { ok: true };
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: await linkTarget(admin) } });
+  const supabase = await authClient(admin);
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: !admin, emailRedirectTo: await linkTarget(admin) } });
   if (error) {
     if (error.status === 429) return { error: "Please wait a little before asking for another code." };
     return { error: GENERIC_AUTH_ERROR };
@@ -122,7 +126,7 @@ export async function verifyEmailCode(_prev: FormState, formData: FormData): Pro
     redirect(admin ? "/admin" : "/onboarding/consent");
   }
 
-  const supabase = await createClient();
+  const supabase = await authClient(admin);
   const { data, error } = await supabase.auth.verifyOtp({ email, token: parsed.data.code, type: "email" });
   if (error || !data.user) {
     return { fieldErrors: { code: "That code didn't work. Check it, or ask for a new one." } };
@@ -227,7 +231,8 @@ export async function saveSetup(_prev: FormState, formData: FormData): Promise<F
 export async function signOut(): Promise<void> {
   if (!isPreviewMode()) {
     const supabase = await createClient();
-    await supabase.auth.signOut();
+    // This browser's app session only; the back office has its own (D-136).
+    await supabase.auth.signOut({ scope: "local" });
   }
   // The service worker sees this and deletes the applications it kept for offline use.
   redirect("/sign-in?signed_out=1");

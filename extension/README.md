@@ -14,7 +14,12 @@ What it does, and doesn't:
 - Uses your normal Receipts sign in in the browser, so everything saves to your account and
   shows in the app on your phone too.
 
-## Try it on your computer
+## Try it on your computer (free)
+Loading it this way costs nothing and needs no Chrome Web Store account. The 5 US dollar fee
+is only for publishing it in the store. You can also share the zip (the app serves it at
+/receipts-extension.zip, and the Chrome extension page in the app explains the steps) with
+testers, who add it the same way. Run `npm run extension:zip` after changing these files.
+
 1. Open `extension/config.js` and check `APP_URL` is the app's address.
 2. In Chrome, go to `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**
    and choose this `extension` folder.

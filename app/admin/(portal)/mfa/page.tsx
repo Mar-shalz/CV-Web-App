@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getStaff } from "@/lib/admin/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { MfaForm } from "@/components/admin/mfa-form";
 import { ShieldTick } from "@/components/icons";
 
@@ -11,7 +11,7 @@ export default async function MfaPage() {
   if (!staff) notFound();
   if (staff.mfa) redirect("/admin");
 
-  const supabase = await createClient();
+  const supabase = await createAdminSessionClient();
   const { data } = await supabase.auth.mfa.listFactors();
   const verified = data?.totp?.find((f) => f.status === "verified") ?? null;
 

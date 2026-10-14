@@ -118,9 +118,9 @@ Sentry tells you when the app breaks for someone: which screen, which step, on w
   insert into public.admin_members (user_id, role)
   select id, 'owner' from public.users where email = 'THEIR EMAIL HERE';
   ```
-- [ ] Open `https://YOUR-ADDRESS/admin/sign-in`, the back office's own sign in (Google or an email code, no password). Signed out visits to `/admin` go there too, and if you're already signed in to the app with your team account you go straight in. The first time, it asks you to set up two factor: scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator). Every visit after that asks for the 6 digit code from the app. Bookmark it.
+- [ ] Open `https://YOUR-ADDRESS/admin/sign-in`, the back office's own sign in (Google or an email code, no password). Signed out visits to `/admin` go there too. The back office has its own session: signing in there doesn't sign you in to the app, and the other way round. The first time, it asks you to set up two factor: scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator). Every visit after that asks for the 6 digit code from the app. Bookmark it.
 - [ ] Use the account that is on the team. Signed in with another account, the sign in page says so and offers **Use my team account**. To let another account in, add it in **Team and Access**.
-- [ ] In Supabase > Authentication > URL Configuration, the redirect list needs `https://YOUR-ADDRESS/auth/callback` (it covers the back office too).
+- [ ] In Supabase > Authentication > URL Configuration, add `https://YOUR-ADDRESS/admin/auth/callback` to the redirect list, next to `https://YOUR-ADDRESS/auth/callback`. The back office has its own session (D-136), so without it Google sign in to the back office fails.
 - [ ] **Users** shows everyone's full email (owner only), their plan, what they paid, how many days they used the app and when they were last active. Open a person to see their usage chart and payments, or to pause or delete the account.
 - [ ] Free access for family and testers: **Back office > Payments > Free access for family and testers**. Type their email, choose how long, press **Give free access**. They get everything a pass gives the next time they sign in with that email.
 

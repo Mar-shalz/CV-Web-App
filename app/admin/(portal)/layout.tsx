@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { getViewer } from "@/lib/auth/viewer";
 import { Logo } from "@/components/brand/logo";
 import { AdminNav, AdminMobileNav } from "@/components/admin/admin-nav";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { signOutAdmin } from "@/app/admin/actions";
 import { Avatar } from "@/components/shell/user-chip";
-import { getStaff } from "@/lib/admin/auth";
+import { getStaff, getAdminUser } from "@/lib/admin/auth";
 import { PERMISSIONS, can, ROLE_LABELS } from "@/lib/admin/permissions";
 import { ShieldTick, Logout } from "@/components/icons";
 
@@ -17,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Signed out visits go to the back office sign in (proxy.ts). Signed in with an account
   // that isn't on the team: the sign in page says so and offers to switch accounts (D-127).
   if (!staff) {
-    if (await getViewer()) redirect("/admin/sign-in");
+    if (await getAdminUser()) redirect("/admin/sign-in");
     notFound();
   }
   const allowed = PERMISSIONS.filter((p) => can(staff.role, p));

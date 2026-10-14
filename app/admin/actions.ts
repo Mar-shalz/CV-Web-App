@@ -6,7 +6,7 @@ import { z } from "zod";
 import { flash } from "@/lib/toast";
 import { missingTable } from "@/lib/admin/messages";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { isPreviewMode } from "@/lib/env";
 import { removeUserFiles } from "@/lib/account/files";
 import { logAdminAction, requireAdmin } from "@/lib/admin/auth";
@@ -300,8 +300,9 @@ export async function revokeFreeAccess(formData: FormData): Promise<void> {
 /** Signs staff out, back to the sign in page. */
 export async function signOutAdmin(): Promise<void> {
   if (isPreviewMode()) redirect("/admin/sign-in?signed_out=1");
-  const supabase = await createClient();
-  await supabase.auth.signOut().catch(() => {});
+  // This browser's back office session only: the app, and other devices, stay signed in.
+  const supabase = await createAdminSessionClient();
+  await supabase.auth.signOut({ scope: "local" }).catch(() => {});
   redirect("/admin/sign-in?signed_out=1");
 }
 
@@ -394,17 +395,25 @@ export async function findUsers(query: string): Promise<UserHit[]> {
   // The text is matched as text: wildcards and escapes in it are neutralised.
   const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const db = createAdminClient();
+  // Emails live on users, names on profiles.
   const [byEmail, byName] = await Promise.all([
-    db.from("users").select("id, email, full_name").ilike("email", like).order("email").limit(8),
-    db.from("users").select("id, email, full_name").ilike("full_name", like).order("full_name").limit(8),
+    db.from("users").select("id, email").ilike("email", like).order("email").limit(8),
+    db.from("profiles").select("user_id, full_name").ilike("full_name", like).limit(8),
   ]);
+  const nameIds = (byName.data ?? []).map((p) => p.user_id as string);
+  const emailIds = (byEmail.data ?? []).map((u) => u.id as string);
+  const [moreUsers, names] = await Promise.all([
+    nameIds.length ? db.from("users").select("id, email").in("id", nameIds) : Promise.resolve({ data: [] as { id: string; email: string }[] }),
+    emailIds.length ? db.from("profiles").select("user_id, full_name").in("user_id", emailIds) : Promise.resolve({ data: [] as { user_id: string; full_name: string | null }[] }),
+  ]);
+  const nameOf = new Map<string, string | null>([...(names.data ?? []), ...(byName.data ?? [])].map((p) => [p.user_id as string, (p.full_name as string | null) ?? null]));
   const seen = new Set<string>();
   const full = can(staff.role, "users.manage");
   const hits: UserHit[] = [];
-  for (const u of [...(byEmail.data ?? []), ...(byName.data ?? [])]) {
+  for (const u of [...(byEmail.data ?? []), ...(moreUsers.data ?? [])]) {
     if (seen.has(u.id) || hits.length >= 8) continue;
     seen.add(u.id);
-    hits.push({ id: u.id, email: full ? u.email : maskEmail(u.email), name: u.full_name ?? null });
+    hits.push({ id: u.id, email: full ? u.email : maskEmail(u.email), name: nameOf.get(u.id) ?? null });
   }
   if (hits.length) await logAdminAction(staff, "view", "users", null, { purpose: "message_lookup", results: hits.length });
   return hits;

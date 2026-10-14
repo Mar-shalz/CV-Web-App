@@ -131,7 +131,7 @@ export function VoiceRecorder({ onText, disabled, compact = false, polish }: { o
           type="button"
           onClick={start}
           disabled={disabled || state.kind === "sending"}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-50 px-3.5 text-sm font-semibold text-brand-800 ring-1 ring-brand-100 transition-colors hover:bg-brand-100 disabled:cursor-progress disabled:opacity-70"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border-[1.5px] border-brand-600 bg-white px-3.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 disabled:cursor-progress disabled:opacity-70"
         >
           {state.kind === "sending" ? <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" /> : <Microphone2 size={18} variant="bulk" />}
           {state.kind === "sending" ? (polish ? "Writing it up from what you said" : "Writing down what you said") : "Say it instead"}

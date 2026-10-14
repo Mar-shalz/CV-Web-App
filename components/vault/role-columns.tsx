@@ -18,9 +18,9 @@ const subscribe = (cb: () => void) => {
 export function RoleColumns({ children }: { children: ReactNode }) {
   const wide = useSyncExternalStore(subscribe, () => window.matchMedia(WIDE).matches, () => false);
   const cards = Children.toArray(children);
-  if (!wide || cards.length < 2) return <div className="mt-1 flex flex-col gap-3">{cards}</div>;
+  if (!wide || cards.length < 2) return <div className="flex flex-col gap-3">{cards}</div>;
   return (
-    <div className="mt-1 grid grid-cols-2 items-start gap-3">
+    <div className="grid grid-cols-2 items-start gap-3">
       <div className="flex flex-col gap-3">{cards.filter((_, i) => i % 2 === 0)}</div>
       <div className="flex flex-col gap-3">{cards.filter((_, i) => i % 2 === 1)}</div>
     </div>

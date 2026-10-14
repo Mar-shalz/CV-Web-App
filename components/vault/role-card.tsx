@@ -181,7 +181,7 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
           {!isRecordOnly && !reordering ? (
             <div className="border-t border-ink-100 p-3 lg:px-5">
               {adding ? (
-                <div className="animate-rise rounded-2xl bg-brand-50/50 p-3 ring-1 ring-brand-100">
+                <div className="animate-rise rounded-2xl bg-white p-4 shadow-card ring-1 ring-brand-200">
                   <ItemForm roleId={role.id} onDone={() => setAdding(false)} />
                 </div>
               ) : (
@@ -206,7 +206,7 @@ export function RoleCard({ role, mode = "vault" }: { role: VaultRole; mode?: "va
                   {role.items.length > 1 ? (
                     <button type="button" onClick={() => setReordering(true)} className="inline-flex min-h-14 items-center gap-2 rounded-2xl border border-ink-150 bg-white px-4 text-sm font-semibold text-ink-700 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800">
                       <Sort size={20} />
-                      Reorder
+                      Reorder achievements
                     </button>
                   ) : null}
                   {mode === "review" && unchecked > 1 ? (

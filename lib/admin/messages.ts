@@ -62,8 +62,12 @@ export async function messageHistory(fullEmails: boolean): Promise<{ drafts: Mes
   const people = [
     ...new Set([...rows.map((r) => r.created_by), ...rows.map((r) => r.recipient_id), ...(anns.data ?? []).map((a) => a.created_by), ...(notes.data ?? []).map((n) => n.user_id)].filter((v): v is string => Boolean(v))),
   ];
-  const { data: users } = people.length ? await db.from("users").select("id, email, full_name").in("id", people) : { data: [] };
-  const userById = new Map((users ?? []).map((u) => [u.id as string, u as { id: string; email: string; full_name: string | null }]));
+  // Emails live on users, names on profiles.
+  const [{ data: users }, { data: profiles }] = people.length
+    ? await Promise.all([db.from("users").select("id, email").in("id", people), db.from("profiles").select("user_id, full_name").in("user_id", people)])
+    : [{ data: [] }, { data: [] }];
+  const nameById = new Map((profiles ?? []).map((p) => [p.user_id as string, (p.full_name as string | null) ?? null]));
+  const userById = new Map((users ?? []).map((u) => [u.id as string, { id: u.id as string, email: u.email as string, full_name: nameById.get(u.id as string) ?? null }]));
   const who = (id: string | null) => (id ? (userById.get(id)?.full_name ?? userById.get(id)?.email ?? null) : null);
   const emailOf = (email: string | null | undefined) => (email ? (fullEmails ? email : maskEmail(email)) : "One person");
 

@@ -1,9 +1,10 @@
 import { NextResponse, NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
+import { updateAdminSession } from "@/lib/supabase/admin-session";
 import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { buildCsp, newNonce } from "@/lib/csp";
 
-const APP_PREFIXES = ["/home", "/jobs", "/applications", "/experience", "/settings", "/onboarding", "/pass", "/admin"];
+const APP_PREFIXES = ["/home", "/jobs", "/applications", "/experience", "/settings", "/onboarding", "/pass", "/extension"];
 const AUTH_PREFIXES = ["/sign-in"];
 
 export async function proxy(incoming: NextRequest) {
@@ -28,21 +29,33 @@ export async function proxy(incoming: NextRequest) {
     return withCsp(NextResponse.next({ request: { headers } }));
   }
 
-  const { response, user } = await updateSession(request);
   const path = request.nextUrl.pathname;
 
-  // The back office has its own sign in (D-127); it decides itself what a signed in visitor sees.
-  const adminSignIn = path === "/admin/sign-in" || path.startsWith("/admin/sign-in/");
-  if (!user && !adminSignIn && APP_PREFIXES.some((p) => path.startsWith(p))) {
+  // The back office keeps its own session (D-136): only its cookie counts on /admin pages.
+  if (path === "/admin" || path.startsWith("/admin/")) {
+    const { response, user } = await updateAdminSession(request);
+    const open = path.startsWith("/admin/sign-in") || path.startsWith("/admin/auth/");
+    if (!user && !open) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/sign-in";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return withCsp(response);
+  }
+
+  const { response, user } = await updateSession(request);
+
+  if (!user && APP_PREFIXES.some((p) => path.startsWith(p))) {
     const url = request.nextUrl.clone();
-    url.pathname = path.startsWith("/admin") ? "/admin/sign-in" : "/sign-in";
+    url.pathname = "/sign-in";
     url.search = "";
     return NextResponse.redirect(url);
   }
   // Old back office links to the app's sign in go to the back office's own.
   if (path === "/sign-in" && request.nextUrl.searchParams.get("to") === "admin") {
     const url = request.nextUrl.clone();
-    url.pathname = user ? "/admin" : "/admin/sign-in";
+    url.pathname = "/admin/sign-in";
     url.search = "";
     return NextResponse.redirect(url);
   }

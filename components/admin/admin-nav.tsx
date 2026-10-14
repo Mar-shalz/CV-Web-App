@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Category, Profile2User, Card, TaskSquare, Judge, Cpu, Book1, People, ArrowLeft, Messages2 } from "./icons";
+import { Category, Profile2User, Card, TaskSquare, Judge, Cpu, Book1, People, Messages2 } from "./icons";
 
 const ITEMS = [
   { href: "/admin", label: "Overview", short: "Overview", icon: Category, perm: "overview" },
@@ -43,10 +43,6 @@ export function AdminNav({ allowed }: { allowed: string[] }) {
           );
         })}
       </ul>
-      <Link href="/home" className="mt-auto flex min-h-11 items-center gap-3 rounded-r-2xl pl-6 text-sm font-medium text-white/65 hover:text-white">
-        <ArrowLeft size={20} />
-        Back to the App
-      </Link>
     </nav>
   );
 }

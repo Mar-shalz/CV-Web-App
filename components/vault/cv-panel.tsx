@@ -7,7 +7,7 @@ import type { GeneralCvResult } from "@/lib/cv/general";
 import { WorkingNotice } from "@/components/ui/working-notice";
 import { DocumentDownload, ShieldTick, Magicpen, Warning2 } from "@/components/icons";
 
-const STEPS = ["Reading your confirmed experience", "Choosing your strongest proof", "Writing each line", "Checking every line against what you confirmed"];
+const STEPS = ["Reading your confirmed experience", "Finding your field and the words recruiters search for", "Writing each line to a high standard", "Checking every line against what you confirmed"];
 
 /** The inside of "Download my CV" (D-124), loaded the first time it opens to keep My Experience light. */
 export function CvPanel({ ready, onBusy, onClose }: { ready: boolean; onBusy: (busy: boolean) => void; onClose: () => void }) {
@@ -42,7 +42,10 @@ export function CvPanel({ ready, onBusy, onClose }: { ready: boolean; onBusy: (b
           <div className="rounded-2xl bg-proof-50 p-4 text-sm leading-6 text-proof-700">
             <p className="flex items-center gap-2 font-semibold">
               <ShieldTick size={20} variant="bulk" />
-              Ready. {result.lines} lines, each from your confirmed experience.
+              Ready: written for {result.targetTitle} roles.
+            </p>
+            <p className="mt-1">
+              {result.lines} lines, each from your confirmed experience{result.keywordsUsed ? `, using ${result.keywordsUsed} of the words recruiters in your field search for` : ""}.
             </p>
             {result.toCheck ? (
               <p className="mt-1 text-care-700">{result.toCheck === 1 ? "1 line has" : `${result.toCheck} lines have`} words we couldn&apos;t trace to what you confirmed. Read it before you send it.</p>
@@ -60,7 +63,7 @@ export function CvPanel({ ready, onBusy, onClose }: { ready: boolean; onBusy: (b
               Download Word
             </a>
           </div>
-          <p className="text-xs leading-5 text-ink-500">{result.reused ? "Nothing in your experience has changed, so this is the same CV as last time." : "Change your experience and we'll write it again next time."}</p>
+          <p className="text-xs leading-5 text-ink-500">Written fresh each time you open this. Add or confirm more achievements for a stronger CV.</p>
         </>
       ) : result && !result.ok ? (
         <div className="space-y-3">

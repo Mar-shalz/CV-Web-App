@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Category, Magicpen, Send2, Briefcase, Setting2, ArrowLeft2, ArrowRight2, MessageQuestion } from "@/components/icons";
+import { Category, Magicpen, Send2, Briefcase, Setting2, ArrowLeft2, ArrowRight2, Global } from "@/components/icons";
 import { Logo } from "@/components/brand/logo";
-import { APP } from "@/lib/config";
 import { NAV_ITEMS, type NavItem } from "./nav-items";
 
 // "Tailor my CV" lives in the top bar on wide screens and in the centre of the phone bar,
@@ -69,16 +68,21 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
 
       <div className={collapsed ? "px-3 pb-5" : "px-4 pb-5"}>
         {collapsed ? footerCollapsed : footer}
-        <a
-          href={`mailto:${APP.support_email}`}
-          className={`mt-3 flex min-h-12 items-center gap-3 rounded-2xl text-sm font-medium text-ink-600 hover:bg-ink-75 hover:text-ink-900 ${
-            collapsed ? "justify-center" : "px-3"
-          }`}
-          title={collapsed ? "Get help" : undefined}
+        {/* The browser extension, for laptops and tablets (D-138). Get help moved to the top bar. */}
+        <Link
+          href="/extension"
+          aria-current={path === "/extension" ? "page" : undefined}
+          title={collapsed ? "Chrome extension" : undefined}
+          className={`group mt-3 flex min-h-12 items-center gap-3 rounded-2xl border border-ink-150 text-sm transition-colors hover:border-brand-200 hover:bg-brand-50 ${collapsed ? "justify-center" : "px-3 py-2"} ${path === "/extension" ? "border-brand-200 bg-brand-50" : ""}`}
         >
-          <MessageQuestion size={20} />
-          <span className={collapsed ? "sr-only" : ""}>Get help</span>
-        </a>
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 group-hover:bg-white">
+            <Global size={18} variant="bulk" />
+          </span>
+          <span className={collapsed ? "sr-only" : "min-w-0 leading-tight"}>
+            <span className="block font-semibold text-ink-900">Chrome extension</span>
+            <span className="block text-xs text-ink-500">Send any job here in one click</span>
+          </span>
+        </Link>
       </div>
     </aside>
   );

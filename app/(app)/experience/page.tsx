@@ -89,19 +89,23 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
         if (!roles.length) return null;
         return (
           <details key={g.title} open style={{ "--i": 3 + gi } as CSSProperties} className="group/section">
-            <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-xl py-1 pr-1 [&::-webkit-details-marker]:hidden">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-500">{g.title}</h2>
-              <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-ink-600">{roles.length}</span>
-              <span className="ml-auto grid size-9 place-items-center rounded-lg text-ink-500 transition-colors group-hover/section:bg-ink-75">
+            {/* A clear, full width header: the whole bar opens and closes the section, and it says which it will do. */}
+            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-2xl bg-white px-4 py-2.5 shadow-card ring-1 ring-ink-150 transition-colors hover:bg-ink-50 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand-500 group-open/section:rounded-b-xl [&::-webkit-details-marker]:hidden">
+              <h2 className="text-base font-semibold text-ink-900">{g.title}</h2>
+              <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-brand-700">{roles.length}</span>
+              <span className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-ink-75 px-3 text-sm font-semibold text-ink-700">
+                <span className="group-open/section:hidden">Show</span>
+                <span className="hidden group-open/section:inline">Hide</span>
                 <ArrowDown2 size={16} className="transition-transform duration-200 group-open/section:rotate-180" />
-                <span className="sr-only">Show or hide {g.title.toLowerCase()}</span>
               </span>
             </summary>
+            <div className="mt-3">
             <RoleColumns>
               {roles.map((r) => (
                 <RoleCard key={r.id} role={r} />
               ))}
             </RoleColumns>
+            </div>
           </details>
         );
       })}

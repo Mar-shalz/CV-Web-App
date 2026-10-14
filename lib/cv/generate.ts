@@ -45,7 +45,7 @@ type TailorOut = { title_line: string; summary: { text: string; source_item_ids:
  * them; one regeneration fixes violations; anything still untraced is kept with a flag
  * (warnings never block the download). Role headers come from vault records, not the model.
  */
-export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contact: ContactDetails): Promise<{ doc: CvDoc; generated: boolean; violations: string[] }> {
+export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contact: ContactDetails, opts: { extraRules?: string[] } = {}): Promise<{ doc: CvDoc; generated: boolean; violations: string[] }> {
   const profile = PROFILES[job.destination.profile];
   const roles = vault.roles.filter((r) => r.confirmed);
   const sources = new Map<string, LockSource>();
@@ -79,7 +79,7 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     const res = await runTask(
       "tailor_cv",
       {
-        profile: { label: profile.label, spelling: profile.spelling, rules: profileRules(profile, underTwo) },
+        profile: { label: profile.label, spelling: profile.spelling, rules: [...profileRules(profile, underTwo), ...(opts.extraRules ?? [])].slice(0, 20) },
         job: { title: job.parsed.title ?? "the role", employer: job.parsed.employer_name ?? "the employer", requirements: job.parsed.requirements.map((r) => r.text) },
         experience_months: workMonths,
         roles: expRoles.map((r) => ({

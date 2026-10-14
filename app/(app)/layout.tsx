@@ -6,14 +6,14 @@ import { Sidebar, BottomNav } from "@/components/shell/nav";
 import { AccessBadge, AccessCard } from "@/components/shell/access-card";
 import { Avatar, UserChip } from "@/components/shell/user-chip";
 import { ButtonLink } from "@/components/ui/button";
-import { Magicpen, SearchNormal1 } from "@/components/icons";
+import { Magicpen, SearchNormal1, MessageQuestion } from "@/components/icons";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { accessState } from "@/lib/entitlements";
 import { getCheckIns } from "@/lib/home-data";
 import { getInbox } from "@/lib/notifications/data";
 import { UpdatesDrawer } from "@/components/shell/updates-drawer";
 import { CheckInItem } from "@/components/home/check-in-item";
-import { APP_NAME, MARKETS } from "@/lib/config";
+import { APP, APP_NAME, MARKETS } from "@/lib/config";
 
 export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const viewer = await requireReadyViewer();
@@ -64,6 +64,10 @@ export default async function AppLayout({ children, modal }: { children: React.R
                 <span aria-hidden="true" className="size-1.5 rounded-full bg-proof-600" />
                 Data saver on
               </Link>
+              {/* Get help sits beside the bell, the same round shape (founder, round 15). */}
+              <a href={`mailto:${APP.support_email}`} className="grid size-12 place-items-center rounded-full bg-ink-75 text-ink-700 transition-colors hover:bg-ink-100" aria-label="Get help" title="Get help">
+                <MessageQuestion size={22} />
+              </a>
               <UpdatesDrawer
                 checkInCount={checkIns.length}
                 items={inbox.items}
@@ -78,7 +82,7 @@ export default async function AppLayout({ children, modal }: { children: React.R
                 }
               />
               <span className="hidden lg:block">
-                <ButtonLink href="/jobs/new" className="cta-sheen">
+                <ButtonLink href="/jobs/new" className="cta-sheen whitespace-nowrap">
                   <Magicpen size={20} variant="bulk" />
                   Tailor my CV
                 </ButtonLink>

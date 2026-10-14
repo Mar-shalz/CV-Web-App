@@ -15,7 +15,8 @@
     "test:db": "supabase test db",
     "evals": "node evals/run.ts",
     "setup:env": "node scripts/make-env.mjs",
-    "dev:preview": "RECEIPTS_PREVIEW=1 NEXT_DIST_DIR=.next-preview next dev -p 3001"
+    "dev:preview": "RECEIPTS_PREVIEW=1 NEXT_DIST_DIR=.next-preview next dev -p 3001",
+    "extension:zip": "cd extension && rm -f ../public/receipts-extension.zip && zip -qr ../public/receipts-extension.zip . -x \"README.md\" \".*\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

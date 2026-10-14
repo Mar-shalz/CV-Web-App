@@ -70,6 +70,7 @@ export default async function SettingsPage() {
               <DataSaverSwitch initial={viewer.lowDataMode} icon={<Mobile size={20} />} />
             </li>
             <Row href="/pass" icon={<Crown1 size={20} />} title="Pass and payments" body="Your pass, receipts and the refund rule." />
+            <Row href="/extension" icon={<Global size={20} />} title="Chrome extension" body="On a laptop or tablet: send any job you're looking at here in one click." />
           </ul>
         </section>
 

@@ -1,14 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { isPreviewMode } from "@/lib/env";
 
-/** Signed in with an account that isn't on the team: sign out here, then sign in with the team account. */
+/** Signed in to the back office with an account that isn't on the team: sign that out, then use the team account. */
 export async function switchAdminAccount(): Promise<void> {
   if (!isPreviewMode()) {
-    const supabase = await createClient();
-    await supabase.auth.signOut().catch(() => {});
+    const supabase = await createAdminSessionClient();
+    await supabase.auth.signOut({ scope: "local" }).catch(() => {});
   }
   redirect("/admin/sign-in?signed_out=1");
 }

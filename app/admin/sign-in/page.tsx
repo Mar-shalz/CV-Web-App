@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminAuthShell } from "@/components/admin/admin-auth-shell";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { SubmitButton } from "@/components/auth/submit-button";
-import { getViewer } from "@/lib/auth/viewer";
-import { getStaff } from "@/lib/admin/auth";
+import { getStaff, getAdminUser } from "@/lib/admin/auth";
 import { switchAdminAccount } from "./actions";
-import { Warning2, ArrowLeft } from "@/components/icons";
+import { Warning2 } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Back Office Sign In", robots: { index: false, follow: false } };
 
@@ -17,12 +15,13 @@ const ERRORS: Record<string, string> = {
 };
 
 /**
- * The back office's own sign in (D-127). Team members already signed in go straight
- * in; someone signed in with an account that isn't on the team can switch accounts.
+ * The back office's own sign in (D-127, D-136). It has its own session, separate from
+ * the app's. Team members already signed in here go straight in; someone signed in here
+ * with an account that isn't on the team can switch.
  */
 export default async function AdminSignIn({ searchParams }: { searchParams: Promise<{ error?: string; signed_out?: string }> }) {
   const { error, signed_out } = await searchParams;
-  const viewer = signed_out ? null : await getViewer();
+  const viewer = signed_out ? null : await getAdminUser();
   if (viewer) {
     if (await getStaff()) redirect("/admin");
     return (
@@ -39,24 +38,14 @@ export default async function AdminSignIn({ searchParams }: { searchParams: Prom
               Use my team account
             </SubmitButton>
           </form>
-          <Link href="/home" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-ink-600 hover:bg-white">
-            <ArrowLeft size={18} />
-            Back to the app
-          </Link>
         </div>
       </AdminAuthShell>
     );
   }
 
   return (
-    <AdminAuthShell title="Back Office Sign In" subtitle="For the team only. Use the account you were added with. You'll confirm with your authenticator app next.">
+    <AdminAuthShell title="Back Office Sign In" subtitle="For the team only. Use the account you were added with. You'll confirm with your authenticator app next. This is separate from the app: signing in here doesn't sign you in to the app.">
       <SignInForm dest="admin" initialError={error ? ERRORS[error] : undefined} />
-      <p className="mt-8 text-center text-[0.8125rem] text-ink-500">
-        Looking for your CV and applications?{" "}
-        <Link href="/sign-in" className="font-semibold text-brand-700 hover:underline">
-          Sign in to the app
-        </Link>
-      </p>
     </AdminAuthShell>
   );
 }

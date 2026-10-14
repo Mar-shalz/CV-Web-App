@@ -68,7 +68,7 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
       {item ? <input type="hidden" name="item_id" value={item.id} /> : null}
       {voice ? <input type="hidden" name="spoken" value={voice.spoken} /> : null}
       {!item ? (
-        <p className="rounded-xl bg-brand-50 px-3 py-2 text-[0.8125rem] leading-5 text-brand-800">
+        <p className="rounded-xl bg-ink-50 px-3 py-2 text-[0.8125rem] leading-5 text-ink-700">
           {added ? `Added ${added}. Add the next one, or tap Done.` : "One achievement at a time. Each one becomes one line on your CV."}
         </p>
       ) : null}
@@ -82,7 +82,7 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="For example: Opened about 15 customer accounts a day and checked each customer's documents."
-        className={`${inputClass} resize-y py-3 leading-6`}
+        className={`${inputClass} resize-y border-ink-300 bg-white py-3 leading-6 hover:bg-white`}
       />
       <VoiceRecorder
         compact

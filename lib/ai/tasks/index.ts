@@ -9,6 +9,7 @@ import { buildPack } from "./build-pack";
 import { classifyOutcome, extractDebrief } from "./outcomes";
 import { shortlistQuestions, drillFeedback, interviewResearch } from "./shortlist";
 import { polishAchievement } from "./polish";
+import { cvTarget } from "./cv-target";
 
 /**
  * Task registry (Build pack section 6). One entry per task: model, prompt version,
@@ -33,6 +34,7 @@ export const TASKS = {
   drill_feedback: drillFeedback,
   interview_research: interviewResearch,
   polish_achievement: polishAchievement,
+  cv_target: cvTarget,
 } as const;
 
 export type TaskName = keyof typeof TASKS;
