@@ -29,7 +29,7 @@ export function isPrivateAddress(ip: string): boolean {
   return v6 === "::" || v6 === "::1" || v6.startsWith("fc") || v6.startsWith("fd") || v6.startsWith("fe8") || v6.startsWith("fe9") || v6.startsWith("fea") || v6.startsWith("feb");
 }
 
-async function safeUrl(raw: string): Promise<URL | null> {
+export async function safeUrl(raw: string): Promise<URL | null> {
   let url: URL;
   try {
     url = new URL(raw);
@@ -143,4 +143,49 @@ export async function fetchJobLink(raw: string): Promise<LinkResult> {
     return { ok: true, text: text.slice(0, 40_000), finalUrl: url.toString() };
   }
   return { ok: false, reason: "blocked" };
+}
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+type ImageType = (typeof IMAGE_TYPES)[number];
+
+/**
+ * Fetches a job flyer image for the browser extension (D-144): the same private address
+ * checks on every hop as job links, images only, at most 6MB.
+ */
+export async function fetchJobImage(raw: string): Promise<{ ok: true; bytes: Buffer; type: ImageType } | { ok: false }> {
+  const first = await safeUrl(raw.trim());
+  if (!first) return { ok: false };
+  let url: URL = first;
+  for (let hop = 0; hop < 4; hop++) {
+    let res: Response;
+    try {
+      res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(8000), headers: { accept: "image/webp,image/png,image/jpeg;q=0.9" } });
+    } catch {
+      return { ok: false };
+    }
+    if (res.status >= 300 && res.status < 400) {
+      const next = res.headers.get("location");
+      const resolved: URL | null = next ? await safeUrl(new URL(next, url).toString()) : null;
+      if (!resolved) return { ok: false };
+      url = resolved;
+      continue;
+    }
+    const type = (res.headers.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase();
+    if (!res.ok || !res.body || !(IMAGE_TYPES as readonly string[]).includes(type)) return { ok: false };
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > 6_000_000) {
+        await reader.cancel();
+        return { ok: false };
+      }
+      chunks.push(value);
+    }
+    return { ok: true, bytes: Buffer.concat(chunks), type: type as ImageType };
+  }
+  return { ok: false };
 }

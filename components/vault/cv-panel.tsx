@@ -5,7 +5,7 @@ import Link from "next/link";
 import { makeGeneralCv } from "@/app/(app)/experience/actions";
 import type { GeneralCvResult } from "@/lib/cv/general";
 import { WorkingNotice } from "@/components/ui/working-notice";
-import { DocumentDownload, ShieldTick, Magicpen, Warning2 } from "@/components/icons";
+import { DocumentDownload, ShieldTick, Magicpen, Warning2, Edit2 } from "@/components/icons";
 
 const STEPS = ["Reading your confirmed experience", "Finding your field and the words recruiters search for", "Writing each line to a high standard", "Checking every line against what you confirmed"];
 
@@ -48,21 +48,25 @@ export function CvPanel({ ready, onBusy, onClose }: { ready: boolean; onBusy: (b
               {result.lines} lines, each from your confirmed experience{result.keywordsUsed ? `, using ${result.keywordsUsed} of the words recruiters in your field search for` : ""}.
             </p>
             {result.toCheck ? (
-              <p className="mt-1 text-care-700">{result.toCheck === 1 ? "1 line has" : `${result.toCheck} lines have`} words we couldn&apos;t trace to what you confirmed. Read it before you send it.</p>
+              <p className="mt-1 text-care-700">{result.toCheck === 1 ? "1 line has" : `${result.toCheck} lines have`} words we couldn&apos;t trace to what you confirmed. You&apos;ll see {result.toCheck === 1 ? "it" : "them"} marked, and can fix {result.toCheck === 1 ? "it" : "them"} before you download.</p>
             ) : null}
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <a href={`/api/cv/${result.cvId}/export?type=pdf`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700">
-              <DocumentDownload size={20} />
-              Download PDF
-            </a>
-            <a
-              href={`/api/cv/${result.cvId}/export?type=docx`}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-ink-200 px-5 text-sm font-semibold text-ink-800 hover:bg-ink-50"
-            >
-              Download Word
-            </a>
-          </div>
+          {/* Read it first, especially when a line needs a look (founder, round 16). */}
+          <Link href={`/experience/cv/${result.cvId}`} onClick={onClose} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700">
+            <Edit2 size={20} />
+            {result.toCheck ? `Review ${result.toCheck === 1 ? "1 line" : `${result.toCheck} lines`} and download` : "Read it, choose a design, download"}
+          </Link>
+          {!result.toCheck ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <a href={`/api/cv/${result.cvId}/export?type=pdf`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-ink-200 px-5 text-sm font-semibold text-ink-800 hover:bg-ink-50">
+                <DocumentDownload size={20} />
+                Quick PDF
+              </a>
+              <a href={`/api/cv/${result.cvId}/export?type=docx`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-ink-200 px-5 text-sm font-semibold text-ink-800 hover:bg-ink-50">
+                Quick Word file
+              </a>
+            </div>
+          ) : null}
           <p className="text-xs leading-5 text-ink-500">Written fresh each time you open this. Add or confirm more achievements for a stronger CV.</p>
         </>
       ) : result && !result.ok ? (

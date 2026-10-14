@@ -1,3 +1,2 @@
-// The app's web address. Change it here when the app moves to its own domain, then reload
-// the extension (chrome://extensions > Reload) or publish a new version.
-export const APP_URL = "https://cv-web-app-victor-ajibodu-s-projects.vercel.app";
+// Filled in by `npm run extension:build` (EXT_APP_URL, or the live address by default).
+export const APP_URL = "__APP_URL__";

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Receipts</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <img src="icon.png" alt="" width="30" height="30" />
+        <div>
+          <p class="brand-name">Receipts</p>
+          <p class="brand-sub">Apply with proof</p>
+        </div>
+      </div>
+      <div class="profile" id="profile" hidden>
+        <button type="button" class="avatar" id="avatar" aria-haspopup="menu" aria-expanded="false" aria-label="Your account">
+          <span id="initials">R</span>
+          <span class="online" aria-hidden="true"></span>
+        </button>
+        <div class="menu" id="menu" role="menu" hidden>
+          <p class="menu-who"><span id="who-name"></span><span id="who-email"></span></p>
+          <button type="button" role="menuitem" id="open-app">Open Receipts</button>
+          <button type="button" role="menuitem" id="sign-out" class="danger">Sign out of the extension</button>
+        </div>
+      </div>
+    </header>
+    <main id="view" aria-live="polite"></main>
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

@@ -67,13 +67,12 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
       </nav>
 
       <div className={collapsed ? "px-3 pb-5" : "px-4 pb-5"}>
-        {collapsed ? footerCollapsed : footer}
-        {/* The browser extension, for laptops and tablets (D-138). Get help moved to the top bar. */}
+        {/* The browser extension sits above the plan card (founder, round 16). Get help is in the top bar. */}
         <Link
           href="/extension"
           aria-current={path === "/extension" ? "page" : undefined}
           title={collapsed ? "Chrome extension" : undefined}
-          className={`group mt-3 flex min-h-12 items-center gap-3 rounded-2xl border border-ink-150 text-sm transition-colors hover:border-brand-200 hover:bg-brand-50 ${collapsed ? "justify-center" : "px-3 py-2"} ${path === "/extension" ? "border-brand-200 bg-brand-50" : ""}`}
+          className={`group mb-3 flex min-h-12 items-center gap-3 rounded-2xl border border-ink-150 text-sm transition-colors hover:border-brand-200 hover:bg-brand-50 ${collapsed ? "justify-center" : "px-3 py-2"} ${path === "/extension" ? "border-brand-200 bg-brand-50" : ""}`}
         >
           <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 group-hover:bg-white">
             <Global size={18} variant="bulk" />
@@ -83,6 +82,7 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
             <span className="block text-xs text-ink-500">Send any job here in one click</span>
           </span>
         </Link>
+        {collapsed ? footerCollapsed : footer}
       </div>
     </aside>
   );

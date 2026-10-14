@@ -5,6 +5,11 @@ import { Danger } from "@/components/icons";
 export const inputClass =
   "block w-full min-h-14 rounded-2xl border border-transparent bg-ink-75 px-4 text-base text-ink-900 placeholder:text-ink-350 placeholder:font-normal transition-[background-color,border-color,box-shadow] duration-200 hover:bg-ink-100 focus:border-brand-500 focus:bg-white focus:shadow-[0_0_0_4px_rgb(52_97_240/0.14)] focus:outline-none aria-[invalid=true]:border-flag-600 aria-[invalid=true]:bg-flag-50/40";
 
+// Outlined inputs for fields that sit on a white card inside a tinted panel, where a grey
+// well would vanish: a visible border at rest, so an empty field still reads as a field.
+export const outlinedInputClass =
+  "block w-full min-h-14 rounded-2xl border-[1.5px] border-ink-300 bg-white px-4 text-base text-ink-900 shadow-[inset_0_1px_2px_rgb(15_23_42/0.05)] placeholder:text-ink-350 placeholder:font-normal transition-[border-color,box-shadow] duration-200 hover:border-ink-400 focus:border-brand-500 focus:shadow-[0_0_0_4px_rgb(52_97_240/0.14)] focus:outline-none aria-[invalid=true]:border-flag-600";
+
 export function Field({
   id,
   label,

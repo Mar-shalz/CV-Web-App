@@ -3,9 +3,10 @@
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { MessageDraft } from "@/lib/admin/messages";
-import { addMember, findUsers, grantFreeAccess, markRefunded, sendUpdate, type AdminActionState, type UserHit } from "@/app/admin/actions";
+import { addMember, grantFreeAccess, markRefunded, sendUpdate, type AdminActionState } from "@/app/admin/actions";
+import type { UserHit } from "@/app/admin/api/find-users/route";
 import { SubmitButton } from "@/components/auth/submit-button";
-import { inputClass } from "@/components/ui/field";
+import { inputClass, outlinedInputClass } from "@/components/ui/field";
 import { ADMIN_ROLES, ROLE_LABELS } from "@/lib/admin/permissions";
 import { TickCircle } from "@/components/icons";
 
@@ -102,22 +103,43 @@ function RecipientField({ email, setEmail, recipient, setRecipient, error }: { e
   const [active, setActive] = useState(0);
   const [searching, setSearching] = useState(false);
   const listId = useId();
-  const seq = useRef(0);
+  // Answers kept for this visit, so going back over a name is instant.
+  const cache = useRef(new Map<string, UserHit[]>());
 
   useEffect(() => {
-    const q = email.trim();
+    const q = email.trim().toLowerCase();
     if (recipient || q.length < 2) return;
-    const n = ++seq.current;
-    const t = setTimeout(async () => {
-      setSearching(true);
-      const found = await findUsers(q).catch(() => []);
-      if (n !== seq.current) return;
-      setSearching(false);
-      setHits(found);
-      setActive(0);
-      setOpen(true);
-    }, 250);
-    return () => clearTimeout(t);
+    const hit = cache.current.get(q);
+    const ctrl = new AbortController();
+    const t = setTimeout(
+      async () => {
+        if (hit) {
+          setHits(hit);
+          setActive(0);
+          setOpen(true);
+          return;
+        }
+        setSearching(true);
+        setOpen(true);
+        try {
+          const res = await fetch(`/admin/api/find-users?q=${encodeURIComponent(q)}`, { signal: ctrl.signal, cache: "no-store" });
+          const data = (await res.json()) as { hits?: UserHit[] };
+          const found = data.hits ?? [];
+          cache.current.set(q, found);
+          setHits(found);
+          setActive(0);
+        } catch {
+          // Cancelled by the next keystroke, or offline: keep what's shown.
+        } finally {
+          if (!ctrl.signal.aborted) setSearching(false);
+        }
+      },
+      hit ? 0 : 150,
+    );
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
   }, [email, recipient]);
 
   const pick = (u: UserHit) => {
@@ -166,7 +188,7 @@ function RecipientField({ email, setEmail, recipient, setRecipient, error }: { e
             if (u) pick(u);
           } else if (e.key === "Escape") setOpen(false);
         }}
-        className={`${inputClass} mt-2 ${recipient ? "border-proof-600 bg-proof-50/40" : ""}`}
+        className={`${recipient ? outlinedInputClass.replace("border-ink-300", "border-proof-600") : inputClass} mt-2`}
         placeholder="Start typing a name or email"
       />
       {recipient ? <input type="hidden" name="recipient_id" value={recipient.id} /> : null}

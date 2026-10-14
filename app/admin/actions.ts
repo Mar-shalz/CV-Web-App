@@ -10,7 +10,7 @@ import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { isPreviewMode } from "@/lib/env";
 import { removeUserFiles } from "@/lib/account/files";
 import { logAdminAction, requireAdmin } from "@/lib/admin/auth";
-import { ADMIN_ROLES, can, maskEmail } from "@/lib/admin/permissions";
+import { ADMIN_ROLES } from "@/lib/admin/permissions";
 import { notify } from "@/lib/notifications/data";
 
 export type AdminActionState = { ok?: string; error?: string; field?: string } | undefined;
@@ -371,50 +371,4 @@ export async function deleteUserAccount(_prev: AdminActionState, formData: FormD
   await logAdminAction(staff, "delete_account", "users", id.data);
   revalidatePath("/admin/users");
   redirect("/admin/users?deleted=1");
-}
-
-export type UserHit = { id: string; email: string; name: string | null };
-
-/**
- * People for the "One person" field, as the name or email is typed (D-132). At most 8,
- * from 2 characters. Full emails only for roles that may see them; others see a masked
- * email and send by picking the person.
- */
-export async function findUsers(query: string): Promise<UserHit[]> {
-  const staff = await requireAdmin("messages");
-  const q = String(query ?? "")
-    .trim()
-    .toLowerCase()
-    .slice(0, 80);
-  if (q.length < 2) return [];
-  if (staff.preview)
-    return [
-      { id: "00000000-0000-4000-8000-000000000001", email: "tolu.adebayo@gmail.com", name: "Tolu Adebayo" },
-      { id: "00000000-0000-4000-8000-000000000002", email: "tobi.okafor@yahoo.com", name: "Tobi Okafor" },
-    ].filter((u) => `${u.email} ${u.name}`.toLowerCase().includes(q));
-  // The text is matched as text: wildcards and escapes in it are neutralised.
-  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const db = createAdminClient();
-  // Emails live on users, names on profiles.
-  const [byEmail, byName] = await Promise.all([
-    db.from("users").select("id, email").ilike("email", like).order("email").limit(8),
-    db.from("profiles").select("user_id, full_name").ilike("full_name", like).limit(8),
-  ]);
-  const nameIds = (byName.data ?? []).map((p) => p.user_id as string);
-  const emailIds = (byEmail.data ?? []).map((u) => u.id as string);
-  const [moreUsers, names] = await Promise.all([
-    nameIds.length ? db.from("users").select("id, email").in("id", nameIds) : Promise.resolve({ data: [] as { id: string; email: string }[] }),
-    emailIds.length ? db.from("profiles").select("user_id, full_name").in("user_id", emailIds) : Promise.resolve({ data: [] as { user_id: string; full_name: string | null }[] }),
-  ]);
-  const nameOf = new Map<string, string | null>([...(names.data ?? []), ...(byName.data ?? [])].map((p) => [p.user_id as string, (p.full_name as string | null) ?? null]));
-  const seen = new Set<string>();
-  const full = can(staff.role, "users.manage");
-  const hits: UserHit[] = [];
-  for (const u of [...(byEmail.data ?? []), ...(moreUsers.data ?? [])]) {
-    if (seen.has(u.id) || hits.length >= 8) continue;
-    seen.add(u.id);
-    hits.push({ id: u.id, email: full ? u.email : maskEmail(u.email), name: nameOf.get(u.id) ?? null });
-  }
-  if (hits.length) await logAdminAction(staff, "view", "users", null, { purpose: "message_lookup", results: hits.length });
-  return hits;
 }

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer, nextOnboardingPath } from "@/lib/auth/viewer";
 import { track } from "@/lib/analytics/server";
+import { NEXT_COOKIE, isReturnPath } from "@/lib/auth/next-path";
 
 // Google sign in, and the sign in link in our emails, land here with a one time code
 // to swap for a session.
@@ -23,5 +24,9 @@ export async function GET(request: NextRequest) {
   if (!viewer.consentDone) await track("signup_completed", { method }, viewer.id);
 
   // Only ever redirect to our own fixed paths, never to a caller supplied URL.
-  return NextResponse.redirect(`${origin}${nextOnboardingPath(viewer)}`);
+  const next = request.cookies.get(NEXT_COOKIE)?.value;
+  const onboarding = nextOnboardingPath(viewer);
+  const res = NextResponse.redirect(`${origin}${onboarding === "/home" && isReturnPath(next) ? next : onboarding}`);
+  if (next) res.cookies.delete(NEXT_COOKIE);
+  return res;
 }

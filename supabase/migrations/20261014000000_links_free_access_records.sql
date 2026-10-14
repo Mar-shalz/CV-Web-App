@@ -134,3 +134,20 @@ drop policy if exists "own files update" on storage.objects;
 create policy "own files update" on storage.objects for update to authenticated
   using (bucket_id in ('job-uploads', 'cv-exports') and (storage.foldername(name))[1] = (select auth.uid())::text)
   with check (bucket_id in ('job-uploads', 'cv-exports') and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- 15. The browser extension's sign in: a long, random key per connected browser, made
+-- when the person taps "Connect" in the app while signed in. Only a hash of the key is
+-- kept. Staff only through the service role; people revoke theirs from the app.
+create table if not exists public.extension_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  token_hash text not null unique check (char_length(token_hash) = 64),
+  label text check (char_length(label) <= 80),
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz,
+  expires_at timestamptz not null default now() + interval '90 days',
+  revoked_at timestamptz
+);
+create index if not exists extension_tokens_user_idx on public.extension_tokens (user_id);
+alter table public.extension_tokens enable row level security;
+revoke all on public.extension_tokens from anon, authenticated;

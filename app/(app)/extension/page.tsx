@@ -13,6 +13,7 @@ const STEPS = [
   { title: "Turn on Developer mode", body: "It's the switch at the top right of that page." },
   { title: "Click Load unpacked", body: "Choose the receipts-extension folder." },
   { title: "Pin it", body: "Click the puzzle piece next to the address bar, then the pin beside Receipts." },
+  { title: "Open it and sign in", body: "Click the Receipts icon. A panel opens beside the page: tap Sign in, and it signs in with this account." },
 ] as const;
 
 /**
@@ -29,14 +30,14 @@ export default async function ExtensionPage() {
           <Global size={30} variant="bulk" />
         </span>
         <h1 className="mt-4 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Chrome Extension</h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">See a job on LinkedIn, a company site or any job board? One click sends it here: we check it&apos;s real, see if you fit, and tailor your CV. It saves to your account, so it&apos;s on your phone too.</p>
+        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">A panel that sits beside any job page, on LinkedIn, a company site or any job board. It finds the job on the page by itself, checks if it&apos;s real right there, saves it for later, or sends it here to tailor your CV. Job in a picture? It reads that too. Everything saves to your account, so it&apos;s on your phone as well.</p>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-3">
         {[
-          { icon: Magicpen, title: "Tailor my CV to this job", body: "From the job you're looking at, in one click." },
-          { icon: ShieldSearch, title: "Is this job real?", body: "Check the company and the post before you apply." },
-          { icon: ShieldTick, title: "Private", body: "It reads the page only when you click it. Nothing else." },
+          { icon: ShieldSearch, title: "Is this job real?", body: "Checked in the panel, without leaving the page." },
+          { icon: Magicpen, title: "Save or tailor", body: "Save it for later, or tailor your CV to it in one tap." },
+          { icon: ShieldTick, title: "Private", body: "It reads a page only while the panel is open, and sends only the job." },
         ].map(({ icon: Icon, title, body }) => (
           <div key={title} className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card">
             <Icon size={24} variant="bulk" className="text-brand-600" />

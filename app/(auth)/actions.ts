@@ -10,6 +10,7 @@ import { LEGAL, LIMITS, MARKETS } from "@/lib/config";
 import { marketsFor } from "@/lib/markets";
 import { getViewer, nextOnboardingPath } from "@/lib/auth/viewer";
 import { track } from "@/lib/analytics/server";
+import { NEXT_COOKIE, isReturnPath } from "@/lib/auth/next-path";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string>; ok?: boolean } | undefined;
 
@@ -138,7 +139,10 @@ export async function verifyEmailCode(_prev: FormState, formData: FormData): Pro
 
   const viewer = await getViewer();
   if (viewer && !viewer.consentDone) await track("signup_completed", { method: "email" }, viewer.id);
-  redirect(viewer ? nextOnboardingPath(viewer) : "/home");
+  const next = jar.get(NEXT_COOKIE)?.value;
+  if (next) jar.delete(NEXT_COOKIE);
+  const onboarding = viewer ? nextOnboardingPath(viewer) : "/home";
+  redirect(onboarding === "/home" && isReturnPath(next) ? next : onboarding);
 }
 
 // ---------------------------------------------------------------------------

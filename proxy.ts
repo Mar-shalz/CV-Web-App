@@ -3,6 +3,7 @@ import { updateSession } from "@/lib/supabase/proxy";
 import { updateAdminSession } from "@/lib/supabase/admin-session";
 import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { buildCsp, newNonce } from "@/lib/csp";
+import { NEXT_COOKIE, isReturnPath } from "@/lib/auth/next-path";
 
 const APP_PREFIXES = ["/home", "/jobs", "/applications", "/experience", "/settings", "/onboarding", "/pass", "/extension"];
 const AUTH_PREFIXES = ["/sign-in"];
@@ -50,7 +51,10 @@ export async function proxy(incoming: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     url.search = "";
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    // A few screens bring people back after they sign in (connecting the extension).
+    if (isReturnPath(path)) res.cookies.set(NEXT_COOKIE, path, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 900 });
+    return res;
   }
   // Old back office links to the app's sign in go to the back office's own.
   if (path === "/sign-in" && request.nextUrl.searchParams.get("to") === "admin") {

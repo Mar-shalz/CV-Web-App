@@ -1,5 +1,6 @@
 "use client";
 
+import { StylePicker, useCvStyle } from "./style-picker";
 import { ModalHeader } from "@/components/ui/modal-header";
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -17,7 +18,9 @@ import { inputClass } from "@/components/ui/field";
  * person's own words. Lines the fact lock couldn't trace carry a warning with three
  * choices. Warnings never block the download.
  */
-export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobToggle }: { cvId: string; doc: CvDoc; jobId: string; preview: boolean; dobToggle: boolean }) {
+/** jobId is empty for the general CV from My Experience (D-143): no email pack follows it. */
+export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobToggle }: { cvId: string; doc: CvDoc; jobId?: string; preview: boolean; dobToggle: boolean }) {
+  const [style, setStyle] = useCvStyle();
   const [doc, setDoc] = useState(initial);
   const [cvId, setCvId] = useState(initialId);
   const [open, setOpen] = useState<string | null>(null);
@@ -66,7 +69,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
     }
     // A file download from our own route; an anchor keeps the CV screen open.
     const a = document.createElement("a");
-    a.href = `/api/cv/${cvId}/export?type=${type}`;
+    a.href = `/api/cv/${cvId}/export?type=${type}&style=${style}`;
     a.rel = "noopener";
     a.click();
     setDownloaded(true);
@@ -74,9 +77,10 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
 
   return (
     <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <article aria-label="Your tailored CV" className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
-        <header className="border-b-2 border-brand-900 pb-4 text-center">
-          <h2 className="text-[1.75rem] font-bold uppercase tracking-[0.06em] text-ink-900">{doc.name}</h2>
+      <article aria-label="Your tailored CV" className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10" style={{ fontFamily: style === "executive" ? "'Times New Roman', Times, serif" : "Helvetica, Arial, sans-serif" }}>
+        {/* The preview follows the chosen design (D-142). */}
+        <header className={style === "modern" ? "pb-4 text-left" : `pb-4 text-center ${style === "executive" ? "border-b-4 border-double border-ink-900" : "border-b-2 border-brand-900"}`}>
+          <h2 className={style === "modern" ? "text-[2rem] font-bold text-brand-600" : "text-[1.75rem] font-bold uppercase tracking-[0.06em] text-ink-900"}>{doc.name}</h2>
           {doc.titleLine ? (
             <p className={`mt-1 inline-block rounded px-1 text-[0.9375rem] font-semibold text-brand-800 ${doc.titleFlags.some((f) => f.status === "open") ? "bg-care-100" : ""}`}>{doc.titleLine}</p>
           ) : null}
@@ -308,6 +312,9 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
               Every line traces back to you.
             </p>
           )}
+          <div className="mt-4">
+            <StylePicker value={style} onChange={setStyle} />
+          </div>
           <div className="mt-4 grid gap-2">
             <Button size="lg" onClick={() => download("pdf")} disabled={busy}>
               <DocumentDownload size={20} variant="bulk" />
@@ -331,7 +338,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
                     type="button"
                     onClick={() => {
                       setSurvey(v!);
-                      void answerSurvey({ survey: "send_as_is", answer: v as "yes" | "no" | "small_edits", job_id: jobId });
+                      void answerSurvey({ survey: "send_as_is", answer: v as "yes" | "no" | "small_edits", ...(jobId ? { job_id: jobId } : {}) });
                     }}
                     className="min-h-11 rounded-xl bg-white px-3 text-sm font-semibold text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"
                   >
@@ -343,10 +350,12 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
           ) : survey ? (
             <p className="mt-4 text-[0.8125rem] text-proof-700">Thanks for telling us.</p>
           ) : null}
-          <Link href={`/jobs/${jobId}/pack`} className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-brand-700 hover:bg-brand-50">
-            Next: prepare your email
-            <ArrowRight size={18} />
-          </Link>
+          {jobId ? (
+            <Link href={`/jobs/${jobId}/pack`} className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-brand-700 hover:bg-brand-50">
+              Next: prepare your email
+              <ArrowRight size={18} />
+            </Link>
+          ) : null}
         </section>
       </aside>
 

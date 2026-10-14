@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { saveItem, type VaultActionState } from "@/app/(app)/experience/actions";
-import { inputClass } from "@/components/ui/field";
+import { outlinedInputClass } from "@/components/ui/field";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { FormError } from "@/components/auth/form-error";
 import type { VaultItem } from "@/lib/vault/data";
@@ -82,7 +82,7 @@ export function ItemForm({ roleId, item, onDone }: { roleId: string; item?: Vaul
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="For example: Opened about 15 customer accounts a day and checked each customer's documents."
-        className={`${inputClass} resize-y border-ink-300 bg-white py-3 leading-6 hover:bg-white`}
+        className={`${outlinedInputClass} resize-y py-3 leading-6`}
       />
       <VoiceRecorder
         compact

@@ -5,6 +5,7 @@ import { getCvById } from "@/lib/cv/data";
 import { renderPdf } from "@/lib/cv/pdf";
 import { renderDocx } from "@/lib/cv/docx";
 import { openFlags } from "@/lib/cv/types";
+import { isCvStyle } from "@/lib/cv/styles";
 import { readSensitive } from "@/lib/sensitive";
 import { formatDate } from "@/lib/format";
 import { track } from "@/lib/analytics/server";
@@ -18,6 +19,8 @@ const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.doc
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const type = request.nextUrl.searchParams.get("type") === "docx" ? "docx" : "pdf";
+  const styleParam = request.nextUrl.searchParams.get("style");
+  const style = isCvStyle(styleParam) ? styleParam : "classic";
   const viewer = await getViewer();
   if (!viewer) return NextResponse.redirect(new URL("/sign-in", request.url));
   const cv = await getCvById(viewer, id);
@@ -28,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const s = await readSensitive(viewer.id, ["date_of_birth"]);
     dateOfBirth = s.date_of_birth ? formatDate(s.date_of_birth) : null;
   }
-  const bytes = type === "pdf" ? Buffer.from(await renderPdf(cv.doc, { dateOfBirth })) : await renderDocx(cv.doc, { dateOfBirth });
+  const bytes = type === "pdf" ? Buffer.from(await renderPdf(cv.doc, { dateOfBirth }, style)) : await renderDocx(cv.doc, { dateOfBirth }, style);
   const filename = `${cv.doc.fileBase}.${type}`;
   const mime = type === "pdf" ? "application/pdf" : DOCX;
 

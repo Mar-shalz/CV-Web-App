@@ -1,35 +1,38 @@
 # Receipts browser extension
 
-A small Chrome extension (Manifest V3) that sends the job advert you're looking at to
-Receipts, where it is checked, matched and tailored like any job you add in the app. It
-works on any job site, including LinkedIn pages you can only see when signed in, because it
-reads the page you already have open.
+A Chrome side panel (Manifest V3) that sits beside any job page. It finds the job advert on
+the page by itself, checks whether the job is real right in the panel, saves it for later,
+or sends it to Receipts to tailor a CV. Adverts posted as pictures are read too (scan the
+screen, pick an image on the page, or right-click an image).
 
-What it does, and doesn't:
-- Reads the page only when you tap a button (the `activeTab` permission). No access to any
-  site in the background, no history, no cookies, no tracking.
-- Copies the advert's text and the page address, and opens Receipts with them after the `#`
-  in the link, which browsers never send to a server. Receipts reads them once and clears
-  the address bar. Nothing is stored in the extension.
-- Uses your normal Receipts sign in in the browser, so everything saves to your account and
-  shows in the app on your phone too.
+How it works:
+- Sign in: the panel opens Receipts' "Connect the extension" page. Signed in there, the app
+  makes a long random key for this browser and hands it to the extension's helper on that
+  page only. The server keeps a hash of the key; the extension sends it with each request.
+  "Sign out of the extension" in the panel, or "Sign the extension out on every browser" in
+  the app, stops it at once.
+- Reading a page: only while the panel is open on it, after Chrome asks once for permission.
+  In order: the text you highlighted; the page's own job data (schema.org JobPosting, which
+  most job boards publish); the job box on boards we know (LinkedIn, Indeed, Greenhouse,
+  Lever, Workday, Ashby, Jobberman, MyJobMag, Glassdoor); otherwise the block of the page
+  that reads most like a job advert. Only that text and the page address are sent.
+- Nothing from web pages is turned into HTML in the panel; it is built with DOM calls only.
 
 ## Try it on your computer (free)
 Loading it this way costs nothing and needs no Chrome Web Store account. The 5 US dollar fee
-is only for publishing it in the store. You can also share the zip (the app serves it at
-/receipts-extension.zip, and the Chrome extension page in the app explains the steps) with
-testers, who add it the same way. Run `npm run extension:zip` after changing these files.
+is only for publishing in the store. Testers can add it the same way: the app serves the
+zip at /receipts-extension.zip, and its "Chrome extension" page explains the steps.
 
-1. Open `extension/config.js` and check `APP_URL` is the app's address.
-2. In Chrome, go to `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**
-   and choose this `extension` folder.
-3. Open a job advert, click the Receipts icon (pin it from the puzzle piece), and choose
-   **Tailor my CV to this job** or **Is this job real?**
+1. `npm run extension:build` fills in the app's address and writes `extension-dist/` and the
+   zip. For local testing: `EXT_APP_URL=http://localhost:3001 npm run extension:build`.
+2. In Chrome, go to `chrome://extensions`, turn on Developer mode, click Load unpacked and
+   choose `extension-dist`.
+3. Pin it, click it, and tap Sign in.
 
 ## Publish it
-Zip the folder's contents and upload them in the Chrome Web Store developer dashboard
-(one time fee of 5 US dollars). Use the store listing text in this file's description,
-and point the privacy policy to the app's /legal/privacy page.
+Upload the zip in the Chrome Web Store developer dashboard, with the privacy policy at the
+app's /legal/privacy page. Permissions to explain: side panel, storage, scripting and access
+to sites (read the job on the page you choose), context menus (right-click an image).
 
-Chrome on Android doesn't run extensions. On phones, people share a job from LinkedIn,
-WhatsApp or the browser straight to the installed Receipts app instead (the share menu).
+Chrome on Android doesn't run extensions. On phones, people share a job to the installed
+Receipts app from LinkedIn, WhatsApp or the browser instead.
