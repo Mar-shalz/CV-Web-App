@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import type { PackView } from "@/lib/applications/data";
 import { sentIt } from "@/app/(app)/jobs/[id]/pack/actions";
@@ -19,6 +19,14 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
+  // Phones can hand the CV file straight to Gmail; laptops can't (checked after load).
+  const [canShareFiles, setCanShareFiles] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCanShareFiles(Boolean(navigator.canShare?.({ files: [new File(["x"], "x.pdf", { type: "application/pdf" })] })));
+    } catch {}
+  }, []);
   // Both come from the job post, so they're checked: a plain address only (no extra
   // headers like ?bcc= smuggled in), and only web links.
   const safeEmail = pack.toEmail && /^[^\s@?&#,;]+@[^\s@?&#,;]+\.[a-z]{2,}$/i.test(pack.toEmail) ? pack.toEmail : null;
@@ -111,26 +119,42 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
                 ))}
               </div>
             </dl>
-            <div className="grid gap-2 border-t border-ink-100 p-5 sm:grid-cols-2">
-              <Button size="lg" onClick={share}>
-                <Share size={20} variant="bulk" />
-                Share CV to Gmail
-              </Button>
-              {mailto ? (
-                <a href={mailto} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-ink-200 bg-white px-5 font-semibold text-ink-900 hover:bg-ink-50">
-                  <Send2 size={20} />
-                  Open my email app
-                </a>
-              ) : null}
-              <a href={cvUrl} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:col-span-2">
-                <DocumentDownload size={18} />
-                Download the CV
-              </a>
-              <p className="text-xs leading-5 text-ink-500 sm:col-span-2">
-                Email apps can&apos;t attach a file from a link. &ldquo;Share CV to Gmail&rdquo; sends the file with the subject and message copied; &ldquo;Open my email app&rdquo; fills them in and you attach the downloaded CV.
-              </p>
+            {/* Sending, as three plain steps (founder, round 20: the old buttons weren't clear). */}
+            <div className="border-t border-ink-100 p-5">
+              <h3 className="text-[0.9375rem] font-semibold text-ink-900">Send it from your own email</h3>
+              <p className="mt-0.5 text-[0.8125rem] text-ink-500">We never send it for you. It takes about a minute.</p>
+              <ol className="mt-4 space-y-4">
+                <Step n={1} title="Get your CV file" body={`Saves ${cvName} to this device.`}>
+                  <a href={cvUrl} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-brand-600 bg-white px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+                    <DocumentDownload size={18} variant="bulk" />
+                    Download my CV
+                  </a>
+                </Step>
+                <Step
+                  n={2}
+                  title="Open your email with everything filled in"
+                  body={mailto ? "Gmail or your email app opens with the address, subject and message ready. Attach the CV you just downloaded." : "Copy the subject and message above into your email, then attach the CV."}
+                >
+                  <div className="flex flex-wrap gap-2">
+                    {mailto ? (
+                      <a href={mailto} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
+                        <Send2 size={18} variant="bulk" />
+                        Open my email, ready to send
+                      </a>
+                    ) : null}
+                    {canShareFiles ? (
+                      <button type="button" onClick={share} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-semibold text-ink-800 ring-1 ring-ink-200 hover:bg-ink-50">
+                        <Share size={18} />
+                        Or share the CV straight to Gmail
+                      </button>
+                    ) : null}
+                  </div>
+                  {canShareFiles ? <p className="mt-1.5 text-xs leading-5 text-ink-500">Sharing attaches the CV for you; paste the subject and message, we copy them first.</p> : null}
+                </Step>
+                <Step n={3} title="Press Send in your email, then come back" body="Tap “I've sent it” so we keep this application with the exact CV you sent." />
+              </ol>
               {note ? (
-                <p role="status" className="text-xs text-proof-700 sm:col-span-2">
+                <p role="status" className="mt-3 text-xs text-proof-700">
                   {note}
                 </p>
               ) : null}
@@ -234,5 +258,18 @@ function Row({ label, value, note }: { label: string; value: string; note?: stri
       </div>
       <CopyButton value={value} label={label.toLowerCase()} />
     </div>
+  );
+}
+
+function Step({ n, title, body, children }: { n: number; title: string; body: string; children?: React.ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">{n}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-ink-900">{title}</p>
+        <p className="text-[0.8125rem] leading-5 text-ink-600">{body}</p>
+        {children ? <div className="mt-2">{children}</div> : null}
+      </div>
+    </li>
   );
 }

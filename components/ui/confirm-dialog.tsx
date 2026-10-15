@@ -51,9 +51,10 @@ export function ConfirmDialog({
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
       }}
-      className="route-modal m-0 mt-auto w-full max-w-none rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:w-[calc(100%-3rem)] sm:max-w-md sm:rounded-[var(--radius-panel)]"
+      className="route-modal m-0 mt-auto min-h-[48dvh] w-full max-w-none rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:min-h-0 sm:w-[calc(100%-3rem)] sm:max-w-md sm:rounded-[var(--radius-panel)]"
     >
-      <div className="p-5 sm:p-6">
+      {/* Phones: a taller sheet (founder, round 20), with the buttons at the bottom within thumb reach. */}
+      <div className="flex min-h-[inherit] flex-col p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:block sm:min-h-0 sm:p-6">
         <span className="grid size-12 place-items-center rounded-2xl bg-flag-50 text-flag-600">
           <Danger size={26} variant="bulk" />
         </span>
@@ -66,7 +67,7 @@ export function ConfirmDialog({
             {error}
           </p>
         ) : null}
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div className="mt-auto flex flex-col-reverse gap-2 pt-6 sm:mt-6 sm:flex-row sm:justify-end sm:pt-0">
           <button type="button" autoFocus onClick={onClose} disabled={busy} className="min-h-12 rounded-2xl bg-ink-75 px-5 text-sm font-semibold text-ink-800 hover:bg-ink-100 disabled:opacity-60">
             {cancelLabel}
           </button>

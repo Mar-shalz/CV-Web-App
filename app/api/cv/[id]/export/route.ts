@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCvById } from "@/lib/cv/data";
 import { renderPdf } from "@/lib/cv/pdf";
 import { renderDocx } from "@/lib/cv/docx";
-import { openFlags } from "@/lib/cv/types";
+import { openFlags, finalDoc } from "@/lib/cv/types";
 import { isCvStyle } from "@/lib/cv/styles";
 import { readSensitive } from "@/lib/sensitive";
 import { formatDate } from "@/lib/format";
@@ -32,7 +32,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const s = await readSensitive(viewer.id, ["date_of_birth"]);
     dateOfBirth = s.date_of_birth ? formatDate(s.date_of_birth) : null;
   }
-  const bytes = type === "pdf" ? Buffer.from(await renderPdf(cv.doc, { dateOfBirth }, style)) : await renderDocx(cv.doc, { dateOfBirth }, style);
+  // Only accepted suggestions go in the file (D-163).
+  const fileDoc = finalDoc(cv.doc);
+  const bytes = type === "pdf" ? Buffer.from(await renderPdf(fileDoc, { dateOfBirth }, style)) : await renderDocx(fileDoc, { dateOfBirth }, style);
   const filename = `${cv.doc.fileBase}.${type}`;
   const mime = type === "pdf" ? "application/pdf" : DOCX;
 

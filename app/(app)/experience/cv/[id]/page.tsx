@@ -23,13 +23,14 @@ export default async function GeneralCvPage({ params }: { params: Promise<{ id: 
         <ArrowLeft2 size={16} />
         My Experience
       </Link>
-      <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Your CV</h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
-          {cv.doc.jobTitle ? `Written for ${cv.doc.jobTitle} roles. ` : ""}Tap any line to change it. Lines marked in amber have words we couldn&apos;t trace to what you confirmed: fix them, keep them, or put back your own words before you download.
-        </p>
-      </header>
-      <CvEditor cvId={cv.id} doc={cv.doc} preview={viewer.preview} dobToggle={false} />
+      <CvEditor
+        cvId={cv.id}
+        doc={cv.doc}
+        preview={viewer.preview}
+        dobToggle={false}
+        title="Your CV"
+        subtitle={`${cv.doc.jobTitle ? `Written for ${cv.doc.jobTitle} roles. ` : ""}Suggested lines go on only when you accept them. Amber lines have words we couldn't trace: fix them, keep them, or use your own words.`}
+      />
     </div>
   );
 }

@@ -10,7 +10,8 @@ export function demoCvDoc(): CvDoc {
     contactLine: DEMO_CV.contact,
     titleLine: DEMO_CV.title,
     titleFlags: [],
-    summary: { text: DEMO_CV.summary, sourceItemIds: ["i3", "i1"], flags: [] },
+    // A suggested summary from their own, waiting for a yes (D-163).
+    summary: { text: DEMO_CV.summary, sourceItemIds: ["i3", "i1"], flags: [], own: "Accounting graduate with SIWES banking experience. Good with Excel, reconciliations and customers.", confirmed: false },
     sections: [
       { key: "education", heading: "Education", kind: "entries", entries: [{ title: "B.Sc. Accounting", subtitle: "University of Lagos, Akoka, Lagos", dates: "2019 to 2024", detail: "Class of degree: Second Class Upper" }] },
       { key: "nysc", heading: "NYSC", kind: "entries", entries: [{ title: "National Youth Service Corps (NYSC)", subtitle: "Place of primary assignment: Finance Unit, Ministry of Works, Abeokuta, Ogun State", dates: "Nov 2025 to Oct 2026", detail: "Completed Oct 2026" }] },
@@ -33,6 +34,7 @@ export function demoCvDoc(): CvDoc {
             original: b.source.replace(/^"|"$/g, ""),
             sourceQuote: b.source.replace(/^"|"$/g, ""),
             flags: b.flag ? [{ type: b.flag.type, token: b.flag.type === "number" ? "20%" : "Led", message: b.flag.message, status: "open" as const }] : [],
+            pending: b.change !== "kept" && !b.flag,
           })),
         })),
       },

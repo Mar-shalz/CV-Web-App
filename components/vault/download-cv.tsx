@@ -49,7 +49,7 @@ export function DownloadCv({ ready }: { ready: boolean }) {
         onCancel={(e) => {
           if (busy) e.preventDefault();
         }}
-        className="route-modal m-0 mt-auto w-full max-w-none rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:w-[calc(100%-3rem)] sm:max-w-lg sm:rounded-[var(--radius-panel)]"
+        className="route-modal m-0 mt-auto min-h-[70dvh] w-full max-w-none rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:min-h-0 sm:w-[calc(100%-3rem)] sm:max-w-lg sm:rounded-[var(--radius-panel)]"
       >
         <ModalHeader id="dl-title" title="Your CV" description={<p>A strong general CV from everything you&apos;ve confirmed. For a particular job, tailor one instead.</p>} onClose={close} />
         {opened ? <CvPanel key={opened} ready={ready} onBusy={onBusy} onClose={close} /> : null}

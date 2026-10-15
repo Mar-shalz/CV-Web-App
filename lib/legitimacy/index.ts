@@ -66,7 +66,12 @@ async function cacLookup(name: string): Promise<Finding | null> {
 function headlineFor(state: ScamState, signals: LegitimacySignal[], findings: Finding[], retry: boolean, employer: string | null): string {
   const official = findings.find((f) => f.id === "L2-01" && f.result === "found" && f.sourceType === "official");
   if (state === "red_flags") return signals.find((s) => s.severity === "red")?.text ?? "We found red flags in this post. Don't pay or share personal details.";
-  if (state === "verified") return `${official?.text.replace(/^Yes\. /, "") ?? "Found on the company's own website."} Even so, never pay to apply.`;
+  if (state === "verified" && official) return `${official.text.replace(/^Yes\. /, "")} Even so, never pay to apply.`;
+  if (state === "verified") {
+    const listing = findings.find((f) => f.id === "L2-01" && f.result === "found");
+    const board = listing?.sourceUrl ? boardOf(listing.sourceUrl) : null;
+    return `${employer ?? "The company"} is a real company, this job is listed under its name${board ? ` on ${board}` : ""}, and you apply through the company's own website or email. Even so, never pay to apply.`;
+  }
   if (retry) return "Web search wasn't available just now, so some checks couldn't run. The ones we could run are below. Try again in a few minutes.";
   // Couldn't fully confirm. Most real jobs land here (many companies post only on job
   // sites), so say what we did find and what to do, without putting people off (D-156).
@@ -164,6 +169,17 @@ function view(layer: Signal[], findings: Finding[], cached: boolean, checkedAt: 
   const retry = findings.some((f) => f.note === "search_unavailable");
   const calm = state === "unverified" && !retry && !signals.some((s) => s.severity === "amber" || s.severity === "red") && findings.some((f) => f.id === "L2-09" && f.result === "found");
   return { state, headline: headlineFor(state, signals, findings, retry, job?.employer_name?.trim() || null), signals, checks: checklist(findings, job, live), cached, checkedAt, retry, calm };
+}
+
+/**
+ * The saved check for this job while it's fresh, so a screen can show it at once without
+ * asking again (D-161). Null when there isn't one, it's from before D-118, or search was down.
+ */
+export async function savedCheck(supabase: SupabaseClient, jobId: string, text: string, job: ParsedJob): Promise<LegitimacyView | null> {
+  const { data } = await supabase.from("legitimacy_checks").select("lookup_findings, created_at").eq("job_id", jobId).gt("cached_until", new Date().toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const found = data?.lookup_findings as Finding[] | undefined;
+  if (!data || !found || !current(found) || searchDown(found)) return null;
+  return view(layer1(text, job), found, true, data.created_at, job);
 }
 
 /** Layer 1 only: instant, free, offline friendly. Shown before the live lookup returns. */

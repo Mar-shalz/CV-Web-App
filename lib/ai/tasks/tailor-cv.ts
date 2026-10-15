@@ -11,7 +11,7 @@ const bullet = z.object({
 export const tailorCv = defineTask({
   name: "tailor_cv",
   model: "claude-sonnet-5-5",
-  promptVersion: "v1",
+  promptVersion: "v2",
   input: z.object({
     profile: z.object({ label: z.string(), spelling: z.string(), rules: z.array(z.string()).max(20) }),
     job: z.object({ title: z.string(), employer: z.string(), requirements: z.array(z.string()).max(20) }),
@@ -28,24 +28,26 @@ export const tailorCv = defineTask({
       .max(30),
     education: z.array(z.string()).max(8),
     certifications: z.array(z.string()).max(10),
-    vault_skills: z.array(z.string()).max(60),
+    vault_skills: z.array(z.string()).max(90),
+    /** The person's own profile summary (D-162), the starting point for this job's summary. */
+    own_summary: z.string().max(1500).nullable().default(null),
     previous_violations: z.array(z.string()).max(30),
     cacheKey: z.string(),
   }),
   output: z.object({
     title_line: z.string().max(120),
-    summary: z.object({ text: z.string().max(480), source_item_ids: z.array(z.string()).max(6) }),
+    summary: z.object({ text: z.string().max(640), source_item_ids: z.array(z.string()).max(6) }),
     experience: z
       .array(
         z.object({
           role_id: z.string(),
-          bullets: z.array(bullet).max(6),
+          bullets: z.array(bullet).max(8),
         }),
       )
       .max(20),
     skills: z.object({
-      tools: z.array(z.string().max(40)).max(10),
-      professional: z.array(z.string().max(40)).max(10),
+      tools: z.array(z.string().max(60)).max(14),
+      professional: z.array(z.string().max(60)).max(14),
       languages: z.array(z.string().max(30)).max(5),
     }),
     key_terms_used: z.array(z.string().max(40)).max(8),
@@ -67,6 +69,7 @@ export const tailorCv = defineTask({
         .join("\n")}`,
     ),
     trusted(`Education: ${i.education.join("; ") || "none"}\nCertifications: ${i.certifications.join("; ") || "none"}\nSkills in the vault: ${i.vault_skills.join(", ") || "none listed"}`),
+    ...(i.own_summary ? [untrusted("own_summary", i.own_summary)] : []),
     untrusted("job_post", `${i.job.title} at ${i.job.employer}\nRequirements:\n${i.job.requirements.map((r) => `- ${r}`).join("\n")}`),
     ...(i.previous_violations.length
       ? [trusted(`Your previous draft broke the fact lock. Fix every one of these and change nothing else:\n${i.previous_violations.map((v) => `- ${v}`).join("\n")}`)]

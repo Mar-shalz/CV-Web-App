@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { makeQuestions, submitDrill } from "@/app/(app)/applications/[id]/shortlist/actions";
 import type { ShortlistQuestion } from "@/lib/shortlist/questions";
+import { ANSWER_TIPS } from "@/lib/shortlist/tips";
 import type { DrillAttempt } from "@/lib/shortlist/data";
 import { VoiceRecorder } from "@/components/vault/voice-recorder";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,10 @@ function QuestionCard({ n, q, open, onToggle, applicationId, voice, tries }: { n
           <p className="flex items-start gap-2 text-[0.8125rem] leading-5 text-ink-600">
             <Lamp size={16} className="mt-0.5 shrink-0 text-care-600" />
             {q.why}
+          </p>
+          <p className="rounded-xl bg-brand-50 px-3 py-2 text-[0.8125rem] leading-5 text-brand-900">
+            <span className="font-semibold">How to answer: </span>
+            {ANSWER_TIPS[q.kind]}
           </p>
           {q.bulletText ? (
             <div className="torn-edge rounded-t-2xl bg-paper p-4">

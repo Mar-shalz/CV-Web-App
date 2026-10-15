@@ -11,6 +11,9 @@ export const MIN_QUESTIONS = 10;
 
 /** Always the first question (D-109). */
 export const OPENING: ShortlistQuestion = { id: "q0", question: BANK.opening.question, why: BANK.opening.why, bulletId: null, bulletText: null, kind: "intro" };
+/** Always the last (founder round 20): panels close with it. */
+const CLOSING = { question: BANK.closing.question, why: BANK.closing.why };
+
 
 /** Every bullet of the CV that was actually sent, with the person's own words behind it. */
 export function cvLines(doc: CvDoc): CvLine[] {
@@ -62,7 +65,9 @@ export function completeQuestions(linked: ShortlistQuestion[], lines: CvLine[]):
     if (asked.has(s.question.toLowerCase())) continue;
     out.push({ id: "", question: s.question, why: s.why, bulletId: null, bulletText: null, kind: "standard" });
   }
-  return [OPENING, ...out.map((q, i) => ({ ...q, id: `q${i + 1}` }))];
+  const body = out.filter((q) => q.question.trim().toLowerCase() !== CLOSING.question.toLowerCase());
+  const closing: ShortlistQuestion = { id: "", question: CLOSING.question, why: CLOSING.why, bulletId: null, bulletText: null, kind: "job_fit" };
+  return [OPENING, ...[...body, closing].map((q, i) => ({ ...q, id: `q${i + 1}` }))];
 }
 
 /** When the model is unavailable: the opening, defend-your-CV lines, then standard questions. */

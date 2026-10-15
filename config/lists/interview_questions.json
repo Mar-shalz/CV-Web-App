@@ -1,20 +1,66 @@
 {
-  "version": "2026-10-14",
-  "note": "Standard questions used when the model is unavailable or returns too few. The first question is always 'Tell me about yourself.' (added by code).",
+  "version": "2026-10-16",
+  "note": "Standard questions used when the model is unavailable or returns too few, grouped by the families panels use (founder round 20, from a 100 question bank and an NHS receptionist set). The first question is always 'Tell me about yourself.' and the last 'Do you have any questions for us?' (added by code).",
   "opening": {
     "question": "Tell me about yourself.",
     "why": "Almost every interview opens with this. Keep it to about a minute: who you are, your strongest proof for this job, and why this role."
   },
   "standard": [
-    { "question": "Why do you want to work here?", "why": "They want to see you know the company and chose it on purpose." },
-    { "question": "Why should we hire you for this role?", "why": "A chance to link your strongest proof to what the job needs." },
-    { "question": "What are your main strengths?", "why": "Name two, and give a real example from your CV for each." },
-    { "question": "What is one weakness you're working on?", "why": "They look for honesty and what you're doing about it." },
-    { "question": "Tell us about a time you worked in a team to get something done.", "why": "Teamwork questions are common at every level." },
-    { "question": "Tell us about a time you made a mistake at work. What did you do?", "why": "They want to see you own it and learn from it." },
-    { "question": "How do you handle pressure and tight deadlines?", "why": "Most roles have busy periods; they want a real example." },
-    { "question": "Where do you see yourself in three years?", "why": "They check that you plan to grow, ideally with them." },
-    { "question": "What do you know about our company?", "why": "Shows you prepared. Read their website and recent news." },
-    { "question": "Do you have any questions for us?", "why": "Always have two ready. It shows real interest." }
-  ]
+    {
+      "question": "Why have you applied for this position?",
+      "why": "Motivation question. Connect your interests, skills and experience to what the role does."
+    },
+    {
+      "question": "What do you understand about the main responsibilities of this role?",
+      "why": "Role question. Name the main duties from the post and how you'd handle them."
+    },
+    {
+      "question": "How has your experience so far prepared you for this position?",
+      "why": "Motivation question. Pick two things from your CV that match the job."
+    },
+    {
+      "question": "Describe a time you showed honesty and integrity.",
+      "why": "Values question. Use a real example and say what you did and why."
+    },
+    {
+      "question": "Tell us about a time you dealt with a difficult or upset person.",
+      "why": "Communication question. Say how you stayed calm, listened and solved it."
+    },
+    {
+      "question": "Describe a time you handled confidential or sensitive information.",
+      "why": "Confidentiality question, common where the role sees personal or financial details."
+    },
+    {
+      "question": "Tell us about a time you managed several urgent tasks at once.",
+      "why": "Organisation question. Show how you decided what came first."
+    },
+    {
+      "question": "Describe a time you worked well as part of a team.",
+      "why": "Teamwork question, asked at every level."
+    },
+    {
+      "question": "Tell us about a mistake you made and what you learned from it.",
+      "why": "Competency question. Own it, say what you fixed, and what you do differently now."
+    },
+    {
+      "question": "What would you do if two colleagues gave you conflicting instructions about an urgent task?",
+      "why": "Situational question. Say what you'd do, why, and when you'd ask a manager."
+    },
+    {
+      "question": "How would you respond if you noticed an error that could affect the outcome of your work?",
+      "why": "Situational question about accuracy and owning problems early."
+    },
+    {
+      "question": "What would you hope to achieve in your first three to six months here?",
+      "why": "Career question. Show you've thought about learning the role and adding value."
+    },
+    {
+      "question": "Why should we choose you over other candidates?",
+      "why": "Closing question. Sum up your strongest proof for this job in a minute."
+    }
+  ],
+  "closing": {
+    "question": "Do you have any questions for us?",
+    "why": "Closing question. Have two or three ready about the role, the team or training. It shows real interest."
+  }
 }

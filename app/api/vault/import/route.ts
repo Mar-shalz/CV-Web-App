@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getViewer } from "@/lib/auth/viewer";
 import { createClient } from "@/lib/supabase/server";
+import { cleanSkills } from "@/lib/vault/extras";
 import { runTask } from "@/lib/ai";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 import { saveDraftRoles } from "@/lib/vault/save";
@@ -104,6 +105,19 @@ export async function POST(request: NextRequest) {
   if ("portfolio_url" in profile && !profile.portfolio_url && web(p.portfolio_url)) patch.portfolio_url = web(p.portfolio_url)!;
   if ("website_url" in profile && !profile.website_url && web(p.website_url)) patch.website_url = web(p.website_url)!;
   if (Object.keys(patch).length) await supabase.from("profiles").update(patch).eq("user_id", viewer.id);
+
+  // The CV's own summary, skills and referees (D-162), once the round 20 columns exist:
+  // a summary or referees only fill empty ones; skills are added to the list.
+  const extra = (profileRow ?? {}) as Record<string, unknown>;
+  if ("skills" in extra) {
+    const d = result.data;
+    const more: Record<string, unknown> = {};
+    if (!extra.summary && d.summary?.trim()) more.summary = d.summary.trim().slice(0, 1500);
+    const skills = cleanSkills([...((extra.skills as string[] | null) ?? []), ...d.skills]);
+    if (skills.length !== ((extra.skills as string[] | null) ?? []).length) more.skills = skills;
+    if (!((extra.referees as unknown[] | null) ?? []).length && d.referees.length) more.referees = d.referees;
+    if (Object.keys(more).length) await supabase.from("profiles").update(more).eq("user_id", viewer.id);
+  }
 
   await track("vault_import_completed", { source_type: input.kind, roles_count: roleCount, items_count: itemCount }, viewer.id);
   const s = result.data.sensitive_found;

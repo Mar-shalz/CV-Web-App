@@ -14,7 +14,7 @@ const nullableText = (max: number) => z.string().max(max).nullable();
 export const parseCv = defineTask({
   name: "parse_cv",
   model: "claude-haiku-5-5",
-  promptVersion: "v3",
+  promptVersion: "v4",
   input,
   output: z.object({
     is_cv: z.boolean(),
@@ -37,7 +37,12 @@ export const parseCv = defineTask({
       religion_present: z.boolean(),
     }),
     roles: z.array(draftRoleSchema).max(30),
-    skills: z.array(z.string().max(60)).max(40),
+    skills: z.array(z.string().max(60)).max(60),
+    // Kept on My Experience (D-162): the person's own summary, and referees for formats that want them.
+    summary: z.string().max(1500).nullable(),
+    referees: z
+      .array(z.object({ name: z.string().max(120), role: nullableText(120), organisation: nullableText(160), phone: nullableText(40), email: nullableText(160), relationship: nullableText(160) }))
+      .max(4),
   }),
   maxTokens: 16_000,
   timeoutMs: 60_000,

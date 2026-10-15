@@ -64,13 +64,15 @@ function CheckRow({ c, loading }: { c: LegitimacyCheck; loading: boolean }) {
  * its website and email, where the job was posted, warnings) fills a checklist that
  * says what passed, what didn't and what we couldn't check. Never says "safe".
  */
-export function ScamCheck({ jobId, initial, large = false, title = null, employer = null }: { jobId: string; initial: LegitimacyView; large?: boolean; title?: string | null; employer?: string | null }) {
+/** `ready`: `initial` is the saved check, so nothing is asked again (coming back from the CV screen, D-161). */
+export function ScamCheck({ jobId, initial, ready = false, large = false, title = null, employer = null }: { jobId: string; initial: LegitimacyView; ready?: boolean; large?: boolean; title?: string | null; employer?: string | null }) {
   const [view, setView] = useState<LegitimacyView>(initial);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!ready);
   const [failed, setFailed] = useState(false);
   const [round, setRound] = useState(0);
 
   useEffect(() => {
+    if (ready && round === 0) return;
     let alive = true;
     fetch(`/api/jobs/${jobId}/legitimacy${round ? "?fresh=1" : ""}`, { method: "POST" })
       .then((r) => r.json())
@@ -84,7 +86,7 @@ export function ScamCheck({ jobId, initial, large = false, title = null, employe
     return () => {
       alive = false;
     };
-  }, [jobId, round]);
+  }, [jobId, round, ready]);
 
   const again = () => {
     setLoading(true);

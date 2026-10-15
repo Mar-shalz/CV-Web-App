@@ -112,6 +112,12 @@ p { margin: 0; }
 .link { color: var(--brand); font-weight: 600; text-decoration: none; }
 .link:hover { text-decoration: underline; }
 
+/* Your match (D-164) */
+.fit-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.ring { position: relative; display: grid; place-items: center; width: 64px; height: 64px; flex: none; }
+.ring-pct { position: absolute; font-weight: 700; font-size: 14px; }
+.fit-label { font-weight: 700; font-size: 16px; }
+
 /* Working */
 .working { display: flex; gap: 12px; align-items: center; }
 .spin { flex: none; width: 22px; height: 22px; border-radius: 999px; border: 3px solid var(--brand-line); border-top-color: var(--brand); animation: spin 0.8s linear infinite; }

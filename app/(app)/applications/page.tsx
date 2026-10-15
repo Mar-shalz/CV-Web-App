@@ -9,7 +9,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { Magicpen, SearchNormal1, Receipt21, InfoCircle, AddCircle } from "@/components/icons";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 
-export const metadata: Metadata = { title: "Applications" };
+export const metadata: Metadata = { title: "My Applications" };
 
 const INVITED: ApplicationStatus[] = ["assessment", "interview", "second_interview", "offer", "accepted"];
 const FILTERS = [
@@ -48,7 +48,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
     <div className="space-y-3">
       <header className="flex flex-wrap items-end justify-between gap-3 animate-rise">
         <div>
-          <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Applications</h1>
+          <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">My Applications</h1>
           <p className="mt-1 text-[0.9375rem] text-ink-600">Every job you applied to, with the exact CV you sent and a copy of the post.</p>
         </div>
         <ButtonLink href="/applications/new" variant="secondary">

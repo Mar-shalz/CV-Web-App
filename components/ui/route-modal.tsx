@@ -52,9 +52,9 @@ export function RouteModal({ title, description, children, href, frame = false }
         if (e.target === e.currentTarget) router.back();
       }}
       data-settled={settled || undefined}
-      className="route-modal m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:w-[calc(100%-3rem)] sm:max-w-4xl sm:rounded-[var(--radius-panel)]"
+      className="route-modal m-0 mt-auto max-h-[96dvh] min-h-[80dvh] w-full max-w-none overflow-hidden rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:min-h-0 sm:w-[calc(100%-3rem)] sm:max-w-4xl sm:rounded-[var(--radius-panel)]"
     >
-      <div className="flex max-h-[92dvh] flex-col">
+      <div className="flex max-h-[96dvh] min-h-[inherit] flex-col sm:min-h-0">
         <span aria-hidden="true" className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-ink-200 sm:hidden" />
         <ModalHeader id="modal-title" title={title} description={description ? <p id="modal-desc">{description}</p> : undefined} onClose={() => router.back()} size="lg" />
         <div className="overflow-y-auto overscroll-contain px-5 py-5 sm:px-7">{children}</div>

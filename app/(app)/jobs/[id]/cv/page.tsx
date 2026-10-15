@@ -19,18 +19,25 @@ export default async function CvPage({ params }: { params: Promise<{ id: string 
   // Date of birth is offered only when the format allows it and this job asks for it or has an age limit.
   const jobAsksDob = job.parsed.hard_filters.some((f) => f.type === "max_age") || job.parsed.how_to_apply.required_documents.some((d) => /date of birth|age/i.test(d));
   const dobToggle = profile.personal_fields.date_of_birth !== "never" && jobAsksDob;
+  const subtitle = `For ${job.parsed.title ?? "this job"}${job.parsed.employer_name ? ` at ${job.parsed.employer_name}` : ""}. Written only from your experience, in the ${PROFILE_LABELS[job.destination.profile].toLowerCase().replace("uk", "UK").replace("nigerian", "Nigerian")} format.`;
 
   return (
     <div className="space-y-3">
       <FlowSteps current="cv" hrefs={{ add: `/jobs/${job.id}`, check: `/jobs/${job.id}/check` }} back={`/jobs/${job.id}/check`} />
-      <header className="animate-rise">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Your Tailored CV</h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
-          For {job.parsed.title ?? "this job"}
-          {job.parsed.employer_name ? ` at ${job.parsed.employer_name}` : ""}. Written only from your experience, in the {PROFILE_LABELS[job.destination.profile].toLowerCase().replace("uk", "UK")} format.
-        </p>
-      </header>
-      {cv ? <CvEditor cvId={cv.id} doc={cv.doc} jobId={job.id} preview={viewer.preview} dobToggle={dobToggle} /> : <GenerateCv jobId={job.id} />}
+      {cv ? (
+        <CvEditor cvId={cv.id} doc={cv.doc} jobId={job.id} preview={viewer.preview} dobToggle={dobToggle} title="Your Tailored CV" subtitle={subtitle} />
+      ) : (
+        <>
+          <header className="animate-rise">
+            <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Your Tailored CV</h1>
+            <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
+              For {job.parsed.title ?? "this job"}
+              {job.parsed.employer_name ? ` at ${job.parsed.employer_name}` : ""}. Written only from your experience, in the {PROFILE_LABELS[job.destination.profile].toLowerCase().replace("uk", "UK").replace("nigerian", "Nigerian")} format.
+            </p>
+          </header>
+          <GenerateCv jobId={job.id} />
+        </>
+      )}
     </div>
   );
 }

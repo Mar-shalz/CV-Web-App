@@ -72,6 +72,57 @@ you actually sent.
 6. **Measure the loop.** Interviews per 10 applications, scam checks run, scam reports caught,
    CVs downloaded with zero open flags. Publish the good ones.
 
+## AIApply and Totaljobs (founder round 20, 16 October 2026)
+
+A UX research read: what each product promises, the job it does for the user, where users
+get hurt, and whether we compete head on. Desk research only (their sites, review roundups,
+Trustpilot and BBB summaries); no interviews yet, so treat it as hypotheses to test.
+
+### AIApply (aiapply.co)
+- **What it is:** a UK registered AI job application suite. Auto Apply (finds jobs and
+  submits tailored applications for you, sold as credits on top of a subscription), an AI
+  resume builder and scanner, cover letters, mock interviews, "Interview Buddy" (live answer
+  suggestions during a real interview), a resume translator and a job board. Priced in
+  dollars; reported from about $12 to $23 a week or about $29 a month, plus credit packs.
+- **The job it does for users:** volume. "Apply to more jobs with less effort."
+- **Where users get hurt (from reviews):** CVs with skills, experience or languages the person
+  doesn't have; applications to wrong or unsuitable jobs (wrong work authorisation, the
+  person's current employer); auto apply not in the base plan; refund and billing complaints
+  (an F rating on BBB, a Trustpilot warning about misleading display of reviews). Its site
+  says employers generally can't tell AI was used; it makes no claim about keeping CVs true.
+- **Same as us?** No. Overlap: tailored CVs, cover letters, interview practice. Opposite on
+  the things that matter most to us: it sends applications for you (we never do), it doesn't
+  tie each line to evidence (we fact lock every line), it has no scam check, and it is priced
+  in dollars for US and UK markets.
+- **Our advantage:** truth (every line traceable, suggestions only take effect when accepted),
+  the free scam check, a record of exactly what was sent, interview prep from that exact CV,
+  Naira pricing and Nigerian formats (NYSC, SIWES, referees). Their weakness is our pitch:
+  "Nothing goes out without you, and nothing on your CV is made up."
+- **Where they're ahead:** speed and volume, a job feed, 13 interface languages, live
+  interview help (which many employers treat as cheating; we won't build it).
+
+### Totaljobs (totaljobs.com)
+- **What it is:** one of the UK's largest job boards (part of the Stepstone Group): job
+  search, job alerts, CV upload so recruiters can find you, company profiles, a salary
+  checker and careers advice. Free to job seekers; employers pay.
+- **The job it does for users:** supply. "Find UK jobs and be found by UK recruiters."
+- **Same as us?** No. It's a place to find jobs, not a tool to decide, tailor, check and
+  record. It doesn't tailor a CV to each advert, check whether an advert is real, keep the
+  CV you sent, or prepare you from it. Scammers also borrow job board names in fake offers.
+- **Relationship:** a source, not a rival. People will find jobs on Totaljobs and bring them
+  to us (link, the browser extension, or a paste). Totaljobs is in our known job sites list,
+  so the scam check recognises it. For Nigerians aiming at UK roles, we add what Totaljobs
+  doesn't: a UK format CV, NYSC and HND explained, and a check that the job is real.
+
+### What to test with users next
+1. Do Nigerian graduates who tried auto apply tools trust them less after a bad application?
+   (Hypothesis: yes, and "nothing goes out without you" is a reason to choose us.)
+2. Is the match percentage on the fit check read as a promise? (Watch for people skipping
+   jobs below 50% that they'd get.)
+3. Do people accept suggested lines one by one or use "Accept all"? (If mostly "Accept
+   all", the suggestions are trusted; if mostly "Keep my words", the writing is off.)
+4. How many people add referees, and do Nigerian employers ask for them at the CV stage?
+
 ## Sources
 - AI CV tool pricing and features: dupple.com (best AI resume builders 2026), four-leaf.ai,
   blog.fastapply.co (verified prices), nextcv.net, pitchmeai.com, reztune.com.
@@ -82,3 +133,8 @@ you actually sent.
 - Interview tools: fast.io, Capterra (Big Interview), cleverprep.com, devtoollab.com.
 - AI CV trust: WebProNews, NACE, Gem, Xobin, The Interview Guys (Gartner projection, recruiter
   surveys; mostly vendor sources, so treat exact percentages with caution).
+- AIApply: aiapply.co (features), jobright.ai, loopcv.pro, wordable.io, checkthat.ai (pricing
+  and review summaries), Trustpilot and BBB summaries via adzuna.co.uk, careery.pro and
+  blog.fastapply.co (competitor sources: read with care).
+- Totaljobs: Apple App Store listing, archived totaljobs.com homepage, betterteam.com,
+  losclouds.com (directory, may be dated).

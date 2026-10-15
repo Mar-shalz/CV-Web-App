@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { shareCheck } from "@/app/(app)/jobs/actions";
 import { toast } from "@/components/ui/toaster";
-import { Share, Copy, Messages3 } from "@/components/icons";
+import { Share, Copy } from "@/components/icons";
+import { WhatsAppLogo, XLogo } from "@/components/brand/social-logos";
 import { Spinner } from "@/components/ui/pending-button";
 
 type Verdict = "verified" | "unverified" | "red_flags";
@@ -49,11 +50,11 @@ export function ShareCheck({ jobId, state, calm = false, title, employer }: { jo
       <p className="text-xs text-ink-500">The link shows the job and what we found. Never your name or details.</p>
       <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#1f9d55] px-3 text-sm font-semibold text-white hover:bg-[#188247]">
-          <Messages3 size={18} variant="bulk" />
+          <WhatsAppLogo size={19} />
           WhatsApp
         </a>
         <a href={x} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-ink-900 px-3 text-sm font-semibold text-white hover:bg-ink-800">
-          <span aria-hidden="true" className="font-bold">𝕏</span>
+          <XLogo size={15} />
           Post on X
         </a>
         <button

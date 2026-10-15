@@ -40,16 +40,19 @@ export function findingSeverity(f: Finding): Severity | null {
 /**
  * The final state, computed in code from both layers. There is no "safe" state, ever.
  * Red: any red signal, or an official warning covering this exercise.
- * Verified: found on the official channel, the contact or apply route matches it, no red.
+ * Verified: listed by the company (its own site or hiring page, or under its name on a
+ * known job site, D-161), and the email or apply link is on the company's own website or
+ * hiring page, so the application reaches the real company. No red, no amber.
  * Everything else: couldn't verify.
  */
 export function scamState(layer1: Signal[], findings: Finding[]): ScamState {
   const red = layer1.some((s) => s.severity === "red") || findings.some((f) => findingSeverity(f) === "red");
   if (red) return "red_flags";
-  const onOfficial = findings.some((f) => f.id === "L2-01" && f.result === "found" && f.sourceType === "official");
+  // A forum or news post advertising the job never counts: only the company's channels and job sites.
+  const listed = findings.some((f) => f.id === "L2-01" && f.result === "found" && (f.sourceType === "official" || f.sourceType === null));
   const routeMatches = findings.some((f) => f.id === "L2-02" && f.result === "match");
-  // A forum post advertising the job never counts toward verified (only official sources do).
-  return onOfficial && routeMatches ? "verified" : "unverified";
+  const amber = layer1.some((s) => s.severity === "amber") || findings.some((f) => findingSeverity(f) === "amber");
+  return listed && routeMatches && !amber ? "verified" : "unverified";
 }
 
 export const STATE_HEADLINES: Record<ScamState, string> = {

@@ -1,6 +1,6 @@
 {
   "id": "ng_private",
-  "version": "ng_private_v1",
+  "version": "ng_private_v2",
   "reviewed_by": null,
   "label": "CV",
   "paper": "A4",
@@ -14,7 +14,7 @@
   "class_of_degree": "shown",
   "cgpa": "if_job_asks",
   "olevel": "if_job_asks",
-  "referees": "available_on_request",
+  "referees": "listed_if_available",
   "right_to_work": "not_shown",
   "address": "city_state",
   "phone": "+234",

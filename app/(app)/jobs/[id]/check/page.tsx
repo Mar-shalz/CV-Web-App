@@ -6,7 +6,8 @@ import { requireReadyViewer, type Viewer } from "@/lib/auth/viewer";
 import { getJob, type JobView } from "@/lib/jobs/data";
 import { getVault, type Vault } from "@/lib/vault/data";
 import { getVerdict, runEligibility } from "@/lib/jobs/check";
-import { quickCheck } from "@/lib/legitimacy";
+import { quickCheck, savedCheck } from "@/lib/legitimacy";
+import { createClient } from "@/lib/supabase/server";
 import { startTrialIfNeeded } from "@/lib/entitlements-server";
 import { accessState, canUse } from "@/lib/entitlements";
 import type { FinalVerdict } from "@/lib/rules/verdict";
@@ -25,6 +26,9 @@ import { buttonClass } from "@/components/ui/button";
 import { Building, Location, Calendar1, Sms, Global, Magicpen, ArrowRight, TickCircle, Warning2, MinusCircle, Archive, Lamp, Crown1 } from "@/components/icons";
 import { PendingButton } from "@/components/ui/pending-button";
 import { WorkingNotice } from "@/components/ui/working-notice";
+import { StickyTop, SeeMore, MatchItem, MatchRing } from "@/components/flow/fit-parts";
+import { getExtras, type CvExtras } from "@/lib/vault/extras";
+import { matchPercent, requirementKey } from "@/lib/rules/match-score";
 
 export const metadata: Metadata = { title: "Job Check" };
 
@@ -34,7 +38,6 @@ const VERDICT = {
   skip: { label: "Skip this one", tone: "from-ink-100 border-ink-200", icon: MinusCircle, iconTone: "bg-ink-600" },
 } as const;
 
-const REQ = { met: { label: "Met", tone: "proof" }, partly: { label: "Partly met", tone: "care" }, missing: { label: "Missing", tone: "neutral" } } as const;
 const RULE = { pass: { label: "Met", tone: "proof" }, fail: { label: "Not met", tone: "neutral" }, unknown: { label: "Need a detail", tone: "brand" }, care: { label: "Check this", tone: "care" }, not_applicable: { label: "Doesn't apply", tone: "neutral" } } as const;
 
 const daysUntil = (iso: string) => Math.ceil((new Date(`${iso}T23:59:59+01:00`).getTime() - Date.now()) / 86_400_000);
@@ -44,10 +47,12 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
   const viewer = await requireReadyViewer();
   const job = await getJob(viewer, id);
   await startTrialIfNeeded(viewer);
-  const vault = await getVault(viewer);
+  const [vault, extras] = await Promise.all([getVault(viewer), getExtras(viewer)]);
   const eligibility = await runEligibility(viewer, job, vault);
   const verdictPromise = getVerdict(viewer, job, vault, eligibility);
   const quick = quickCheck(job.rawText ?? "", job.parsed);
+  // Coming back from the CV screen: show the saved check, don't ask again (D-161).
+  const saved = viewer.preview ? null : await savedCheck(await createClient(), job.id, job.rawText ?? "", job.parsed);
   const p = job.parsed;
   const left = p.deadline ? daysUntil(p.deadline) : null;
 
@@ -55,11 +60,15 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
     <div className="space-y-3 pb-24 lg:pb-0">
       <FlowSteps current="check" hrefs={{ add: `/jobs/${job.id}` }} back={`/jobs/${job.id}`} />
 
-      <section className="animate-rise rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-6">
+      <StickyTop>
+      <section className="animate-rise rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:px-6 lg:py-4 lg:group-data-[stuck=true]/stick:py-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-display text-[1.5rem] font-semibold leading-8 tracking-[-0.02em] text-ink-900 lg:text-[1.875rem] lg:leading-10">{p.title ?? "Untitled job"}</h1>
-            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-600">
+            <h1 className="font-display text-[1.5rem] font-semibold leading-8 tracking-[-0.02em] text-ink-900 lg:text-[1.625rem] lg:leading-9 lg:group-data-[stuck=true]/stick:text-[1.125rem] lg:group-data-[stuck=true]/stick:leading-7">
+              {p.title ?? "Untitled job"}
+              <span className="hidden text-[0.9375rem] font-normal text-ink-600 lg:group-data-[stuck=true]/stick:inline">{p.employer_name ? ` · ${p.employer_name}` : ""}</span>
+            </h1>
+            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-600 lg:mt-2 lg:group-data-[stuck=true]/stick:hidden">
               <li className="flex items-center gap-1.5">
                 <Building size={18} />
                 {p.employer_name ?? (p.employer_is_agency_client ? "Employer not named" : "Employer not stated")}
@@ -83,24 +92,27 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
               </li>
             </ul>
           </div>
-          <FormatChip initial={PROFILE_LABELS[job.destination.profile]} />
+          <span className="lg:group-data-[stuck=true]/stick:hidden">
+            <FormatChip initial={PROFILE_LABELS[job.destination.profile]} />
+          </span>
         </div>
-        {job.destination.fallbackNote ? <p className="mt-3 text-xs text-ink-500">{job.destination.fallbackNote}</p> : null}
+        {job.destination.fallbackNote ? <p className="mt-3 text-xs text-ink-500 lg:group-data-[stuck=true]/stick:hidden">{job.destination.fallbackNote}</p> : null}
       </section>
 
       <Suspense fallback={<VerdictSkeleton />}>
-        <VerdictHero promise={verdictPromise} viewer={viewer} job={job} />
+        <VerdictHero promise={verdictPromise} viewer={viewer} job={job} extras={extras} />
       </Suspense>
+      </StickyTop>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-6">
           <EligibilityCard eligibility={eligibility} job={job} />
           <Suspense fallback={<div className="skeleton h-64 rounded-[var(--radius-card)]" />}>
-            <MatchList promise={verdictPromise} vault={vault} />
+            <MatchList promise={verdictPromise} vault={vault} job={job} extras={extras} viewer={viewer} />
           </Suspense>
         </div>
         <div className="space-y-3">
-          <ScamCheck jobId={job.id} initial={quick} title={job.parsed.title} employer={job.parsed.employer_name} />
+          <ScamCheck jobId={job.id} initial={saved ?? quick} ready={Boolean(saved)} title={job.parsed.title} employer={job.parsed.employer_name} />
           <Suspense fallback={null}>
             <Gaps promise={verdictPromise} />
           </Suspense>
@@ -122,63 +134,91 @@ function VerdictSkeleton() {
   );
 }
 
-async function VerdictHero({ promise, viewer, job }: { promise: Promise<FinalVerdict>; viewer: Viewer; job: JobView }) {
-  const v = await promise;
-  const t = VERDICT[v.verdict];
-  const Icon = t.icon;
+/** Skills the person added on this job's check, keyed by requirement (D-162). */
+function addedForJob(extras: CvExtras, jobId: string): Map<string, string> {
+  return new Map(extras.addedSkills.filter((a) => a.jobId === jobId).map((a) => [requirementKey(a.requirement), a.skill]));
+}
+
+/** Save for later and Tailor my CV, side by side: under the advice and again under the match list. */
+function JobActions({ viewer, job, compact = false }: { viewer: Viewer; job: JobView; compact?: boolean }) {
   const access = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
   const canTailor = canUse("tailored_cv", access);
-
+  const size = compact ? "md" : "lg";
   const tailor = canTailor ? (
-    <form action={setJobState}>
+    <form action={setJobState} className="min-w-0">
       <input type="hidden" name="job_id" value={job.id} />
       <input type="hidden" name="state" value="applying" />
-      <PendingButton pendingLabel="Opening" className={buttonClass("primary", "lg", "cta-sheen w-full sm:w-auto")}>
+      <PendingButton pendingLabel="Opening" className={buttonClass("primary", size, "cta-sheen w-full")}>
         <Magicpen size={20} variant="bulk" />
         Tailor my CV
         <ArrowRight size={18} />
       </PendingButton>
     </form>
   ) : (
-    <Link href="/pass?from=tailor" className={buttonClass("primary", "lg", "w-full sm:w-auto")}>
+    <Link href="/pass?from=tailor" className={buttonClass("primary", size, "w-full")}>
       <Crown1 size={20} variant="bulk" />
-      Get the pass to tailor your CV
+      Get the pass
     </Link>
   );
-  // Already saved: take it off the list from here, without going through the rest (D-130).
-  const save = job.state === "saved" ? (
-    <RemoveSaved jobId={job.id} title={job.parsed.title ?? "This job"} variant="button" />
-  ) : (
-    <form action={setJobState}>
-      <input type="hidden" name="job_id" value={job.id} />
-      <input type="hidden" name="state" value="saved" />
-      <PendingButton pendingLabel="Saving" className={buttonClass("secondary", "lg", "w-full sm:w-auto")}>
-        <Archive size={20} />
-        Save for later
-      </PendingButton>
-    </form>
+  const save =
+    job.state === "saved" ? (
+      <RemoveSaved jobId={job.id} title={job.parsed.title ?? "This job"} variant="button" />
+    ) : (
+      <form action={setJobState} className="min-w-0">
+        <input type="hidden" name="job_id" value={job.id} />
+        <input type="hidden" name="state" value="saved" />
+        <PendingButton pendingLabel="Saving" className={buttonClass("secondary", size, "w-full")}>
+          <Archive size={20} />
+          Save for later
+        </PendingButton>
+      </form>
+    );
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {save}
+      {tailor}
+    </div>
   );
+}
+
+async function VerdictHero({ promise, viewer, job, extras }: { promise: Promise<FinalVerdict>; viewer: Viewer; job: JobView; extras: CvExtras }) {
+  const v = await promise;
+  const t = VERDICT[v.verdict];
+  const Icon = t.icon;
+  const access = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
+  const canTailor = canUse("tailored_cv", access);
+  const pct = matchPercent(v.requirements, job.parsed.requirements, new Set(addedForJob(extras, job.id).keys()));
 
   return (
-    <section aria-labelledby="verdict-title" className={`animate-pop rounded-[var(--radius-panel)] border bg-gradient-to-br to-white p-5 lg:p-7 ${t.tone}`}>
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-start gap-4">
-          <span className={`grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-raised ${t.iconTone}`}>
-            <Icon size={30} variant="bulk" />
+    <section aria-labelledby="verdict-title" className={`animate-pop rounded-[var(--radius-panel)] border bg-gradient-to-br to-white p-5 lg:px-6 lg:py-5 lg:group-data-[stuck=true]/stick:py-3 ${t.tone}`}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-start gap-4 lg:group-data-[stuck=true]/stick:items-center">
+          <span className={`grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-raised lg:size-12 lg:group-data-[stuck=true]/stick:hidden ${pct !== null ? "max-lg:hidden" : ""} ${t.iconTone}`}>
+            <Icon size={28} variant="bulk" />
           </span>
-          <div>
-            <p className="text-sm font-medium text-ink-600">Our advice</p>
-            <h2 id="verdict-title" className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.02em] text-ink-900">
+          {pct !== null ? (
+            <span className="lg:group-data-[stuck=true]/stick:scale-90">
+              <MatchRing pct={pct} />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink-600 lg:group-data-[stuck=true]/stick:hidden">Our advice{pct !== null ? ` · ${pct}% match to this job` : ""}</p>
+            <h2 id="verdict-title" className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.02em] text-ink-900 lg:text-[1.5rem] lg:leading-8 lg:group-data-[stuck=true]/stick:text-[1.125rem]">
               {t.label}
+              {pct !== null ? <span className="hidden text-[0.9375rem] font-medium text-ink-600 lg:group-data-[stuck=true]/stick:inline"> · {pct}% match</span> : null}
             </h2>
-            <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-700">{v.line}</p>
-            <p className="mt-2 text-xs text-ink-500">This is advice, not a decision. You can always apply anyway.</p>
+            <div className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-700 lg:group-data-[stuck=true]/stick:hidden">
+              <SeeMore lines={2}>{v.line}</SeeMore>
+            </div>
+            <p className="mt-2 text-xs text-ink-500 lg:group-data-[stuck=true]/stick:hidden">
+              This is advice, not a decision. You can always apply anyway.
+              {pct !== null ? <span className="max-lg:hidden"> The match counts each requirement in the post: must-haves twice, partly met as half.</span> : null}
+            </p>
           </div>
         </div>
         {v.verdict !== "skip" ? (
-          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-            {save}
-            {tailor}
+          <div className="shrink-0 lg:min-w-[380px]">
+            <JobActions viewer={viewer} job={job} compact />
           </div>
         ) : (
           <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
@@ -255,10 +295,12 @@ function EligibilityCard({ eligibility, job }: { eligibility: EligibilityResult;
   );
 }
 
-async function MatchList({ promise, vault }: { promise: Promise<FinalVerdict>; vault: Vault }) {
+async function MatchList({ promise, vault, job, extras, viewer }: { promise: Promise<FinalVerdict>; vault: Vault; job: JobView; extras: CvExtras; viewer: Viewer }) {
   const v = await promise;
   const items = new Map(vault.roles.flatMap((r) => r.items.map((i) => [i.id, { text: i.text, role: r.title }] as const)));
-  const met = v.requirements.filter((r) => r.status === "met").length;
+  const added = addedForJob(extras, job.id);
+  const met = v.requirements.filter((r) => r.status === "met" || added.has(requirementKey(r.text))).length;
+  const pct = matchPercent(v.requirements, job.parsed.requirements, new Set(added.keys()));
   if (!v.requirements.length) return null;
   return (
     <section aria-labelledby="match-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-6">
@@ -267,40 +309,37 @@ async function MatchList({ promise, vault }: { promise: Promise<FinalVerdict>; v
           How your Experience Matches
         </h2>
         <span className="text-sm text-ink-500">
+          {pct !== null ? <span className="font-semibold text-ink-800">{pct}% · </span> : null}
           {met} of {v.requirements.length} met
         </span>
       </div>
-      <ul className="mt-4 space-y-3">
+      <p className="mt-1 text-[0.8125rem] text-ink-500 lg:hidden">Tap a requirement to see why.</p>
+      <ul className="mt-4 space-y-2.5">
         {v.requirements.map((r, i) => (
-          <li key={i} className="rounded-2xl bg-ink-50 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="text-[0.9375rem] font-medium text-ink-900">{r.text}</p>
-              <Badge tone={REQ[r.status].tone}>{REQ[r.status].label}</Badge>
-            </div>
-            {r.vaultItemIds.length ? (
-              <ul className="mt-2 space-y-1">
-                {r.vaultItemIds.map((id) =>
-                  items.get(id) ? (
-                    <li key={id} className="text-[0.8125rem] leading-5 text-ink-600">
-                      From your experience: <span className="text-ink-800">{items.get(id)!.text}</span>
-                    </li>
-                  ) : null,
-                )}
-              </ul>
-            ) : (
-              <p className="mt-1.5 text-[0.8125rem] text-ink-600">Nothing in your experience covers this yet.</p>
-            )}
-            {r.note ? <p className="mt-1 text-xs text-care-700">{r.note}</p> : null}
-          </li>
+          <MatchItem
+            key={i}
+            text={r.text}
+            status={r.status}
+            evidence={r.vaultItemIds.map((id) => items.get(id)?.text).filter((x): x is string => Boolean(x))}
+            note={r.note}
+            jobId={job.id}
+            jobTitle={job.parsed.title}
+            added={added.get(requirementKey(r.text)) ?? null}
+          />
         ))}
       </ul>
       <p className="mt-4 text-[0.8125rem] text-ink-500">
-        Missing something you&apos;ve actually done?{" "}
+        Missing something you&apos;ve actually done? Use &ldquo;I have this&rdquo; above, or{" "}
         <Link href="/experience/interview" className="font-semibold text-brand-700 hover:underline">
-          Add it to your experience
-        </Link>{" "}
-        and check again.
+          add it to your experience
+        </Link>
+        .
       </p>
+      {v.verdict !== "skip" ? (
+        <div className="mt-4 border-t border-ink-100 pt-4">
+          <JobActions viewer={viewer} job={job} compact />
+        </div>
+      ) : null}
     </section>
   );
 }

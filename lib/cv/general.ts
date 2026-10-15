@@ -1,4 +1,5 @@
 import "server-only";
+import { getExtras } from "@/lib/vault/extras";
 import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
 import type { JobView } from "@/lib/jobs/data";
@@ -77,8 +78,9 @@ export async function generalCv(viewer: Viewer): Promise<GeneralCvResult> {
     reviewed: true,
     postHash: "general",
   };
-  const contact = await getContact(viewer);
+  const [contact, extras] = await Promise.all([getContact(viewer), getExtras(viewer)]);
   const { doc, generated } = await buildCv(viewer, job, vault, contact, {
+    extras,
     extraRules: [
       `This is a general CV for ${t.target_title} roles in ${t.industry} at ${t.level} level, not one advert. The "requirements" are the field's standard keywords: use the ones the evidence supports, in natural sentences, in the bullets, summary and skills.`,
       `Write the title line and summary for that field and level. The strongest honest story: ${t.angle}`,

@@ -7,6 +7,7 @@ import { factLock, lockLine, type LockSource } from "@/lib/rules/fact-lock";
 import { rangeLabel, monthLabel } from "@/lib/vault/dates";
 import { EMPLOYMENT_KINDS, EMPLOYMENT_ON_CV, withTerms } from "@/lib/vault/schema";
 import { PROFILES, SECTION_HEADINGS, fileBase, profileRules } from "./profiles";
+import { allSkills, EMPTY_EXTRAS, type CvExtras } from "@/lib/vault/extras";
 import type { CvBullet, CvDoc, CvFlag, CvRoleBlock, CvSection } from "./types";
 
 export type ContactDetails = { fullName: string | null; phone: string | null; email: string | null; city: string | null; state: string | null; linkedin: string | null; portfolio?: string | null; website?: string | null };
@@ -45,7 +46,8 @@ type TailorOut = { title_line: string; summary: { text: string; source_item_ids:
  * them; one regeneration fixes violations; anything still untraced is kept with a flag
  * (warnings never block the download). Role headers come from vault records, not the model.
  */
-export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contact: ContactDetails, opts: { extraRules?: string[] } = {}): Promise<{ doc: CvDoc; generated: boolean; violations: string[] }> {
+export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contact: ContactDetails, opts: { extraRules?: string[]; extras?: CvExtras } = {}): Promise<{ doc: CvDoc; generated: boolean; violations: string[] }> {
+  const extras = opts.extras ?? EMPTY_EXTRAS;
   const profile = PROFILES[job.destination.profile];
   const roles = vault.roles.filter((r) => r.confirmed);
   const sources = new Map<string, LockSource>();
@@ -67,7 +69,13 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     ...sources.values(),
     ...roles.map((r) => ({ id: `role:${r.id}`, text: [r.title, r.organisation, r.grade].filter(Boolean).join(" "), sourceQuote: null, metrics: [], ownership: "did" as const, skills: [], role: { kind: r.kind, organisation: r.organisation, title: r.title, location: r.location, start: r.start, end: r.end, grade: r.grade } })),
   ];
-  const vaultSkills = [...new Set(roles.flatMap((r) => r.items.flatMap((i) => i.skills)))];
+  // Skills from items, the person's own list and those added while checking jobs (D-162).
+  const listed = allSkills(extras);
+  const vaultSkills = [...new Set([...listed, ...roles.flatMap((r) => r.items.flatMap((i) => i.skills))])];
+  // The person's own summary counts as their words for the summary line only.
+  const ownSummary: LockSource | null = extras.summary
+    ? { id: "own:summary", text: extras.summary, sourceQuote: extras.summary, metrics: [], ownership: "did", skills: [], role: { kind: "profile", organisation: null, title: null, location: null, start: null, end: null, grade: null } }
+    : null;
   const workMonths = roles.filter((r) => r.kind === "job").reduce((s, r) => s + monthsOf(r), 0);
   const underTwo = workMonths < 24;
   const expRoles = roles.filter((r) => EXPERIENCE_KINDS.includes(r.kind));
@@ -90,7 +98,8 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
         })),
         education: roles.filter((r) => r.kind === "education").map((r) => [r.title, r.organisation, r.grade, rangeLabel(r.start, r.end, r.isCurrent)].filter(Boolean).join(", ")),
         certifications: roles.filter((r) => r.kind === "certification" || r.kind === "licence").map((r) => [r.title, r.organisation, r.grade].filter(Boolean).join(", ")),
-        vault_skills: vaultSkills.slice(0, 60),
+        vault_skills: vaultSkills.slice(0, 90),
+        own_summary: extras.summary,
         previous_violations: violations,
         cacheKey: `${job.id}:${attempt}`,
       },
@@ -105,7 +114,7 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     const next: string[] = [];
     for (const k of lock.kept) for (const f of k.flags) next.push(`Bullet "${k.text}": ${f.type} "${f.token}" is not in its cited items.`);
     for (const id of lock.dropped) next.push(`Bullet "${bullets.find((b) => b.id === id)?.text}" cites no valid item id.`);
-    const sumSources = out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s));
+    const sumSources = [...out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s)), ...(ownSummary ? [ownSummary] : [])];
     for (const f of lockLine(out.summary.text, sumSources.length ? sumSources : all)) next.push(`Summary: ${f.type} "${f.token}" is not supported.`);
     for (const f of lockLine(out.title_line, all)) next.push(`Title line: ${f.type} "${f.token}" is not supported.`);
     if (!next.length || attempt === 1) {
@@ -119,9 +128,9 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
   if (!out) {
     out = {
       title_line: roles.find((r) => r.kind === "education")?.title ?? job.parsed.title ?? "",
-      summary: { text: "", source_item_ids: [] },
+      summary: { text: extras.summary ?? "", source_item_ids: [] },
       experience: expRoles.map((r) => ({ role_id: r.id, bullets: r.items.filter((i) => i.confirmed).slice(0, 5).map((i) => ({ text: i.text, source_item_ids: [i.id], rewrite_type: "kept" as const })) })),
-      skills: { tools: vaultSkills.slice(0, 8), professional: [], languages: [] },
+      skills: { tools: [], professional: vaultSkills.slice(0, 12), languages: [] },
     };
   }
 
@@ -138,20 +147,29 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
       const k = kept.get(`${r.id}:${n}`);
       if (!k) return [];
       const first = sources.get(k.source_item_ids[0] ?? "");
-      return [{ id: `${r.id.slice(0, 8)}-${n}`, text: k.text, sourceItemIds: k.source_item_ids.filter((id) => sources.has(id)), rewriteType: b.rewrite_type, flags: toFlags(k.flags), original: first?.text ?? k.text, sourceQuote: first?.sourceQuote ?? null }];
+      const original = first?.text ?? k.text;
+      // A changed line is a suggestion until the person accepts it (D-163).
+      const changed = b.rewrite_type !== "kept" && k.text.trim() !== original.trim();
+      return [{ id: `${r.id.slice(0, 8)}-${n}`, text: k.text, sourceItemIds: k.source_item_ids.filter((id) => sources.has(id)), rewriteType: changed ? b.rewrite_type : "kept", flags: toFlags(k.flags), original, sourceQuote: first?.sourceQuote ?? null, pending: changed }];
     });
     // Part-time and contract roles say so next to the title; full time prints nothing (D-082).
     const terms = r.employmentType && EMPLOYMENT_KINDS.includes(r.kind) ? EMPLOYMENT_ON_CV[r.employmentType] : null;
     return { roleId: r.id, title: withTerms(r.title ?? "", terms), organisation: r.organisation, location: r.location, dates: rangeLabel(r.start, r.end, r.isCurrent), grade: null, bullets };
   };
 
-  const sumSources = out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s));
+  const sumSources = [...out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s)), ...(ownSummary ? [ownSummary] : [])];
   const skillsOk = (s: string) => vaultSkills.some((v) => v.toLowerCase() === s.toLowerCase()) || [...sources.values()].some((src) => `${src.text} ${src.sourceQuote ?? ""}`.toLowerCase().includes(s.toLowerCase()));
-  const skills = {
+  const chosen = {
     tools: out.skills.tools.filter(skillsOk),
     professional: out.skills.professional.filter(skillsOk),
     languages: out.skills.languages.filter((l) => l.toLowerCase() === "english" || skillsOk(l)),
   };
+  // Skills added while checking jobs always go on (founder, round 20); then, when the model
+  // picked few, the person's own listed skills fill the section up to 12.
+  const have = new Set([...chosen.tools, ...chosen.professional, ...chosen.languages].map((s) => s.toLowerCase()));
+  const must = extras.addedSkills.map((a) => a.skill).filter((s) => !have.has(s.toLowerCase()) && (have.add(s.toLowerCase()), true));
+  const fill = chosen.tools.length + chosen.professional.length + must.length < 6 ? extras.skills.filter((s) => !have.has(s.toLowerCase()) && (have.add(s.toLowerCase()), true)).slice(0, 12) : [];
+  const skills = { ...chosen, professional: [...chosen.professional, ...must, ...fill] };
 
   const order = underTwo ? profile.section_order_under_2_years : profile.section_order;
   const hasLeadership = order.includes("leadership");
@@ -189,7 +207,13 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
         .map((r) => ({ title: r.title ?? "Certificate", subtitle: r.organisation, dates: r.end ? monthLabel(r.end) : r.start ? monthLabel(r.start) : null, detail: r.grade }));
       if (entries.length) sections.push({ key, heading, kind: "entries", entries });
     } else if (key === "referees") {
-      if (profile.referees !== "left_out") sections.push({ key, heading, kind: "lines", lines: ["Available on request"] });
+      // Referees (D-162): named when the person added them and the format lists them, or the
+      // job asks for them; otherwise "Available on request".
+      const jobAsks = job.parsed.how_to_apply.required_documents.some((d) => /referee|reference/i.test(d)) || /\breferees?\b/i.test(job.rawText ?? "");
+      const listThem = extras.referees.length > 0 && (profile.referees === "listed_if_available" || jobAsks);
+      if (listThem) {
+        sections.push({ key, heading, kind: "entries", entries: extras.referees.slice(0, 3).map((r) => ({ title: r.name, subtitle: [r.role, r.organisation].filter(Boolean).join(", ") || null, dates: null, detail: [r.relationship, r.phone, r.email].filter(Boolean).join(" · ") || null })) });
+      } else if (profile.referees !== "left_out") sections.push({ key, heading, kind: "lines", lines: ["Available on request"] });
     }
   }
 
@@ -201,7 +225,14 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     contactLine: [formatPhone(contact.phone), contact.email, place, shortUrl(contact.linkedin), shortUrl(contact.portfolio), shortUrl(contact.website)].filter(Boolean).join(" · "),
     titleLine: out.title_line,
     titleFlags: toFlags(lockLine(out.title_line, all)),
-    summary: { text: out.summary.text, sourceItemIds: sumSources.map((s) => s.id), flags: toFlags(out.summary.text ? lockLine(out.summary.text, sumSources.length ? sumSources : all) : []) },
+    // Suggested for this job; the person confirms it, or keeps their own (D-163).
+    summary: {
+      text: out.summary.text,
+      sourceItemIds: sumSources.map((s) => s.id).filter((id) => id !== "own:summary"),
+      flags: toFlags(out.summary.text ? lockLine(out.summary.text, sumSources.length ? sumSources : all) : []),
+      own: extras.summary,
+      confirmed: !out.summary.text || out.summary.text.trim() === (extras.summary ?? "").trim(),
+    },
     sections,
     include: { date_of_birth: false, gender: false, state_of_origin: false },
     fileBase: fileBase(contact.fullName, job.parsed.title ?? "Role"),

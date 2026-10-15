@@ -3,25 +3,64 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Category, Magicpen, Send2, Briefcase, Setting2, ArrowLeft2, ArrowRight2, Global } from "@/components/icons";
+import {
+  Category,
+  Magicpen,
+  Send2,
+  Briefcase,
+  Setting2,
+  ArrowLeft2,
+  ArrowRight2,
+  Global,
+  MessageQuestion,
+} from "@/components/icons";
 import { Logo } from "@/components/brand/logo";
 import { NAV_ITEMS, type NavItem } from "./nav-items";
+import { UpdatesDrawer } from "./updates-drawer";
+import { Avatar } from "./user-chip";
+import type { InboxItem } from "@/lib/notifications/data";
 
-// "Tailor my CV" lives in the top bar on wide screens and in the centre of the phone bar,
-// so the sidebar keeps to places, not actions.
+// "Tailor my CV" floats at the bottom right on wide screens (D-160) and sits in the centre
+// of the phone bar, so the sidebar keeps to places, not actions.
 const SIDEBAR_ITEMS = NAV_ITEMS.filter((i) => !("primary" in i));
 
-const ICONS = { home: Category, tailor: Magicpen, applications: Send2, experience: Briefcase, settings: Setting2 };
+const ICONS = {
+  home: Category,
+  tailor: Magicpen,
+  applications: Send2,
+  experience: Briefcase,
+  settings: Setting2,
+};
 
 function isActive(path: string, href: string) {
   // Tailoring a CV is part of an application: Applications stays lit through every step.
-  if (href === "/applications") return path.startsWith("/applications") || path.startsWith("/jobs");
+  if (href === "/applications")
+    return path.startsWith("/applications") || path.startsWith("/jobs");
   if (href === "/jobs/new") return path === "/jobs/new";
   return path === href || path.startsWith(`${href}/`);
 }
 
+type SidebarProps = {
+  initialCollapsed: boolean;
+  footer: ReactNode;
+  footerCollapsed: ReactNode;
+  /** Laptops and tablets have no top bar (D-160): notifications, help and the profile live here. */
+  updates: { checkInCount: number; checkIns: ReactNode; items: InboxItem[] };
+  helpHref: string;
+  profile: { name: string | null; stage: string | null };
+  lowData: boolean;
+};
+
 /** Desktop sidebar. Collapses to icons; the choice is kept in a cookie so the server renders it right. */
-export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initialCollapsed: boolean; footer: ReactNode; footerCollapsed: ReactNode }) {
+export function Sidebar({
+  initialCollapsed,
+  footer,
+  footerCollapsed,
+  updates,
+  helpHref,
+  profile,
+  lowData,
+}: SidebarProps) {
   const path = usePathname();
   const [collapsed, setCollapsed] = useState(initialCollapsed);
 
@@ -38,7 +77,9 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
       }`}
     >
       {/* The collapse control always sits beside the logo, so collapsing never adds a row. */}
-      <div className={`flex h-[76px] items-center ${collapsed ? "justify-center gap-3 px-2" : "justify-between pl-6 pr-3"}`}>
+      <div
+        className={`flex h-[76px] items-center ${collapsed ? "justify-center gap-3 px-2" : "justify-between pl-6 pr-3"}`}
+      >
         <Link href="/home" className="rounded-xl" aria-label="Home">
           <Logo collapsed={collapsed} />
         </Link>
@@ -58,13 +99,54 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
       </div>
       <div className="mx-4 h-px bg-ink-150" aria-hidden="true" />
 
-      <nav aria-label="Main" className="mt-4 flex-1">
+      <nav aria-label="Main" className="mt-4">
         <ul className="space-y-1 px-3">
           {SIDEBAR_ITEMS.map((item) => (
-            <SideLink key={item.href} item={item} active={isActive(path, item.href)} collapsed={collapsed} />
+            <SideLink
+              key={item.href}
+              item={item}
+              active={isActive(path, item.href)}
+              collapsed={collapsed}
+            />
           ))}
         </ul>
       </nav>
+      <div className="mx-4 my-3 h-px bg-ink-150" aria-hidden="true" />
+      <ul className="space-y-1 px-3">
+        <li>
+          <UpdatesDrawer
+            variant="row"
+            collapsed={collapsed}
+            checkInCount={updates.checkInCount}
+            checkIns={updates.checkIns}
+            items={updates.items}
+          />
+        </li>
+        <li>
+          <a
+            href={helpHref}
+            title={collapsed ? "Get help" : undefined}
+            className={`flex min-h-12 items-center gap-3.5 rounded-xl text-[0.9375rem] font-medium text-ink-500 transition-colors hover:bg-ink-75 hover:text-ink-900 ${collapsed ? "justify-center" : "pl-5 pr-3"}`}
+          >
+            <MessageQuestion size={22} />
+            <span className={collapsed ? "sr-only" : ""}>Get help</span>
+          </a>
+        </li>
+      </ul>
+      {lowData && !collapsed ? (
+        <Link
+          href="/settings"
+          className="mx-4 mt-3 inline-flex min-h-9 items-center gap-1.5 self-start rounded-full bg-proof-50 px-3 text-xs font-semibold text-proof-700"
+          title="Data saver is on: no animations, phone fonts, fewer pictures"
+        >
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-proof-600"
+          />
+          Data saver on
+        </Link>
+      ) : null}
+      <div className="flex-1" />
 
       <div className={collapsed ? "px-3 pb-5" : "px-4 pb-5"}>
         {/* The browser extension sits above the plan card (founder, round 16). Get help is in the top bar. */}
@@ -78,17 +160,44 @@ export function Sidebar({ initialCollapsed, footer, footerCollapsed }: { initial
             <Global size={18} variant="bulk" />
           </span>
           <span className={collapsed ? "sr-only" : "min-w-0 leading-tight"}>
-            <span className="block font-semibold text-ink-900">Chrome extension</span>
-            <span className="block text-xs text-ink-500">Send any job here in one click</span>
+            <span className="block font-semibold text-ink-900">
+              Chrome extension
+            </span>
+            <span className="block text-xs text-ink-500">
+              Send any job here in one click
+            </span>
           </span>
         </Link>
         {collapsed ? footerCollapsed : footer}
+        <Link
+          href="/settings"
+          title={collapsed ? "Account and settings" : undefined}
+          className={`mt-3 flex min-h-14 items-center gap-3 rounded-2xl transition-colors hover:bg-ink-75 ${collapsed ? "justify-center" : "px-2 py-1.5"}`}
+        >
+          <Avatar name={profile.name} size={40} />
+          <span className={collapsed ? "sr-only" : "min-w-0 leading-tight"}>
+            <span className="block truncate text-sm font-semibold text-ink-900">
+              {profile.name ?? "Your account"}
+            </span>
+            <span className="block truncate text-xs text-ink-500">
+              {profile.stage ?? "Account and settings"}
+            </span>
+          </span>
+        </Link>
       </div>
     </aside>
   );
 }
 
-function SideLink({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
+function SideLink({
+  item,
+  active,
+  collapsed,
+}: {
+  item: NavItem;
+  active: boolean;
+  collapsed: boolean;
+}) {
   const Icon = ICONS[item.icon];
   return (
     <li>
@@ -105,7 +214,11 @@ function SideLink({ item, active, collapsed }: { item: NavItem; active: boolean;
           className={`absolute inset-y-0 left-0 w-[6px] origin-center bg-brand-900 transition-transform duration-300 ${active ? "scale-y-100" : "scale-y-0"}`}
           aria-hidden="true"
         />
-        <Icon size={22} variant="linear" className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${active ? "text-brand-900" : ""}`} />
+        <Icon
+          size={22}
+          variant="linear"
+          className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${active ? "text-brand-900" : ""}`}
+        />
         <span className={collapsed ? "sr-only" : ""}>{item.label}</span>
       </Link>
     </li>
@@ -113,12 +226,47 @@ function SideLink({ item, active, collapsed }: { item: NavItem; active: boolean;
 }
 
 // Phone order puts the main action in the thumb's centre.
-const MOBILE_ORDER = [NAV_ITEMS[0], NAV_ITEMS[2], NAV_ITEMS[1], NAV_ITEMS[3], NAV_ITEMS[4]];
+const MOBILE_ORDER = [
+  NAV_ITEMS[0],
+  NAV_ITEMS[2],
+  NAV_ITEMS[1],
+  NAV_ITEMS[3],
+  NAV_ITEMS[4],
+];
+
+/**
+ * "Tailor my CV" floating at the bottom right on laptops and tablets (D-160), on every
+ * screen except while applying for a job (the job flow has its own next step).
+ */
+export function TailorFab() {
+  const path = usePathname();
+  if (
+    path.startsWith("/jobs") ||
+    path.startsWith("/applications/new") ||
+    path.startsWith("/pass")
+  )
+    return null;
+  return (
+    // The sheen sets its own position, so the fixed placement sits on a wrapper.
+    <div className="fixed bottom-6 right-6 z-30 hidden lg:block">
+      <Link
+        href="/jobs/new"
+        className="cta-sheen inline-flex min-h-14 items-center gap-2 rounded-full bg-gradient-to-br from-brand-500 to-brand-800 pl-5 pr-6 text-[0.9375rem] font-semibold text-white shadow-[var(--shadow-cta)] transition-transform hover:-translate-y-0.5 active:scale-95"
+      >
+        <Magicpen size={22} variant="bulk" />
+        Tailor my CV
+      </Link>
+    </div>
+  );
+}
 
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-150 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
+    <nav
+      aria-label="Main"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-150 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+    >
       <ul className="mx-auto grid max-w-lg grid-cols-5">
         {MOBILE_ORDER.map((item) => {
           const Icon = ICONS[item.icon];
@@ -126,7 +274,11 @@ export function BottomNav() {
           if ("primary" in item && item.primary) {
             return (
               <li key={item.href} className="flex justify-center">
-                <Link href={item.href} aria-current={active ? "page" : undefined} className="-mt-6 flex min-h-16 flex-col items-center gap-1 px-1 text-xs font-semibold text-brand-700">
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className="-mt-6 flex min-h-16 flex-col items-center gap-1 px-1 text-xs font-semibold text-brand-700"
+                >
                   <span className="grid size-[52px] place-items-center rounded-[18px] bg-gradient-to-br from-brand-500 to-brand-800 text-white shadow-[var(--shadow-cta)] ring-4 ring-white transition-transform active:scale-95">
                     <Icon size={24} variant="bulk" />
                   </span>
@@ -142,7 +294,9 @@ export function BottomNav() {
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs ${active ? "font-semibold text-brand-800" : "font-medium text-ink-500"}`}
               >
-                <span className={`grid h-8 w-14 place-items-center rounded-full transition-colors duration-200 ${active ? "bg-brand-50" : ""}`}>
+                <span
+                  className={`grid h-8 w-14 place-items-center rounded-full transition-colors duration-200 ${active ? "bg-brand-50" : ""}`}
+                >
                   <Icon size={22} variant={active ? "bulk" : "linear"} />
                 </span>
                 {item.short}

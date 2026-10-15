@@ -9,7 +9,7 @@ import { defineTask, trusted, untrusted } from "../types";
 export const shortlistQuestions = defineTask({
   name: "shortlist_questions",
   model: "claude-sonnet-5-5",
-  promptVersion: "v2",
+  promptVersion: "v3",
   input: z.object({
     job: z.object({ title: z.string(), employer: z.string(), level: z.string().max(60).optional(), requirements: z.array(z.string().max(300)).max(20), post: z.string().max(8000) }),
     bullets: z.array(z.object({ id: z.string(), role: z.string(), text: z.string().max(400) })).min(1).max(40),
@@ -26,9 +26,9 @@ export const shortlistQuestions = defineTask({
         }),
       )
       .min(1)
-      .max(16),
+      .max(20),
   }),
-  maxTokens: 5000,
+  maxTokens: 6000,
   timeoutMs: 45_000,
   effort: "low",
   render: (i) => [

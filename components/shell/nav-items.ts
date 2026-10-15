@@ -2,7 +2,7 @@
 export const NAV_ITEMS = [
   { href: "/home", label: "Home", short: "Home", icon: "home" },
   { href: "/jobs/new", label: "Tailor My CV", short: "Tailor CV", icon: "tailor", primary: true },
-  { href: "/applications", label: "Applications", short: "Applied", icon: "applications" },
+  { href: "/applications", label: "My Applications", short: "Applied", icon: "applications" },
   { href: "/experience", label: "My Experience", short: "Experience", icon: "experience" },
   { href: "/settings", label: "Settings", short: "Settings", icon: "settings" },
 ] as const;

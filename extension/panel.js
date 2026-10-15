@@ -23,6 +23,8 @@ const ICON = {
   key: '<path d="M19.8 14.9a7.4 7.4 0 0 1-7.4 1.8L7.7 21.4c-.3.4-1 .6-1.6.6H3.9c-.8 0-1.5-.7-1.5-1.5v-2.2c0-.6.3-1.3.7-1.6l4.7-4.7a7.4 7.4 0 1 1 12 3Z" fill="currentColor" opacity=".35"/><path d="M14.5 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" fill="currentColor"/>',
   share: '<path d="M16.96 6.17c2 1.39 3.38 3.6 3.66 6.15M3.49 12.37A8.6 8.6 0 0 1 7.1 6.22M8.19 20.94a8.6 8.6 0 0 0 7.56.05M12.05 7.7a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94ZM4.83 19.92a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94ZM19.17 19.92a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
   close: '<path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>',
+  whatsapp: '<path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>',
+  xlogo: '<path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/>',
   external: '<path d="M13 11 21.2 2.8M22 6.8V2h-4.8M11 2H9C4 2 2 4 2 9v6c0 5 2 7 7 7h6c5 0 7-2 7-7v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
 };
 function icon(name, size = 20, cls = "") {
@@ -50,7 +52,7 @@ function h(tag, props = {}, ...kids) {
 }
 // The note that sits above an open job while you're on another page (set by showOpen).
 let keptNote = null;
-const show = (...nodes) => view.replaceChildren(...(keptNote ? [keptNote] : []), ...nodes);
+const show = (...nodes) => view.replaceChildren(...(keptNote ? [keptNote] : []), ...nodes.filter((n) => n != null && n !== false));
 
 // ---------------------------------------------------------------------------------------
 // Account
@@ -184,21 +186,20 @@ async function activeTab() {
 
 // ---------------------------------------------------------------------------------------
 // The open job (founder, round 18): once a job is scanned, it stays in the panel while you
-// browse, with its check results, until you close it. Kept for this browser session.
+// browse, with its check results, until you close it. Kept in memory only, so closing the
+// panel and opening it again starts afresh (founder, round 20).
 // ---------------------------------------------------------------------------------------
 let openJob = null; // { current, captured, view, saved }
 
 async function keepOpen(patch = {}) {
   if (!current) return;
   openJob = { ...(openJob || {}), current, captured: captured.get(keyOf(current)) || openJob?.captured || null, ...patch };
-  await chrome.storage.session.set({ openJob });
 }
 
 async function closeJob() {
   openJob = null;
   current = null;
   keptNote = null;
-  await chrome.storage.session.remove("openJob");
   scanFresh();
 }
 
@@ -455,6 +456,68 @@ async function readCaptured() {
 }
 
 /** Share the verdict (D-147): a public link with the job and what was checked, never who checked it. */
+// ---------------------------------------------------------------------------------------
+// How well you match (D-164): the same fit check and percentage as the app
+// ---------------------------------------------------------------------------------------
+function ring(pct) {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const tone = pct >= 70 ? "var(--proof)" : pct >= 45 ? "var(--care)" : "#64748b";
+  const wrap = h("span", { class: "ring", role: "img", "aria-label": `${pct}% match` });
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 64 64");
+  svg.setAttribute("width", "64");
+  svg.setAttribute("height", "64");
+  svg.setAttribute("aria-hidden", "true");
+  const circle = (stroke, dash) => {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    for (const [k, val] of Object.entries({ cx: 32, cy: 32, r, fill: "none", stroke, "stroke-width": 6, "stroke-linecap": "round", transform: "rotate(-90 32 32)" })) el.setAttribute(k, val);
+    if (dash !== undefined) {
+      el.setAttribute("stroke-dasharray", String(c));
+      el.setAttribute("stroke-dashoffset", String(dash));
+    }
+    return el;
+  };
+  svg.append(circle("#e2e8f0"), circle(tone, c * (1 - pct / 100)));
+  wrap.append(svg, h("span", { class: "ring-pct" }, `${pct}%`));
+  return wrap;
+}
+
+function fitBox(c) {
+  const box = h("section", { class: "card" });
+  const showResult = (f) =>
+    box.replaceChildren(
+      h("p", { class: "eyebrow" }, "Your match"),
+      h(
+        "div",
+        { class: "fit-row" },
+        f.pct === null || f.pct === undefined ? null : ring(f.pct),
+        h("div", {}, h("p", { class: "fit-label" }, f.label), h("p", { class: "small muted" }, `${f.met} of ${f.total} requirements met`)),
+      ),
+      f.line ? h("p", { class: "small", style: "margin-top:8px;color:var(--ink-2)" }, f.line) : null,
+      f.gaps && f.gaps.length ? h("p", { class: "small muted", style: "margin-top:6px" }, `Missing: ${f.gaps.join("; ")}`) : null,
+      h("button", { class: "btn ghost", type: "button", style: "margin-top:6px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/check` }) }, icon("external", 16), "Open the full fit check"),
+    );
+  const run = async () => {
+    box.replaceChildren(h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("p", {}, "Comparing the job with your experience")));
+    try {
+      const f = await api("/api/ext/fit", { jobId: c.jobId });
+      keepOpen({ fit: f });
+      showResult(f);
+    } catch (e) {
+      box.replaceChildren(h("p", { class: "error" }, e.message || "We couldn't check your match."), h("button", { class: "btn outline", type: "button", style: "margin-top:8px", onclick: run }, "Try again"));
+    }
+  };
+  if (openJob?.fit) showResult(openJob.fit);
+  else
+    box.replaceChildren(
+      h("p", { class: "eyebrow" }, "Your match"),
+      h("p", { class: "small muted", style: "margin-top:2px" }, "See what percentage of this job's requirements your experience meets."),
+      h("button", { class: "btn primary", type: "button", style: "margin-top:10px", onclick: run }, icon("magic", 18), "See how well I match"),
+    );
+  return box;
+}
+
 function shareBox(c, v) {
   const box = h("section", { class: "card" });
   const make = async () => {
@@ -470,8 +533,8 @@ function shareBox(c, v) {
         h(
           "div",
           { class: "row", style: "margin-top:10px" },
-          h("button", { class: "btn wa", type: "button", onclick: () => chrome.tabs.create({ url: wa }) }, "WhatsApp"),
-          h("button", { class: "btn xbtn", type: "button", onclick: () => chrome.tabs.create({ url: x }) }, "Post on X"),
+          h("button", { class: "btn wa", type: "button", onclick: () => chrome.tabs.create({ url: wa }) }, icon("whatsapp", 18), "WhatsApp"),
+          h("button", { class: "btn xbtn", type: "button", onclick: () => chrome.tabs.create({ url: x }) }, icon("xlogo", 15), "Post on X"),
         ),
         h(
           "button",
@@ -532,6 +595,7 @@ function results(c, v) {
       ),
       h("p", { class: "small muted", style: "margin-top:10px" }, "We describe what we found online. We can't prove a job is real, so never pay to apply and never share your BVN or bank PIN."),
     ),
+    c.jobId ? fitBox(c) : null,
     shareBox(c, v),
     h("section", { class: "row" }, h("button", { class: "btn outline", type: "button", onclick: save }, icon("bookmark", 18), "Save"), h("button", { class: "btn primary", type: "button", onclick: tailor }, icon("magic", 18), "Tailor my CV")),
     h("button", { class: "btn ghost", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/real` }) }, icon("external", 16), "Open the full check in Receipts"),
@@ -561,7 +625,8 @@ async function start() {
     return;
   }
   if (await takePending()) return;
-  ({ openJob } = await chrome.storage.session.get("openJob"));
+  // Versions before round 20 kept the open job for the browser session; clear what they left.
+  await chrome.storage.session.remove("openJob");
   await scan();
 }
 

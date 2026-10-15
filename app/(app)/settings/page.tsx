@@ -11,7 +11,7 @@ import { marketsLabel } from "@/lib/markets";
 
 export const metadata: Metadata = { title: "Settings" };
 
-function Row({ href, icon, title, body }: { href?: string; icon: React.ReactNode; title: string; body: string }) {
+function Row({ href, icon, title, body, className }: { href?: string; icon: React.ReactNode; title: string; body: string; className?: string }) {
   const inner = (
     <>
       <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">{icon}</span>
@@ -27,7 +27,7 @@ function Row({ href, icon, title, body }: { href?: string; icon: React.ReactNode
     </>
   );
   const cls = "group flex min-h-[76px] items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors";
-  return <li>{href ? <Link href={href} className={`${cls} hover:bg-ink-50`}>{inner}</Link> : <div className={cls}>{inner}</div>}</li>;
+  return <li className={className}>{href ? <Link href={href} className={`${cls} hover:bg-ink-50`}>{inner}</Link> : <div className={cls}>{inner}</div>}</li>;
 }
 
 export default async function SettingsPage() {
@@ -37,7 +37,22 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-3">
-      <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Settings</h1>
+      {/* Laptops and tablets: the extension sits beside the heading, on the other side. Phones: in the list below. */}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Settings</h1>
+        <Link
+          href="/extension"
+          className="hidden min-h-12 items-center gap-2.5 rounded-2xl border border-ink-150 bg-white py-1.5 pl-1.5 pr-4 text-sm shadow-card transition-colors hover:border-brand-200 hover:bg-brand-50 lg:inline-flex"
+        >
+          <span className="grid size-9 place-items-center rounded-xl bg-brand-50 text-brand-700">
+            <Global size={20} variant="bulk" />
+          </span>
+          <span className="leading-tight">
+            <span className="block font-semibold text-ink-900">Chrome extension</span>
+            <span className="block text-xs text-ink-500">Send any job here in one click</span>
+          </span>
+        </Link>
+      </div>
 
       <section className="relative flex animate-rise items-center gap-4 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 pr-16 shadow-card sm:pr-5">
         {/* No avatar on phones: the name and details get the full width. */}
@@ -70,7 +85,7 @@ export default async function SettingsPage() {
               <DataSaverSwitch initial={viewer.lowDataMode} icon={<Mobile size={20} />} />
             </li>
             <Row href="/pass" icon={<Crown1 size={20} />} title="Pass and payments" body="Your pass, receipts and the refund rule." />
-            <Row href="/extension" icon={<Global size={20} />} title="Chrome extension" body="On a laptop or tablet: send any job you're looking at here in one click." />
+            <Row className="lg:hidden" href="/extension" icon={<Global size={20} />} title="Chrome extension" body="On a laptop or tablet: send any job you're looking at here in one click." />
           </ul>
         </section>
 

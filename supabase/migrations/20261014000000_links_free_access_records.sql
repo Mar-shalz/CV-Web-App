@@ -193,3 +193,10 @@ create index if not exists jobs_user_state_idx on public.jobs (user_id, state);
 create index if not exists applications_job_idx on public.applications (job_id);
 create index if not exists cv_versions_user_job_idx on public.cv_versions (user_id, job_id, created_at desc);
 create index if not exists vault_items_role_idx on public.vault_items (role_id);
+
+-- 19. Profile summary, skills and referees on My Experience, and skills added while
+-- checking a job (founder round 20, D-162). Owner only, through the profiles policies.
+alter table public.profiles add column if not exists summary text check (summary is null or char_length(summary) <= 1500);
+alter table public.profiles add column if not exists skills text[] not null default '{}';
+alter table public.profiles add column if not exists referees jsonb not null default '[]'::jsonb;
+alter table public.profiles add column if not exists added_skills jsonb not null default '[]'::jsonb;

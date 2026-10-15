@@ -33,6 +33,10 @@ const opSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("original"), bulletId: z.string() }),
   z.object({ kind: z.literal("vault"), bulletId: z.string() }),
   z.object({ kind: z.literal("include"), field: z.enum(["date_of_birth"]), on: z.boolean() }),
+  // Suggestions take effect only when accepted (D-163).
+  z.object({ kind: z.literal("accept"), bulletId: z.string() }),
+  z.object({ kind: z.literal("accept_all") }),
+  z.object({ kind: z.literal("summary"), choice: z.enum(["suggested", "own", "edit"]), text: z.string().trim().max(640).optional() }),
 ]);
 export type CvOp = z.infer<typeof opSchema>;
 export type EditResult = { ok: true; doc: CvDoc; cvId: string; newFacts: string[] } | { ok: false; error: string };
@@ -64,23 +68,39 @@ export async function editCv(cvId: string, rawOp: CvOp): Promise<EditResult> {
   if (o.kind === "include") {
     doc = { ...doc, include: { ...doc.include, [o.field]: o.on } };
     if (o.on) await supabase.from("consents").insert({ user_id: viewer.id, type: "sensitive_details", version: `export:${cvId}:${o.field}`, granted_at: new Date().toISOString() });
+  } else if (o.kind === "accept_all") {
+    doc = { ...doc, sections: doc.sections.map((s) => (s.kind === "roles" ? { ...s, roles: s.roles.map((r) => ({ ...r, bullets: r.bullets.map((b) => ({ ...b, pending: false })) })) } : s)) };
+    await track("claim_review_completed", { confirmed: 1, edited: 0, reverted: 0 }, viewer.id);
+  } else if (o.kind === "summary") {
+    const own = doc.summary.own ?? "";
+    if (o.choice === "own") doc = { ...doc, summary: { ...doc.summary, text: own, flags: [], confirmed: true } };
+    else if (o.choice === "suggested") doc = { ...doc, summary: { ...doc.summary, confirmed: true } };
+    else {
+      const text = (o.text ?? "").replace(/\s*\u2014\s*/g, ", ");
+      if (text.length < 20) return { ok: false, error: "Write at least a sentence for your summary." };
+      // Checked against the items the summary used and the person's own summary.
+      const srcs = [...doc.summary.sourceItemIds.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s)), ...(own ? [{ id: "own:summary", text: own, sourceQuote: own, metrics: [], ownership: "did" as const, skills: [], role: { kind: "profile", organisation: null, title: null, location: null, start: null, end: null, grade: null } }] : [])];
+      doc = { ...doc, summary: { ...doc.summary, text, flags: lockLine(text, srcs.length ? srcs : [...sources.values()]).map((f) => ({ ...f, status: "open" as const })), confirmed: true } };
+    }
   } else {
     const found = findBullet(doc, o.bulletId);
     if (!found) return { ok: false, error: "That line is no longer on this CV." };
     const { bullet, roleId } = found;
-    if (o.kind === "resolve") {
+    if (o.kind === "accept") {
+      doc = updateBullet(doc, o.bulletId, (b) => ({ ...b, pending: false }));
+    } else if (o.kind === "resolve") {
       for (const f of bullet.flags.filter((x) => x.status === "open")) await track("flag_resolved", { type: f.type, action: o.action }, viewer.id);
       doc = o.action === "removed" ? updateBullet(doc, o.bulletId, () => null) : updateBullet(doc, o.bulletId, (b) => ({ ...b, flags: b.flags.map((f) => ({ ...f, status: f.status === "open" ? "kept" : f.status })) }));
     } else if (o.kind === "original") {
       const flags = mergeFlags(bullet.flags, relock(bullet.original, bullet.sourceItemIds));
-      doc = updateBullet(doc, o.bulletId, (b) => ({ ...b, text: b.original, rewriteType: "kept", flags }));
+      doc = updateBullet(doc, o.bulletId, (b) => ({ ...b, text: b.original, rewriteType: "kept", flags, pending: false }));
       await track("claim_review_completed", { confirmed: 0, edited: 0, reverted: 1 }, viewer.id);
     } else if (o.kind === "edit") {
       const next = relock(o.text, bullet.sourceItemIds);
       const flags = mergeFlags(bullet.flags, next);
       newFacts = next.filter((f) => f.type !== "phrase" && f.type !== "ownership" && f.type !== "approximate").map((f) => f.token);
       for (const f of bullet.flags.filter((x) => x.status === "open" && !next.some((n) => n.type === x.type && n.token === x.token))) await track("flag_resolved", { type: f.type, action: "fixed" }, viewer.id);
-      doc = updateBullet(doc, o.bulletId, (b) => ({ ...b, text: o.text, rewriteType: "reworded", flags }));
+      doc = updateBullet(doc, o.bulletId, (b) => ({ ...b, text: o.text, rewriteType: "reworded", flags, pending: false }));
       await track("claim_review_completed", { confirmed: 0, edited: 1, reverted: 0 }, viewer.id);
     } else if (o.kind === "vault") {
       // The user says the new detail is true: it joins their vault in their own words.

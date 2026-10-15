@@ -1,4 +1,5 @@
 import "server-only";
+import { getExtras } from "@/lib/vault/extras";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -63,7 +64,8 @@ export async function generateForJob(viewer: Viewer, job: JobView): Promise<Gene
 
   const vault = await getVault(viewer);
   if (vault.confirmedItems === 0) return { ok: false, reason: "no_items", error: "Confirm a few achievements in My experience first. Your CV is written only from them." };
-  const { doc, generated, violations } = await buildCv(viewer, job, vault, await getContact(viewer));
+  const [contact, extras] = await Promise.all([getContact(viewer), getExtras(viewer)]);
+  const { doc, generated, violations } = await buildCv(viewer, job, vault, contact, { extras });
 
   const supabase = await createClient();
   const { data, error } = await supabase.from("cv_versions").insert({ user_id: viewer.id, job_id: job.id, format_profile: doc.format, content: doc }).select("id").single();
@@ -76,7 +78,7 @@ export async function generateForJob(viewer: Viewer, job: JobView): Promise<Gene
   }
   const bullets = doc.sections.flatMap((s) => (s.kind === "roles" ? s.roles.flatMap((r) => r.bullets) : []));
   await track("cv_generated", { format: doc.format, bullets_changed: bullets.filter((b) => b.rewriteType !== "kept").length }, viewer.id);
-  for (const v of violations) await track("fact_lock_violation", { type: v.split(":")[1]?.trim().split(" ")[0] ?? "unknown", prompt_version: "tailor_cv/v1" }, viewer.id);
+  for (const v of violations) await track("fact_lock_violation", { type: v.split(":")[1]?.trim().split(" ")[0] ?? "unknown", prompt_version: "tailor_cv/v2" }, viewer.id);
   for (const f of bullets.flatMap((b) => b.flags)) await track("flag_shown", { type: f.type }, viewer.id);
   void generated;
   return { ok: true, cvId: data.id };

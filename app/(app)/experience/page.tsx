@@ -3,6 +3,8 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { getVault } from "@/lib/vault/data";
+import { getExtras } from "@/lib/vault/extras";
+import { CvExtrasPanel } from "@/components/vault/cv-extras";
 import { RoleCard } from "@/components/vault/role-card";
 import { ReadinessMeter, VaultActions } from "@/components/vault/vault-header";
 import lazy from "next/dynamic";
@@ -26,7 +28,7 @@ const GROUPS = [
 export default async function VaultPage({ searchParams }: { searchParams: Promise<{ preview?: string }> }) {
   const viewer = await requireReadyViewer();
   const { preview } = await searchParams;
-  const vault = await getVault(viewer);
+  const [vault, extras] = await Promise.all([getVault(viewer), getExtras(viewer)]);
   const empty = vault.roles.length === 0 || preview === "empty";
 
   if (empty) {
@@ -109,6 +111,25 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
           </details>
         );
       })}
+
+      {/* Profile summary, skills and referees (D-162), folding like the sections above. */}
+      <details open style={{ "--i": 3 + GROUPS.length } as CSSProperties} className="group/section">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-2xl bg-white px-4 py-2.5 shadow-card ring-1 ring-ink-150 transition-colors hover:bg-ink-50 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand-500 group-open/section:rounded-b-xl [&::-webkit-details-marker]:hidden">
+          <h2 className="text-base font-semibold text-ink-900">Summary, Skills and Referees</h2>
+          <span className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-ink-75 px-3 text-sm font-semibold text-ink-700">
+            <span className="group-open/section:hidden">Show</span>
+            <span className="hidden group-open/section:inline">Hide</span>
+            <ArrowDown2 size={16} className="transition-transform duration-200 group-open/section:rotate-180" />
+          </span>
+        </summary>
+        <div className="mt-3">
+          {extras.ready ? (
+            <CvExtrasPanel extras={extras} />
+          ) : (
+            <p className="rounded-2xl bg-care-50 p-4 text-sm text-care-700">Your summary, skills and referees need the latest database update. Ask the team to run it.</p>
+          )}
+        </div>
+      </details>
 
       <p className="flex items-center gap-2 text-[0.8125rem] text-ink-500">
         <ShieldTick size={18} className="shrink-0" />

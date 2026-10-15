@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { getJob } from "@/lib/jobs/data";
-import { quickCheck } from "@/lib/legitimacy";
+import { quickCheck, savedCheck } from "@/lib/legitimacy";
+import { createClient } from "@/lib/supabase/server";
 import { ScamCheck } from "@/components/flow/scam-check";
 import { buttonClass } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Building, Location, Magicpen, ShieldSearch } from "@/components/icons";
@@ -15,6 +16,7 @@ export default async function JobRealPage({ params }: { params: Promise<{ id: st
   const job = await getJob(viewer, id);
   const p = job.parsed;
   const quick = quickCheck(job.rawText ?? "", p);
+  const saved = viewer.preview ? null : await savedCheck(await createClient(), job.id, job.rawText ?? "", p);
 
   return (
     <div className="mx-auto max-w-3xl space-y-3">
@@ -38,7 +40,7 @@ export default async function JobRealPage({ params }: { params: Promise<{ id: st
           ) : null}
         </ul>
       </header>
-      <ScamCheck jobId={job.id} initial={quick} large title={job.parsed.title} employer={job.parsed.employer_name} />
+      <ScamCheck jobId={job.id} initial={saved ?? quick} ready={Boolean(saved)} large title={job.parsed.title} employer={job.parsed.employer_name} />
       <div className="flex flex-col gap-2 sm:flex-row">
         <Link href={`/jobs/${job.id}`} className={buttonClass("primary", "lg", "w-full sm:w-auto")}>
           <Magicpen size={20} variant="bulk" />
