@@ -22,6 +22,7 @@ const ICON = {
   user: '<path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" fill="currentColor" opacity=".4"/><path d="M20.6 22c0-3.9-3.9-7-8.6-7s-8.6 3.1-8.6 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>',
   key: '<path d="M19.8 14.9a7.4 7.4 0 0 1-7.4 1.8L7.7 21.4c-.3.4-1 .6-1.6.6H3.9c-.8 0-1.5-.7-1.5-1.5v-2.2c0-.6.3-1.3.7-1.6l4.7-4.7a7.4 7.4 0 1 1 12 3Z" fill="currentColor" opacity=".35"/><path d="M14.5 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" fill="currentColor"/>',
   share: '<path d="M16.96 6.17c2 1.39 3.38 3.6 3.66 6.15M3.49 12.37A8.6 8.6 0 0 1 7.1 6.22M8.19 20.94a8.6 8.6 0 0 0 7.56.05M12.05 7.7a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94ZM4.83 19.92a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94ZM19.17 19.92a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+  close: '<path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>',
   external: '<path d="M13 11 21.2 2.8M22 6.8V2h-4.8M11 2H9C4 2 2 4 2 9v6c0 5 2 7 7 7h6c5 0 7-2 7-7v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
 };
 function icon(name, size = 20, cls = "") {
@@ -47,7 +48,9 @@ function h(tag, props = {}, ...kids) {
   for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(typeof kid === "string" ? document.createTextNode(kid) : kid);
   return el;
 }
-const show = (...nodes) => view.replaceChildren(...nodes);
+// The note that sits above an open job while you're on another page (set by showOpen).
+let keptNote = null;
+const show = (...nodes) => view.replaceChildren(...(keptNote ? [keptNote] : []), ...nodes);
 
 // ---------------------------------------------------------------------------------------
 // Account
@@ -167,7 +170,7 @@ function scanning() {
     h(
       "section",
       { class: "card" },
-      h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("p", {}, h("strong", {}, "Reading this page"))),
+      h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("p", {}, h("strong", {}, "Scanning this page"))),
       h("div", { class: "skeleton", style: "margin-top:14px;width:80%" }),
       h("div", { class: "skeleton", style: "margin-top:8px;width:55%" }),
     ),
@@ -179,8 +182,54 @@ async function activeTab() {
   return tab;
 }
 
+// ---------------------------------------------------------------------------------------
+// The open job (founder, round 18): once a job is scanned, it stays in the panel while you
+// browse, with its check results, until you close it. Kept for this browser session.
+// ---------------------------------------------------------------------------------------
+let openJob = null; // { current, captured, view, saved }
+
+async function keepOpen(patch = {}) {
+  if (!current) return;
+  openJob = { ...(openJob || {}), current, captured: captured.get(keyOf(current)) || openJob?.captured || null, ...patch };
+  await chrome.storage.session.set({ openJob });
+}
+
+async function closeJob() {
+  openJob = null;
+  current = null;
+  keptNote = null;
+  await chrome.storage.session.remove("openJob");
+  scanFresh();
+}
+
+/** The open job again, with a note when the page you're on isn't where you scanned it. */
+async function showOpen() {
+  current = openJob.current;
+  if (openJob.captured) captured.set(keyOf(current), openJob.captured);
+  const tab = await activeTab();
+  const elsewhere = tab?.url && tab.url.split("#")[0] !== current.url.split("#")[0];
+  keptNote = elsewhere
+    ? h(
+        "section",
+        { class: "kept" },
+        h("p", {}, h("strong", {}, "Still showing the job you scanned"), ` on ${current.host}. It stays here until you close it.`),
+        h("button", { class: "btn ghost small-btn", type: "button", onclick: () => ((keptNote = null), closeJob()) }, icon("scan", 16), "Scan this page instead"),
+      )
+    : null;
+  if (openJob.view && openJob.captured) return results(openJob.captured, openJob.view);
+  return jobCard();
+}
+
+/** Tab or page changes: keep the open job, otherwise read the new page. */
 async function scan() {
   if (!token) return signedOut();
+  if (openJob) return showOpen();
+  return scanFresh();
+}
+
+async function scanFresh() {
+  if (!token) return signedOut();
+  keptNote = null;
   // Permission first: until Chrome grants it, it hides the page's address from us, so any
   // check on the address would wrongly say "no job here" (founder, round 17).
   if (!(await hasAllSites())) return allowCard();
@@ -210,7 +259,7 @@ function emptyCard(title, body, canScan = false) {
       h("h1", {}, title),
       h("p", {}, body),
       canScan ? h("button", { class: "btn primary", type: "button", onclick: scanScreen }, icon("scan", 20), "Scan the screen") : null,
-      h("button", { class: `btn ${canScan ? "ghost" : "primary"}`, type: "button", onclick: scan }, "Read this page"),
+      h("button", { class: `btn ${canScan ? "ghost" : "primary"}`, type: "button", onclick: scanFresh }, "Scan this page"),
     ),
   );
 }
@@ -241,7 +290,7 @@ function jobCard(note) {
     h(
       "section",
       { class: "card job" },
-      h("p", { class: "eyebrow" }, "Job on this page"),
+      h("div", { class: "card-top" }, h("p", { class: "eyebrow" }, "Job you scanned"), h("button", { class: "close", type: "button", onclick: closeJob, "aria-label": "Close this job", title: "Close this job" }, icon("close", 16), "Close")),
       h("div", { class: "job-head" }, h("span", { class: "job-icon" }, icon("briefcase", 22)), h("div", {}, h("p", { class: "job-title" }, title), employer || place ? h("p", { class: "job-meta" }, [employer, place].filter(Boolean).join(" · ")) : null)),
       h("div", { class: "chips" }, h("span", { class: "chip good" }, icon("tick", 14), SOURCE_LABEL[current.source] || "Job found"), h("span", { class: "chip" }, current.host)),
       note ? h("p", { class: "small muted" }, note) : null,
@@ -252,8 +301,9 @@ function jobCard(note) {
       h("button", { class: "btn primary", type: "button", onclick: checkReal }, icon("shield", 20), "Is this job real?"),
       h("div", { class: "row" }, h("button", { class: "btn outline", type: "button", onclick: tailor }, icon("magic", 18), "Tailor my CV"), h("button", { class: "btn outline", type: "button", onclick: save }, icon("bookmark", 18), "Save for later")),
     ),
-    h("p", { class: "foot" }, "Not the right job? Highlight its text on the page, then ", h("a", { class: "link", href: "#", onclick: (e) => (e.preventDefault(), scan()) }, "read it again"), "."),
+    h("p", { class: "foot" }, "Not the right job? Highlight its text on the page, then ", h("a", { class: "link", href: "#", onclick: (e) => (e.preventDefault(), closeJob()) }, "scan again"), "."),
   );
+  keepOpen();
 }
 
 function noJobCard() {
@@ -263,8 +313,8 @@ function noJobCard() {
       "section",
       { class: "card" },
       h("h2", {}, "No job advert found here"),
-      h("p", { class: "muted small", style: "margin-top:4px" }, "If the job is in a picture, or the page hides it, scan what's on your screen. You can also highlight the job's text and read it again."),
-      h("div", { class: "actions", style: "margin-top:12px" }, h("button", { class: "btn primary", type: "button", onclick: scanScreen }, icon("scan", 20), "Scan the screen"), h("button", { class: "btn ghost", type: "button", onclick: scan }, "Read the page again")),
+      h("p", { class: "muted small", style: "margin-top:4px" }, "If the job is in a picture, or the page hides it, scan what's on your screen. You can also highlight the job's text and scan again."),
+      h("div", { class: "actions", style: "margin-top:12px" }, h("button", { class: "btn primary", type: "button", onclick: scanScreen }, icon("scan", 20), "Scan the screen"), h("button", { class: "btn ghost", type: "button", onclick: scanFresh }, "Scan this page again")),
     ),
     imgs.length
       ? h(
@@ -349,6 +399,7 @@ async function save() {
     const c = await ensureCaptured();
     await api("/api/ext/save", { jobId: c.jobId });
     stop();
+    keepOpen({ saved: true });
     show(
       h(
         "section",
@@ -357,7 +408,7 @@ async function save() {
         h("h1", {}, "Saved for later"),
         h("p", {}, `${c.title || "This job"}${c.employer ? ` at ${c.employer}` : ""} is in your Applications, under Saved for later.`),
         h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/applications?status=saved` }) }, icon("external", 18), "See it in Receipts"),
-        h("button", { class: "btn ghost", type: "button", onclick: jobCard.bind(null, undefined) }, "Back"),
+        h("button", { class: "btn ghost", type: "button", onclick: () => (openJob?.view ? results(openJob.captured, openJob.view) : jobCard()) }, "Back to the job"),
       ),
     );
   } catch (e) {
@@ -391,6 +442,7 @@ async function readText(text, pageUrl) {
 
 /** Images and highlights are read on our side first, so the card can show the real title. */
 async function readCaptured() {
+  keptNote = null;
   const stop = busy("Reading the job", ["Reading the words", "Finding the title and employer"]);
   try {
     await ensureCaptured();
@@ -416,11 +468,28 @@ function shareBox(c, v) {
         h("p", { class: "eyebrow" }, "Share the check"),
         h("p", { class: "small muted", style: "margin-top:2px" }, "Shows the job and what we found. Never your name or details."),
         h(
-          "div",
-          { class: "row", style: "margin-top:10px" },
-          h("button", { class: "btn wa", type: "button", onclick: () => chrome.tabs.create({ url: wa }) }, "WhatsApp"),
-          h("button", { class: "btn xbtn", type: "button", onclick: () => chrome.tabs.create({ url: x }) }, "Post on X"),
+          "button",
+          {
+            class: "btn wa",
+            type: "button",
+            style: "margin-top:10px",
+            // The picture card (D-154): saved to the computer, then WhatsApp opens with the words.
+            onclick: async () => {
+              try {
+                const blob = await (await fetch(`${res.url}/card`)).blob();
+                const file = new File([blob], "job-check.png", { type: "image/png" });
+                if (navigator.canShare?.({ files: [file] })) return void (await navigator.share({ files: [file], text: `${res.text} ${res.url}` }));
+                const a = h("a", { href: URL.createObjectURL(blob), download: "job-check.png" });
+                a.click();
+                chrome.tabs.create({ url: wa });
+              } catch {
+                chrome.tabs.create({ url: wa });
+              }
+            },
+          },
+          "Share as a picture on WhatsApp",
         ),
+        h("div", { class: "row", style: "margin-top:8px" }, h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: wa }) }, "WhatsApp link"), h("button", { class: "btn xbtn", type: "button", onclick: () => chrome.tabs.create({ url: x }) }, "Post on X")),
         h(
           "button",
           {
@@ -452,8 +521,14 @@ const CHECK = { pass: { icon: "tick", cls: "pass", word: "Yes" }, fail: { icon: 
 function results(c, v) {
   const s = STATE[v.state] || STATE.unverified;
   const flags = (v.signals || []).filter((x) => String(x.id).startsWith("L1") && x.severity !== "info");
+  keepOpen({ view: v });
   show(
-    h("section", { class: "card job" }, h("div", { class: "job-head" }, h("span", { class: "job-icon" }, icon("briefcase", 22)), h("div", {}, h("p", { class: "job-title" }, c.title || current.title || "This job"), c.employer ? h("p", { class: "job-meta" }, c.employer) : null))),
+    h(
+      "section",
+      { class: "card job" },
+      h("div", { class: "card-top" }, h("p", { class: "eyebrow" }, `Job you scanned · ${current.host}`), h("button", { class: "close", type: "button", onclick: closeJob, "aria-label": "Close this job", title: "Close this job" }, icon("close", 16), "Close")),
+      h("div", { class: "job-head" }, h("span", { class: "job-icon" }, icon("briefcase", 22)), h("div", {}, h("p", { class: "job-title" }, c.title || current.title || "This job"), c.employer ? h("p", { class: "job-meta" }, c.employer) : null)),
+    ),
     h(
       "section",
       { class: "card" },
@@ -500,7 +575,9 @@ async function start() {
     if (e.message !== "signin") offline(e.message === "Failed to fetch" ? null : e.message);
     return;
   }
-  if (!(await takePending())) await scan();
+  if (await takePending()) return;
+  ({ openJob } = await chrome.storage.session.get("openJob"));
+  await scan();
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {

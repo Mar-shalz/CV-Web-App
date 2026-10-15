@@ -79,12 +79,20 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
     <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
       <article aria-label="Your tailored CV" className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10" style={{ fontFamily: style === "executive" ? "'Times New Roman', Times, serif" : "Helvetica, Arial, sans-serif" }}>
         {/* The preview follows the chosen design (D-142). */}
-        <header className={style === "modern" ? "pb-4 text-left" : `pb-4 text-center ${style === "executive" ? "border-b-4 border-double border-ink-900" : "border-b-2 border-brand-900"}`}>
-          <h2 className={style === "modern" ? "text-[2rem] font-bold text-brand-600" : "text-[1.75rem] font-bold uppercase tracking-[0.06em] text-ink-900"}>{doc.name}</h2>
+        <header
+          className={
+            style === "signature"
+              ? "-mx-5 -mt-7 mb-2 rounded-t-[18px] border-b-4 border-[#0a7878] bg-[#0a3340] px-5 pb-5 pt-6 text-left sm:-mx-10 sm:-mt-10 sm:px-10"
+              : style === "modern"
+                ? "pb-4 text-left"
+                : `pb-4 text-center ${style === "executive" ? "border-b-4 border-double border-ink-900" : "border-b-2 border-brand-900"}`
+          }
+        >
+          <h2 className={style === "signature" ? "text-[2rem] font-bold text-white" : style === "modern" ? "text-[2rem] font-bold text-brand-600" : "text-[1.75rem] font-bold uppercase tracking-[0.06em] text-ink-900"}>{doc.name}</h2>
           {doc.titleLine ? (
-            <p className={`mt-1 inline-block rounded px-1 text-[0.9375rem] font-semibold text-brand-800 ${doc.titleFlags.some((f) => f.status === "open") ? "bg-care-100" : ""}`}>{doc.titleLine}</p>
+            <p className={`mt-1 inline-block rounded px-1 text-[0.9375rem] font-semibold ${style === "signature" ? "text-[#bde6e6]" : "text-brand-800"} ${doc.titleFlags.some((f) => f.status === "open") ? "bg-care-100 text-care-800" : ""}`}>{doc.titleLine}</p>
           ) : null}
-          <p className="mt-2 text-[0.8125rem] text-ink-600">{doc.contactLine.split(" · ").join("  |  ")}</p>
+          <p className={`mt-2 text-[0.8125rem] ${style === "signature" ? "text-white/80" : "text-ink-600"}`}>{doc.contactLine.split(" · ").join("  |  ")}</p>
           {doc.include.date_of_birth ? <p className="text-[0.8125rem] text-ink-600">Date of birth: added at download</p> : null}
         </header>
         {doc.summary.text ? (

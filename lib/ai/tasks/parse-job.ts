@@ -6,7 +6,7 @@ import { jobSchema } from "@/lib/jobs/schema";
 export const parseJob = defineTask({
   name: "parse_job",
   model: "claude-haiku-5-5",
-  promptVersion: "v1",
+  promptVersion: "v2",
   input: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("text"), text: z.string().min(20).max(40_000), postHash: z.string(), today: z.string() }),
     z.object({ kind: z.literal("pdf"), base64: z.string(), postHash: z.string(), today: z.string() }),

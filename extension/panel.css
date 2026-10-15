@@ -55,6 +55,14 @@ p { margin: 0; }
 .muted { color: var(--muted); }
 .small { font-size: 12.5px; }
 
+/* The open job: a Close button on its card, and a note when you're on another page */
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.close { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink-2); font-size: 12.5px; font-weight: 650; }
+.close:hover { background: var(--flag-soft); border-color: #f5c2bd; color: var(--flag); }
+.kept { display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; background: var(--brand-soft); border: 1px solid var(--brand-line); color: var(--brand-dark); font-size: 12.5px; animation: rise 0.28s ease-out both; }
+.kept strong { font-weight: 700; }
+.small-btn { min-height: 34px; justify-content: flex-start; padding: 0 8px; font-size: 12.5px; color: var(--brand-dark); }
+
 /* The job card */
 .job { display: grid; gap: 10px; }
 .job-head { display: flex; gap: 12px; align-items: flex-start; }

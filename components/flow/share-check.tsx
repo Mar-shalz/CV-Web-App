@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { shareCheck } from "@/app/(app)/jobs/actions";
 import { toast } from "@/components/ui/toaster";
-import { Share, Copy, Messages3 } from "@/components/icons";
+import { Share, Copy, Messages3, Gallery } from "@/components/icons";
 import { Spinner } from "@/components/ui/pending-button";
 
 type Verdict = "verified" | "unverified" | "red_flags";
@@ -42,15 +42,47 @@ export function ShareCheck({ jobId, state, title, employer }: { jobId: string; s
     );
 
   const whatsapp = `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`;
+
+  /**
+   * The picture card (D-154). On phones the share sheet sends the picture and the words
+   * together (pick WhatsApp). On laptops, which can't hand a picture to WhatsApp, the
+   * picture is saved and WhatsApp opens with the words ready.
+   */
+  const sharePicture = async () => {
+    setError(null);
+    try {
+      const res = await fetch(`${url}/card`);
+      if (!res.ok) throw new Error("card");
+      const blob = await res.blob();
+      const file = new File([blob], "job-check.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: `${text} ${url}` });
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "job-check.png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast("Picture saved. Attach it in WhatsApp.");
+      window.open(whatsapp, "_blank", "noopener");
+    } catch (e) {
+      if ((e as Error)?.name !== "AbortError") setError("We couldn't make the picture. Share the link instead.");
+    }
+  };
   const x = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
   return (
     <div className="animate-rise rounded-2xl bg-ink-50 p-3">
       <p className="text-[0.8125rem] font-semibold text-ink-900">Share the check</p>
-      <p className="text-xs text-ink-500">The link shows the job and what we found. Never your name or details.</p>
-      <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#1f9d55] px-3 text-sm font-semibold text-white hover:bg-[#188247]">
+      <p className="text-xs text-ink-500">The picture and link show the job and what we found. Never your name or details.</p>
+      <button type="button" onClick={sharePicture} className="mt-2.5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1f9d55] px-4 text-sm font-semibold text-white hover:bg-[#188247]">
+        <Gallery size={20} variant="bulk" />
+        Share as a picture on WhatsApp
+      </button>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-semibold text-[#188247] ring-1 ring-[#1f9d55]/40 hover:bg-[#e8f7ef]">
           <Messages3 size={18} variant="bulk" />
-          WhatsApp
+          WhatsApp link
         </a>
         <a href={x} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-ink-900 px-3 text-sm font-semibold text-white hover:bg-ink-800">
           <span aria-hidden="true" className="font-bold">𝕏</span>

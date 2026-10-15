@@ -82,6 +82,38 @@ export async function wikidataCompany(name: string | null | undefined): Promise<
   return null;
 }
 
+/**
+ * DuckDuckGo's instant answer (D-152): free, no key, built on Wikipedia and official site
+ * data. Catches companies Wikidata misses (Kuda, for one). Only an exact name match counts.
+ */
+export async function ddgCompany(name: string | null | undefined): Promise<CompanyRecord | null> {
+  if (!name || name.trim().length < 2) return null;
+  const want = normaliseName(name);
+  const d = await getJson<{ Heading?: string; Abstract?: string; AbstractURL?: string; Results?: { FirstURL?: string }[]; Infobox?: { content?: { label?: string; value?: unknown }[] } }>(
+    `https://api.duckduckgo.com/?q=${encodeURIComponent(name.trim().slice(0, 120))}&format=json&no_html=1&skip_disambig=1`,
+  );
+  if (!d?.Heading || !d.AbstractURL) return null;
+  const got = normaliseName(d.Heading);
+  if (!(got === want || got.startsWith(`${want} `) || want.startsWith(`${got} `))) return null;
+  // People, places and films have abstracts too: keep organisations only.
+  const abstract = d.Abstract ?? "";
+  if (!ORG.test(abstract.slice(0, 300))) return null;
+  const website = d.Results?.[0]?.FirstURL ?? null;
+  const foundedRaw = d.Infobox?.content?.find((c) => /^founded/i.test(c.label ?? ""))?.value;
+  const year = typeof foundedRaw === "string" ? Number(foundedRaw.match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1]) : NaN;
+  const first = abstract.split(/(?<=\.)\s/)[0] ?? "";
+  const description = first.replace(/\.$/, "").slice(0, 140) || null;
+  return { label: d.Heading, description, website, domain: domainOf(website), founded: Number.isFinite(year) && year <= new Date().getFullYear() ? year : null, sourceUrl: d.AbstractURL };
+}
+
+/** The company's public record: Wikidata first, then DuckDuckGo's instant answer. */
+export async function companyRecord(name: string | null | undefined): Promise<CompanyRecord | null> {
+  const [wiki, ddg] = await Promise.all([wikidataCompany(name), ddgCompany(name)]);
+  if (!wiki) return ddg;
+  // Wikidata can lack the website or founding year; DuckDuckGo often has them.
+  return { ...wiki, website: wiki.website ?? ddg?.website ?? null, domain: wiki.domain ?? ddg?.domain ?? null, founded: wiki.founded ?? ddg?.founded ?? null };
+}
+
 /** Hiring services a company signs up to; the first part of the path is the company's own board. */
 const ATS: { host: RegExp; service: string; slug: (u: URL) => string | null }[] = [
   { host: /(^|\.)greenhouse\.io$/i, service: "Greenhouse", slug: (u) => u.pathname.split("/")[1] || u.searchParams.get("for") },

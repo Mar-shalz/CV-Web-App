@@ -49,6 +49,27 @@ export function matchAgency(name: string | null | undefined) {
 const isFree = (host: string | null) => Boolean(host && freeEmail.domains.includes(host));
 const isOfficialGovHost = (host: string | null, domains: string[]) => Boolean(host && domains.some((d) => host === d || host.endsWith(`.${d}`)));
 
+// Money the applicant is asked to pay, as opposed to the salary or allowances the employer
+// pays (D-151). A sentence counts only when it asks the applicant to pay, names a fee, or
+// sends money to someone; "no fee" and pay or salary lines never count.
+const FEE = /\b(?:registration|application|form|processing|training|medical|uniform|logistics|screening|clearance|onboarding|recruitment|verification|test|exam(?:ination)?|portal|id card|starter kit|placement|visa|interview|accommodation|caution)\s+(?:fee|fees|charge|charges|levy|cost|costs|payment)\b/i;
+const ASK_TO_PAY = /\b(?:pay(?:ing)?|payment of|remit|send|transfer|deposit|make a payment)\b[^.!?\n]{0,60}?\b(?:fee|fees|levy|charge|charges|for (?:the |your )?(?:form|registration|training|medical|uniform|processing|logistics|screening|clearance|test|interview|kit|id card|accommodation|slot|space))\b/i;
+const MONEY_TO = /\b(?:pay|send|transfer|deposit)\b[^.!?\n]{0,40}?(?:₦\s?\d|\bn\s?\d|naira|\bngn\b|\d{1,3}(?:,\d{3})+)[^.!?\n]{0,40}?\b(?:to|into|via|through|before|for|in order)\b/i;
+const SALARY = /\b(?:salary|salaries|per month|monthly|a month|per annum|annually|p\.a\.|gross|net pay|take[- ]home|remuneration|compensation|stipend|allowances?|earn(?:ings)?|package|ctc|pay range|pay rate|pay scale|pay band|hourly|weekly pay|bonus|commission|pension|hmo|benefits)\b/i;
+const NO_FEE = /\b(?:no|not|never|zero|without|free of|don't|do not|doesn't|does not|will not|won't)\b[^.!?\n]{0,40}?\b(?:fee|fees|charge|charges|pay|payment|money|cost)\b|\bfree of charge\b|\bat no cost\b|\bfree to apply\b/i;
+
+/** The sentence that asks the applicant to pay, or null. */
+export function paymentRequest(text: string): { evidence: string } | null {
+  for (const sentence of (text ?? "").split(/(?<=[.!?\n])\s+/)) {
+    if (!sentence.trim() || NO_FEE.test(sentence)) continue;
+    const fee = FEE.test(sentence);
+    const ask = ASK_TO_PAY.test(sentence) || MONEY_TO.test(sentence);
+    // A salary line ("Pay: ₦150,000 monthly", "competitive pay and allowances") is not a request.
+    if (fee || (ask && !SALARY.test(sentence))) return { evidence: sentence.replace(/\s+/g, " ").trim().slice(0, 240) };
+  }
+  return null;
+}
+
 export function layer1(text: string, job: ParsedJob): Signal[] {
   const t = text ?? "";
   const signals: Signal[] = [];
@@ -57,14 +78,15 @@ export function layer1(text: string, job: ParsedJob): Signal[] {
   const applyHost = hostOf(job.how_to_apply.url);
   const hasWhatsApp = /whats\s?app|wa\.me|telegram|t\.me\//i.test(t) || job.how_to_apply.channel === "whatsapp";
 
-  // L1-01 Asks for money: payment words near an amount or account details.
-  const pay = new RegExp(`\\b(${lists.payment_words.map(esc).join("|")})\\b[^.]{0,80}?(₦|naira|ngn|\\bn\\s?\\d|\\d{1,3}(,\\d{3})+|\\d{4,}|account (number|no))`, "i").exec(t);
-  if (pay || (job.payment_mentioned.mentioned && job.payment_mentioned.quote)) {
+  // L1-01 Asks the applicant for money (a fee, or money sent to someone). Salary is not this.
+  const pay = paymentRequest(t);
+  const quoted = job.payment_mentioned.mentioned && job.payment_mentioned.quote ? paymentRequest(job.payment_mentioned.quote) : null;
+  if (pay || quoted) {
     signals.push({
       id: "L1-01",
       severity: "red",
-      text: "This post asks for a payment. Real employers don't charge you to apply, train or get a medical. Don't pay.",
-      evidence: pay ? around(t, pay.index, pay[0].length) : job.payment_mentioned.quote,
+      text: "This post asks you to pay. Real employers don't charge you to apply, train or get a medical. Don't pay.",
+      evidence: (pay ?? quoted)!.evidence,
     });
   }
 

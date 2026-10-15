@@ -48,8 +48,8 @@ you actually sent.
   with Nigerian career influencers, and the browser panel for laptop users.
 - **Job supply.** We don't list jobs. Fix: don't build a board; read any board (links, the
   panel, share to the app). Later, partner with boards to add "Tailor with proof" buttons.
-- **Templates.** Rivals offer dozens. Fix: three ATS safe designs now (Classic, Modern,
-  Executive); add more only when data shows people leave for design.
+- **Templates.** Rivals offer dozens. Fix: four ATS safe designs now (Classic, Modern,
+  Executive, Signature); add more only when data shows people leave for design.
 - **Proof that it works.** Fix: measure and publish interview rates for people who used us
   (with consent), and a public "verified employers" list from the scam check.
 - **Brand and domain.** "Receipts" is a working name. Fix: settle the name (Trail was the

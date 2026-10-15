@@ -24,7 +24,7 @@ export type DesignUsage = { downloads: Record<CvStyle, number>; requests: { reas
 
 export async function designUsage(days = 30): Promise<DesignUsage> {
   const empty: DesignUsage = { downloads: Object.fromEntries(CV_STYLES.map((s) => [s, 0])) as Record<CvStyle, number>, requests: [], ready: true };
-  if (isPreviewMode() || !isSupabaseConfigured()) return { ...empty, downloads: { classic: 41, modern: 23, executive: 9 }, requests: [{ reason: "More colour", count: 4 }, { reason: "Fits on one page", count: 2 }] };
+  if (isPreviewMode() || !isSupabaseConfigured()) return { ...empty, downloads: { classic: 41, modern: 23, executive: 9, signature: 17 }, requests: [{ reason: "More colour", count: 4 }, { reason: "Fits on one page", count: 2 }] };
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
   const { data, error } = await createAdminClient().from("cv_design_events").select("kind, style, reason").gte("at", since).limit(20000);
   if (error) return { ...empty, ready: false };

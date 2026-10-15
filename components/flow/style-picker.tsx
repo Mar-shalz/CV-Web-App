@@ -65,7 +65,25 @@ export function useCvStyle(): [CvStyle, (s: CvStyle) => void] {
 
 /** A tiny drawing of each design's header and headings, so the choice is visual. */
 function Thumb({ s }: { s: CvStyle }) {
-  const accent = s === "modern" ? "bg-brand-600" : s === "executive" ? "bg-ink-900" : "bg-brand-900";
+  const accent = s === "modern" ? "bg-brand-600" : s === "executive" ? "bg-ink-900" : s === "signature" ? "bg-[#0a7878]" : "bg-brand-900";
+  if (s === "signature")
+    return (
+      <span aria-hidden="true" className="flex h-16 w-full flex-col overflow-hidden rounded-lg bg-white ring-1 ring-ink-150">
+        <span className="flex h-6 flex-col justify-center gap-0.5 bg-[#0a3340] px-2">
+          <span className="h-1.5 w-10 rounded-full bg-white" />
+          <span className="h-1 w-8 rounded-full bg-[#bde6e6]" />
+        </span>
+        <span className="h-0.5 w-full bg-[#0a7878]" />
+        <span className="flex flex-col gap-1 p-1.5">
+          <span className="flex items-center gap-1">
+            <span className="size-1.5 bg-[#0a7878]" />
+            <span className="h-1 w-6 rounded-full bg-[#0a7878]" />
+          </span>
+          <span className="h-1 w-full rounded-full bg-ink-150" />
+          <span className="h-1 w-4/5 rounded-full bg-ink-150" />
+        </span>
+      </span>
+    );
   return (
     <span aria-hidden="true" className={`flex h-16 w-full flex-col gap-1 rounded-lg bg-white p-2 ring-1 ring-ink-150 ${s === "executive" ? "font-serif" : ""}`}>
       <span className={`h-1.5 w-10 rounded-full ${s === "modern" ? accent : "mx-auto bg-ink-800"}`} />
@@ -86,7 +104,7 @@ export function StylePicker({ value, onChange }: { value: CvStyle; onChange: (s:
   return (
     <fieldset>
       <legend className="text-sm font-semibold text-ink-900">Design</legend>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {CV_STYLES.map((s) => (
           <label key={s} className={`cursor-pointer rounded-2xl p-2 ring-1 transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500 ${value === s ? "bg-brand-50 ring-2 ring-brand-500" : "bg-ink-50 ring-ink-150 hover:bg-ink-75"}`}>
             <input type="radio" name="cv-style" value={s} checked={value === s} onChange={() => onChange(s)} className="sr-only" />
@@ -95,7 +113,7 @@ export function StylePicker({ value, onChange }: { value: CvStyle; onChange: (s:
           </label>
         ))}
       </div>
-      <p className="mt-2 text-xs leading-5 text-ink-500">{CV_STYLE_INFO[value].note} All three read cleanly in applicant tracking systems.</p>
+      <p className="mt-2 text-xs leading-5 text-ink-500">{CV_STYLE_INFO[value].note} All four read cleanly in applicant tracking systems.</p>
       <AskForDesign />
     </fieldset>
   );

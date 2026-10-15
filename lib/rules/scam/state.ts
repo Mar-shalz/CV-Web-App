@@ -4,7 +4,7 @@ import type { Severity, Signal } from "./layer1";
 // CAC, domain age, official warnings, reported numbers, footprint, forum reports,
 // whether the company exists (L2-09) and how long it has existed (L2-10)).
 export type Finding = {
-  id: "L2-01" | "L2-02" | "L2-03" | "L2-04" | "L2-05" | "L2-06" | "L2-07" | "L2-08" | "L2-09" | "L2-10";
+  id: "L2-01" | "L2-02" | "L2-03" | "L2-04" | "L2-05" | "L2-06" | "L2-07" | "L2-08" | "L2-09" | "L2-10" | "L2-11";
   result: "found" | "not_found" | "match" | "mismatch" | "warning" | "unknown";
   text: string;
   sourceUrl: string | null;
@@ -28,6 +28,7 @@ export function findingSeverity(f: Finding): Severity | null {
     case "L2-07":
     case "L2-08":
     case "L2-10":
+    case "L2-11":
       return f.result === "warning" ? "amber" : null;
     case "L2-09":
       return f.result === "not_found" ? "amber" : null;
