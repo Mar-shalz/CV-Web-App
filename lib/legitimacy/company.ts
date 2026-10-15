@@ -1,4 +1,7 @@
 import "server-only";
+import { normaliseName, domainOf } from "./names";
+
+export { normaliseName, domainOf };
 
 /**
  * Checks that need no web search (D-118), so the scam check still answers the main
@@ -12,27 +15,6 @@ import "server-only";
 export type CompanyRecord = { label: string; description: string | null; website: string | null; domain: string | null; founded: number | null; sourceUrl: string };
 
 const UA = "ReceiptsJobCheck/1.0 (job advert scam check; contact via the Receipts app)";
-const SUFFIX = /\b(inc|incorporated|ltd|limited|plc|llc|llp|group|holdings?|nigeria|nig|ng|mfb|company|co|corp|corporation|international|intl)\b\.?/g;
-
-export function normaliseName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9 ]/g, " ")
-    .replace(SUFFIX, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-export function domainOf(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    return new URL(url.startsWith("http") ? url : `https://${url}`).hostname.toLowerCase().replace(/^www\./, "");
-  } catch {
-    return null;
-  }
-}
-
 // Organisation descriptions on Wikidata; people, places and names are left out.
 const ORG =
   /\b(company|companies|bank|firm|business|startup|start-up|enterprise|conglomerate|corporation|group|agency|ministry|commission|authority|university|school|hospital|organi[sz]ation|institution|manufacturer|retailer|platform|provider|fintech|operator|brand|subsidiary|cooperative|foundation|ngo|charity|airline|insurer|telecommunications|publisher|consultancy|firm)\b/i;

@@ -22,6 +22,8 @@ const nextConfig: NextConfig = {
   // Prompt files are read at run time by lib/ai, so they ship with every server function.
   outputFileTracingIncludes: {
     "/**": ["./prompts/**/*.md"],
+    // CV typefaces (D-157), read when a PDF is made.
+    "/api/cv/**": ["./lib/cv/fonts/*.ttf"],
   },
   turbopack: {
     rules: {

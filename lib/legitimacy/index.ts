@@ -11,14 +11,20 @@ import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { track } from "@/lib/analytics/server";
 import { companyRecord, hiringBoard, isAtsHost, domainOf, normaliseName } from "./company";
-import { searchResearch } from "./search-research";
+import { searchResearch, searchFounded } from "./search-research";
+import { boardListing, boardOf, careersHit } from "./evidence";
 import { searchProvider } from "@/lib/search";
 import sources from "@/config/lists/job_sources.json";
 
 export type LegitimacySignal = { id: string; severity: Severity | "ok"; text: string; evidence: string | null; sourceUrl: string | null };
-/** One line of "What we checked": passed, failed, or couldn't check (with why). */
-export type LegitimacyCheck = { key: string; label: string; status: "pass" | "fail" | "unknown"; detail: string; sourceUrl: string | null };
-export type LegitimacyView = { state: ScamState; headline: string; signals: LegitimacySignal[]; checks: LegitimacyCheck[]; cached: boolean; checkedAt: string; retry?: boolean };
+/** One line of "What we checked": passed, failed, or couldn't check (with why). `word` replaces "Couldn't check" when we did check and found nothing. */
+export type LegitimacyCheck = { key: string; label: string; status: "pass" | "fail" | "unknown"; detail: string; sourceUrl: string | null; word?: string };
+/**
+ * `calm`: couldn't fully confirm, but the company is real and nothing looks wrong (D-156).
+ * Shown as "No warning signs found" instead of "Be careful", so a real job posted only on
+ * LinkedIn or Indeed doesn't put people off. Never "safe".
+ */
+export type LegitimacyView = { state: ScamState; headline: string; signals: LegitimacySignal[]; checks: LegitimacyCheck[]; cached: boolean; checkedAt: string; retry?: boolean; calm?: boolean };
 
 const NEWS = ["punchng.com", "premiumtimesng.com", "guardian.ng", "vanguardngr.com", "thecable.ng", "channelstv.com", "businessday.ng", "dailytrust.com", "saharareporters.com", "tribuneonlineng.com", "thisdaylive.com", "leadership.ng", "nairametrics.com", "techcabal.com", "arise.tv"];
 const FORUMS = ["nairaland.com", "reddit.com", "quora.com"];
@@ -57,11 +63,21 @@ async function cacLookup(name: string): Promise<Finding | null> {
   return null;
 }
 
-function headlineFor(state: ScamState, signals: LegitimacySignal[], official: Finding | undefined, retry: boolean): string {
+function headlineFor(state: ScamState, signals: LegitimacySignal[], findings: Finding[], retry: boolean, employer: string | null): string {
+  const official = findings.find((f) => f.id === "L2-01" && f.result === "found" && f.sourceType === "official");
   if (state === "red_flags") return signals.find((s) => s.severity === "red")?.text ?? "We found red flags in this post. Don't pay or share personal details.";
   if (state === "verified") return `${official?.text.replace(/^Yes\. /, "") ?? "Found on the company's own website."} Even so, never pay to apply.`;
   if (retry) return "Web search wasn't available just now, so some checks couldn't run. The ones we could run are below. Try again in a few minutes.";
-  return "We couldn't confirm this job on the company's own website or hiring page. That doesn't prove it's fake. Check their official site before you send your details.";
+  // Couldn't fully confirm. Most real jobs land here (many companies post only on job
+  // sites), so say what we did find and what to do, without putting people off (D-156).
+  if (signals.some((s) => s.severity === "amber")) return "Some things need a closer look. Read what we found below before you send your details, and never pay to apply.";
+  const name = employer ?? "The company";
+  const exists = findings.some((f) => f.id === "L2-09" && f.result === "found");
+  const listed = findings.find((f) => f.id === "L2-01" && f.result === "found");
+  if (exists && official) return `${name} is a real company, and this job is on its own website. Apply there, and never pay to apply.`;
+  if (exists && listed) return `${name} is a real company, and this job is listed under its name${listed.sourceUrl && boardOf(listed.sourceUrl) ? ` on ${boardOf(listed.sourceUrl)}` : ""}. Many companies post jobs only on job sites, so it's normal not to see it on their website. Never pay to apply.`;
+  if (exists) return `${name} is a real company. We couldn't link this exact job to them, which is common when jobs are shared on other sites. Apply through the company's official contacts, and never pay to apply.`;
+  return "We couldn't confirm who posted this job. That doesn't mean it's fake. See what we checked below, and never pay or share your BVN to apply.";
 }
 
 
@@ -85,9 +101,9 @@ async function sourceFinding(sourceUrl: string | null, employer: string | null, 
   if (officialDomains.some((d) => within(h, d))) return f("found", `On the company's own website, ${h}.`, "official");
   if (ownBoard) return f("found", `On ${employer ?? "the company"}'s own ${ownBoard.service} hiring page.`, "official");
   const shortener = inList(h, sources.shorteners);
-  if (shortener) return f("warning", `The link is shortened (${shortener}), which hides where it really goes. Find the job on the company's own site.`);
+  if (shortener) return f("warning", `The link is shortened (${shortener}), which hides where it really goes. Find the job on the company's website or a known job site.`);
   const social = inList(h, SOCIAL);
-  if (social) return f("warning", `Posted on ${SOCIAL[social]}, where anyone can post a job. Look for the same job on the company's own website before you apply.`);
+  if (social) return f("warning", `Posted on ${SOCIAL[social]}, where anyone can post a job. Look for the same job on the company's website or its LinkedIn page before you apply.`);
   const freeHost = inList(h, sources.free_hosts);
   if (freeHost) return f("warning", `Posted on a free website service (${freeHost}), not a company website. Real employers usually post on their own site or a known job board.`);
   const token = normaliseName(employer ?? "")
@@ -97,7 +113,7 @@ async function sourceFinding(sourceUrl: string | null, employer: string | null, 
     return f("warning", `${h} uses the company's name, but it isn't the company's own website${officialDomains[0] ? ` (${officialDomains[0]})` : ""}. Fake job sites often do this.`);
   }
   const board = inList(h, BOARDS);
-  if (board) return f("found", `On ${BOARDS[board]}, a well-known job site. Job sites don't check every advert, so it's worth finding it on the company's own site too.`);
+  if (board) return f("found", `On ${BOARDS[board]}, a well-known job site where many companies post their jobs. Job sites don't check every advert, so never pay to apply.`);
   const days = await domainAgeDays(registrable(h));
   if (days !== null && days < 180) return f("warning", `Posted on ${h}, a website set up only ${days} days ago.`);
   return f("unknown", `Posted on ${h}. We couldn't tell if that site belongs to the company or is a known job site.`);
@@ -108,6 +124,13 @@ async function sourceFinding(sourceUrl: string | null, employer: string | null, 
  * around, is the email on its own website, did it post the job itself, any warnings.
  * Each line says when we couldn't check, and why.
  */
+/** Not finding the job on the company's site is common, so it's "Not found" in grey, never a fail (D-156). */
+function posted(c: LegitimacyCheck, x: Finding | undefined, employer: string | null): LegitimacyCheck {
+  return x?.result === "not_found" ? { ...c, status: "unknown", word: "Not found", detail: x.text.startsWith("It isn't") ? x.text : notListed(employer, false) } : c;
+}
+const notListed = (employer: string | null, searchedBoards: boolean) =>
+  `It isn't on ${employer ? `${employer}'s` : "the company's"} own website${searchedBoards ? ", and we didn't find it on LinkedIn, Indeed or Jobberman" : ""}. Many companies share jobs in other places too, so this isn't a warning on its own.`;
+
 function checklist(findings: Finding[], job: ParsedJob | null, live: boolean): LegitimacyCheck[] {
   const f = (id: Finding["id"]) => findings.find((x) => x.id === id);
   const pending = live ? "Checking" : "We couldn't check this right now.";
@@ -121,7 +144,7 @@ function checklist(findings: Finding[], job: ParsedJob | null, live: boolean): L
     line("exists", "The company exists", f("L2-09"), ["found"], ["not_found"], named ? pending : "The post doesn't name the company, so we couldn't look it up."),
     line("age", "How long it has been around", f("L2-10"), ["found"], ["warning"], named ? (live ? pending : "We couldn't find when the company started.") : "No company named in the post."),
     line("domain", "Email and apply link are on the company's own website", f("L2-02"), ["match"], ["mismatch"], hasRoute ? (live ? pending : "We couldn't confirm the company's own website to compare.") : "The post gives no email or link to check."),
-    line("posted", "The company posted this job itself", f("L2-01"), ["found"], ["not_found"], named ? (live ? pending : "We couldn't search the company's careers page or LinkedIn.") : "No company named in the post."),
+    posted(line("posted", "Listed under the company's name", f("L2-01"), ["found"], [], named ? (live ? pending : "We couldn't search the company's careers page or job sites.") : "No company named in the post."), f("L2-01"), job?.employer_name ?? null),
     line("source", "Where the job was posted", f("L2-11"), ["found"], ["warning"], live ? pending : "We couldn't see where the job was posted."),
     line("warnings", "No public warnings about this job", f("L2-05"), ["not_found"], ["warning"], live ? pending : "We couldn't search for warnings right now."),
     line("contacts", "Its phone numbers and emails aren't in scam reports", f("L2-06"), ["not_found"], ["warning"], live ? pending : "We couldn't search scam reports right now."),
@@ -138,9 +161,9 @@ function view(layer: Signal[], findings: Finding[], cached: boolean, checkedAt: 
       return { id: f.id, severity: (sev ?? (f.result === "found" || f.result === "match" ? "ok" : "info")) as LegitimacySignal["severity"], text: f.text, evidence: null, sourceUrl: f.sourceUrl };
     }),
   ].sort((a, b) => order[a.severity]! - order[b.severity]!);
-  const official = findings.find((f) => f.id === "L2-01" && f.result === "found" && f.sourceType === "official");
   const retry = findings.some((f) => f.note === "search_unavailable");
-  return { state, headline: headlineFor(state, signals, official, retry), signals, checks: checklist(findings, job, live), cached, checkedAt, retry };
+  const calm = state === "unverified" && !retry && !signals.some((s) => s.severity === "amber" || s.severity === "red") && findings.some((f) => f.id === "L2-09" && f.result === "found");
+  return { state, headline: headlineFor(state, signals, findings, retry, job?.employer_name?.trim() || null), signals, checks: checklist(findings, job, live), cached, checkedAt, retry, calm };
 }
 
 /** Layer 1 only: instant, free, offline friendly. Shown before the live lookup returns. */
@@ -206,17 +229,23 @@ export async function fullCheck(
   ]
     .filter(Boolean)
     .join("\n");
-  const [record, research, cac] = await Promise.all([
+  const [record, searched_, cac] = await Promise.all([
     agency ? Promise.resolve(null) : companyRecord(employer),
     // Our own web search when one is set up (D-152), otherwise Gemini's Google Search.
     !(employer || routes.length)
       ? Promise.resolve(null)
       : searchProvider()
         ? searchResearch({ employer, title: job.title, emails: [job.how_to_apply.email, ...job.contacts.emails].filter((v): v is string => Boolean(v)), phones: job.contacts.phones })
-        : runResearch({ name: "legitimacy_search", model: "claude-sonnet-5-5", user: brief, maxSearches: LIMITS.legitimacy.max_searches, userId, promptVersion: "v2" }),
+        : runResearch({ name: "legitimacy_search", model: "claude-sonnet-5-5", user: brief, maxSearches: LIMITS.legitimacy.max_searches, userId, promptVersion: "v2" }).then((research) => ({ research, hits: null })),
     cacLookup(employer ?? ""),
   ]);
-  const structured = research?.ok ? await runTask("legitimacy_lookup", { employer: employer ?? "not named", title: job.title ?? "not stated", sources: research.sources, notes: research.notes }, { userId }) : null;
+  const research = searched_?.research ?? null;
+  const hits = searched_?.hits ?? null;
+  // The AI reads the sources while, if the company record has no start year, the search looks for one (D-156).
+  const [structured, foundedHit] = await Promise.all([
+    research?.ok ? runTask("legitimacy_lookup", { employer: employer ?? "not named", title: job.title ?? "not stated", sources: research.sources, notes: research.notes }, { userId }) : Promise.resolve(null),
+    employer && !agency && !record?.founded && searchProvider() ? searchFounded(employer, hits?.all ?? []) : Promise.resolve(null),
+  ]);
   const company = structured?.ok ? structured.data.company : null;
   const searched = Boolean(structured?.ok);
   if (cac) findings.push(cac);
@@ -235,11 +264,12 @@ export async function fullCheck(
   else if (searched) findings.push({ id: "L2-09", result: "unknown", text: `We couldn't find a public record of ${employer}. Small and new firms often have none, so check their website or office yourself.`, sourceUrl: null, sourceType: null });
   else findings.push({ id: "L2-09", result: "unknown", text: `${employer} isn't in the open company records we check, and ${NO_SEARCH.charAt(0).toLowerCase()}${NO_SEARCH.slice(1)}`, sourceUrl: null, sourceType: null, note: "search_unavailable" });
 
-  // L2-10 How long has it been around? The company record, then the search, then the age of its website.
-  const founded = record?.founded ?? company?.founded_year ?? null;
+  // L2-10 How long has it been around? The company record, then a page that says when it
+  // started (found by our search), then what the AI read, then the age of its website.
+  const founded = record?.founded ?? foundedHit?.year ?? company?.founded_year ?? null;
   if (founded) {
     const years = now.getFullYear() - founded;
-    const src = record?.founded ? record.sourceUrl : company?.founded_source_index && research?.ok ? research.sources[company.founded_source_index - 1]?.url : undefined;
+    const src = record?.founded ? record.sourceUrl : foundedHit ? foundedHit.url : company?.founded_source_index && research?.ok ? research.sources[company.founded_source_index - 1]?.url : undefined;
     findings.push({ id: "L2-10", result: years < 1 ? "warning" : "found", text: years < 1 ? `It started in ${founded}, less than a year ago.` : `Since ${founded}, about ${years} ${years === 1 ? "year" : "years"}.`, sourceUrl: src ?? null, sourceType: record?.founded ? "registry" : null });
   }
   const ageDomain = mainDomain ?? job.employer_domain_claimed ?? null;
@@ -275,6 +305,14 @@ export async function fullCheck(
   const onOwnSite = [sourceUrl, job.how_to_apply.url].map(host).find((h) => h && officialDomains.some((d) => within(h, d)));
   if (onOwnSite) findings.push({ id: "L2-01", result: "found", text: `Yes. It's on the company's own website, ${onOwnSite}.`, sourceUrl: sourceUrl ?? job.how_to_apply.url, sourceType: "official" });
   else if (ownBoard) findings.push({ id: "L2-01", result: "found", text: `Yes. It's on ${employer}'s own ${ownBoard.service} hiring page, which only the company can post to.`, sourceUrl: sourceUrl && hiringBoard(sourceUrl, employer) ? sourceUrl : job.how_to_apply.url, sourceType: "official" });
+  else if (hits && job.title) {
+    // The search found the job on the company's own careers page or hiring board.
+    const own = careersHit([...hits.careers, ...hits.site], job.title, (u) => {
+      const h = host(u);
+      return Boolean(h && (officialDomains.some((d) => within(h, d)) || hiringBoard(u, employer)?.matchesEmployer));
+    });
+    if (own) findings.push({ id: "L2-01", result: "found", text: `Yes. A matching job is on the company's own careers page, ${host(own.url)}.`, sourceUrl: own.url, sourceType: "official" });
+  }
 
   // L2-11 Where was the job posted? The company's own site or hiring page, a well-known job
   // site, or somewhere anyone can post, a hidden link, a free website or a brand new site.
@@ -301,13 +339,20 @@ export async function fullCheck(
       findings.push({ id: f.id, result: f.result, text: f.text, sourceUrl: src?.url ?? null, sourceType });
     }
   }
-  if (!findings.some((f) => f.id === "L2-01")) {
-    const onJobSite = sourceUrl && JOB_SITES.test(host(sourceUrl) ?? "");
-    findings.push(
-      searched
-        ? { id: "L2-01", result: "not_found", text: onJobSite ? `It's on ${host(sourceUrl)}, where anyone can post. We didn't find it on the company's own careers page.` : "We didn't find it on the company's own careers page.", sourceUrl: null, sourceType: null }
-        : { id: "L2-01", result: "unknown", text: onJobSite ? `It's on ${host(sourceUrl)}, where anyone can post, and ${NO_SEARCH.charAt(0).toLowerCase()}${NO_SEARCH.slice(1)}` : `We couldn't search the company's careers page. ${NO_SEARCH.split(", so ")[0]}.`, sourceUrl: null, sourceType: null, note: searched ? undefined : "search_unavailable" },
-    );
+  // Not on the company's own site? Many companies post only on job sites (D-156): a listing
+  // under the company's name on LinkedIn, Indeed or Jobberman (where they found it, or in
+  // the search) counts as listed. Not finding it anywhere is said plainly, never as a warning.
+  const decided = findings.findIndex((f) => f.id === "L2-01");
+  if (decided < 0 || findings[decided]!.result !== "found") {
+    const fromSource = employer && sourceUrl && boardOf(sourceUrl) && !isAtsHost(host(sourceUrl) ?? "") ? { board: boardOf(sourceUrl)!, url: sourceUrl } : null;
+    const listing = fromSource ?? (hits && employer && job.title ? boardListing([...hits.boards, ...hits.careers], employer, job.title) : null);
+    const next: Finding = listing
+      ? { id: "L2-01", result: "found", text: `Yes. ${fromSource ? "It's" : "A matching job is"} on ${listing.board} under ${employer}'s name. Many companies post jobs only on job sites, so that's normal.`, sourceUrl: listing.url, sourceType: null }
+      : searched || decided >= 0
+        ? { id: "L2-01", result: "not_found", text: notListed(employer, Boolean(hits)), sourceUrl: null, sourceType: null }
+        : { id: "L2-01", result: "unknown", text: `We couldn't search the company's careers page or job sites. ${NO_SEARCH.split(", so ")[0]}.`, sourceUrl: null, sourceType: null, note: "search_unavailable" };
+    if (decided >= 0 && (listing || findings[decided]!.result === "not_found")) findings[decided] = next;
+    else if (decided < 0) findings.push(next);
   }
   if (!searched) {
     for (const id of ["L2-05", "L2-06"] as const) if (!findings.some((f) => f.id === id)) findings.push({ id, result: "unknown", text: NO_SEARCH, sourceUrl: null, sourceType: null, note: "search_unavailable" });

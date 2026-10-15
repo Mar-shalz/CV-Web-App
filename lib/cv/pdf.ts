@@ -1,12 +1,16 @@
 import "server-only";
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { PDFDocument, rgb, pushGraphicsState, popGraphicsState, setCharacterSpacing, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 import type { CvDoc, CvEntry, CvRoleBlock } from "./types";
 import type { CvStyle } from "./styles";
 
 // A standard professional CV (CV writing standard): A4, one column, real selectable text
 // that applicant tracking systems read, name and contact at the top, clear section rules,
 // role title and dates on one line with the employer below, hanging bullets, and page
-// numbers. Standard fonts aren't embedded, which keeps the file far under 150KB.
+// numbers. Each design embeds its own open licence typeface (D-157), cut down to the
+// letters used, with a text map so hiring software reads every word.
 
 const A4 = { w: 595.28, h: 841.89 };
 const MX = 50;
@@ -18,26 +22,46 @@ const BODY = rgb(0.16, 0.19, 0.25);
 const MUTED = rgb(0.36, 0.41, 0.48);
 const RULE = rgb(0.78, 0.81, 0.86);
 
-// The three designs (D-142): type, accent colour and header layout. Everything else is shared.
-const LOOK: Record<CvStyle, { accent: RGB; fonts: [StandardFonts, StandardFonts, StandardFonts]; header: "center" | "left" | "band"; upperName: boolean; nameTracking: number; nameSize: number; headingCase: "upper" | "title" | "marker" }> = {
-  classic: { accent: rgb(0.08, 0.15, 0.37), fonts: [StandardFonts.Helvetica, StandardFonts.HelveticaBold, StandardFonts.HelveticaOblique], header: "center", upperName: true, nameTracking: 1.6, nameSize: 21, headingCase: "upper" },
-  modern: { accent: rgb(0.12, 0.33, 0.85), fonts: [StandardFonts.Helvetica, StandardFonts.HelveticaBold, StandardFonts.HelveticaOblique], header: "left", upperName: false, nameTracking: 0, nameSize: 25, headingCase: "title" },
-  executive: { accent: rgb(0.1, 0.1, 0.12), fonts: [StandardFonts.TimesRoman, StandardFonts.TimesRomanBold, StandardFonts.TimesRomanItalic], header: "center", upperName: true, nameTracking: 2.4, nameSize: 22, headingCase: "upper" },
+// The designs (D-142, D-153): typeface, accent colour and header layout. Everything else is shared.
+// Typefaces (D-157), all SIL Open Font License, in lib/cv/fonts with their licences:
+//   Classic: Source Sans 3, a calm, open sans in the spirit of Calibri, the most common CV font.
+//   Modern: Inter, made for reading on screens, where most CVs are now read first.
+//   Executive: Source Serif 4, a sturdy serif with a large x-height, readable at 10pt.
+//   Signature: Plus Jakarta Sans, a crisp modern sans for the teal band.
+const LOOK: Record<CvStyle, { accent: RGB; font: string; header: "center" | "left" | "band"; upperName: boolean; nameTracking: number; nameSize: number; headingCase: "upper" | "title" | "marker" }> = {
+  classic: { accent: rgb(0.08, 0.15, 0.37), font: "SourceSans3", header: "center", upperName: true, nameTracking: 1.6, nameSize: 22, headingCase: "upper" },
+  modern: { accent: rgb(0.12, 0.33, 0.85), font: "Inter", header: "left", upperName: false, nameTracking: 0, nameSize: 24, headingCase: "title" },
+  executive: { accent: rgb(0.1, 0.1, 0.12), font: "SourceSerif4", header: "center", upperName: true, nameTracking: 2.4, nameSize: 22, headingCase: "upper" },
   // Signature (D-153): a deep teal band behind the name (real text, so hiring software reads
   // it), teal section markers and employer lines. Still one column, top to bottom.
-  signature: { accent: rgb(0.04, 0.47, 0.47), fonts: [StandardFonts.Helvetica, StandardFonts.HelveticaBold, StandardFonts.HelveticaOblique], header: "band", upperName: false, nameTracking: 0.4, nameSize: 27, headingCase: "marker" },
+  signature: { accent: rgb(0.04, 0.47, 0.47), font: "PlusJakartaSans", header: "band", upperName: false, nameTracking: 0.2, nameSize: 26, headingCase: "marker" },
 };
+
+const FONT_DIR = path.join(process.cwd(), "lib/cv/fonts");
+const fontFiles = new Map<string, Promise<Buffer>>();
+const fontBytes = (file: string) => {
+  if (!fontFiles.has(file)) fontFiles.set(file, readFile(path.join(FONT_DIR, file)));
+  return fontFiles.get(file)!;
+};
+/** Ligatures off, so "fi" and "fl" stay two letters for hiring software. */
+const FEATURES = { liga: false, clig: false, dlig: false, calt: false };
 const BAND = rgb(0.04, 0.2, 0.25);
 const BAND_TEXT = rgb(0.74, 0.9, 0.9);
 const TINT = rgb(0.91, 0.96, 0.96);
 
-/** Standard fonts use WinAnsi: swap the few characters they can't draw. */
+/**
+ * Text the embedded typefaces can draw: Latin letters with accents, ₦ and the usual
+ * punctuation. Em dashes become commas (copy rule). Letters with marks the fonts lack
+ * keep their base letter (Yoruba "Ọ̀yọ́" prints "Oyo"); anything else (emoji, other
+ * scripts) is dropped rather than drawn as an empty box.
+ */
 export function safe(text: string): string {
   return text
-    .replace(/₦\s?/g, "NGN ")
-    .replace(/—/g, ", ")
+    .normalize("NFC")
+    .replace(/\s*—\s*/g, ", ")
     .replace(/[‐‑]/g, "-")
-    .replace(/[^\x20-\x7E -ÿ‘’“”•–…]/g, "");
+    .replace(/[\u00a0\u2009\u202f]/g, " ")
+    .replace(/[^\x20-\x7E\u00a1-\u017f‘’“”•–…₦€£]/g, (ch) => ch.normalize("NFD").replace(/[^\x20-\x7E\u00a1-\u017f]/g, ""));
 }
 
 /** Word wrap, with a narrower first line when something sits before it (a bold label). */
@@ -65,9 +89,8 @@ export async function renderPdf(doc: CvDoc, personal: { dateOfBirth?: string | n
   pdf.setAuthor(doc.name);
   pdf.setSubject(doc.jobTitle ? `CV for ${doc.jobTitle}` : "CV");
   pdf.setCreator("CV export");
-  const regular = await pdf.embedFont(look.fonts[0]);
-  const bold = await pdf.embedFont(look.fonts[1]);
-  const italic = await pdf.embedFont(look.fonts[2]);
+  pdf.registerFontkit(fontkit);
+  const [regular, bold, italic] = await Promise.all(["Regular", "Bold", "Italic"].map(async (w) => pdf.embedFont(await fontBytes(`${look.font}-${w}.ttf`), { subset: true, features: FEATURES })));
 
   let page: PDFPage = pdf.addPage([A4.w, A4.h]);
   let y = A4.h - MT;
@@ -81,16 +104,20 @@ export async function renderPdf(doc: CvDoc, personal: { dateOfBirth?: string | n
   };
   const draw = (t: string, x: number, size: number, font: PDFFont, color: RGB) => page.drawText(t, { x, y: y - size, size, font, color });
 
-  /** Letter spaced capitals for section headings. */
-  const spaced = (t: string, x: number, size: number, font: PDFFont, color: RGB, tracking: number) => {
-    let cx = x;
-    for (const ch of safe(t)) {
-      page.drawText(ch, { x: cx, y: y - size, size, font, color });
-      cx += font.widthOfTextAtSize(ch, size) + tracking;
-    }
-    return cx - x - tracking;
+  /**
+   * Letter spaced text (headings, the name) drawn as one run with PDF character spacing,
+   * so hiring software reads "EXPERIENCE", not "E X P E R I E N C E" (D-157).
+   */
+  const spacedWidth = (t: string, size: number, font: PDFFont, tracking: number) => {
+    const s = safe(t);
+    return font.widthOfTextAtSize(s, size) + tracking * Math.max(0, [...s].length - 1);
   };
-  const spacedWidth = (t: string, size: number, font: PDFFont, tracking: number) => [...safe(t)].reduce((s, ch) => s + font.widthOfTextAtSize(ch, size) + tracking, -tracking);
+  const spaced = (t: string, x: number, size: number, font: PDFFont, color: RGB, tracking: number) => {
+    page.pushOperators(pushGraphicsState(), setCharacterSpacing(tracking));
+    page.drawText(safe(t), { x, y: y - size, size, font, color });
+    page.pushOperators(popGraphicsState());
+    return spacedWidth(t, size, font, tracking);
+  };
 
   const paragraph = (t: string, size = 10, font = regular, color = BODY, lh = size * 1.42, indent = 0) => {
     for (const line of wrap(t, font, size, W - indent)) {

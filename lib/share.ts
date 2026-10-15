@@ -17,7 +17,7 @@ export type SharedCheck = {
   sourceHost: string | null;
   state: LegitimacyView["state"];
   headline: string;
-  checks: { label: string; status: "pass" | "fail" | "unknown"; detail: string }[];
+  checks: { label: string; status: "pass" | "fail" | "unknown"; detail: string; word?: string }[];
   flags: string[];
   checkedAt: string;
 };
@@ -57,7 +57,7 @@ export async function shareJobCheck(userId: string, jobId: string): Promise<{ ok
     source_host: host,
     state: view.state,
     headline: redact(view.headline),
-    checks: view.checks.map((c) => ({ label: c.label, status: c.status, detail: redact(c.detail) })),
+    checks: view.checks.map((c) => ({ label: c.label, status: c.status, detail: redact(c.detail), ...(c.word ? { word: c.word } : {}) })),
     flags: view.signals.filter((s) => s.id.startsWith("L1") && s.severity !== "info").map((s) => redact(s.text)),
     checked_at: view.checkedAt,
   };
@@ -90,10 +90,18 @@ export async function getSharedCheck(slug: string): Promise<SharedCheck | null> 
   };
 }
 
+/**
+ * A shared check that couldn't be fully confirmed but shows no warning signs and a real
+ * company (D-156), worked out from what the share kept: no flags, no failed check.
+ */
+export function isCalm(s: Pick<SharedCheck, "state" | "checks" | "flags">): boolean {
+  return s.state === "unverified" && !s.flags.length && s.checks.every((c) => c.status !== "fail") && s.checks.some((c) => c.label === "The company exists" && c.status === "pass");
+}
+
 /** The words that go with the link on WhatsApp and X. */
-export function shareText(s: Pick<SharedCheck, "state" | "title" | "employer">): string {
+export function shareText(s: Pick<SharedCheck, "state" | "title" | "employer"> & { calm?: boolean }): string {
   const job = [s.title, s.employer && `at ${s.employer}`].filter(Boolean).join(" ") || "this job";
-  const verdict = s.state === "red_flags" ? "showed warning signs" : s.state === "verified" ? "looks genuine on the checks" : "couldn't be confirmed";
+  const verdict = s.state === "red_flags" ? "showed warning signs" : s.state === "verified" ? "looks genuine on the checks" : s.calm ? "showed no warning signs" : "couldn't be confirmed";
   return `I checked ${job} with ${APP.APP_NAME} before applying: it ${verdict}. See what was checked, and check your own job free:`;
 }
 
@@ -109,7 +117,7 @@ export const DEMO_SHARE: SharedCheck = {
     { label: "The company exists", status: "pass", detail: "Official website found at northbridgebank.ng." },
     { label: "How long it has been around", status: "pass", detail: "Since 2004, about 22 years." },
     { label: "Email and apply link are on the company's own website", status: "pass", detail: "They're on northbridgebank.ng." },
-    { label: "The company posted this job itself", status: "pass", detail: "Listed on the official careers page." },
+    { label: "Listed under the company's name", status: "pass", detail: "Yes. It's on the company's own careers page, northbridgebank.ng." },
     { label: "No public warnings about this job", status: "pass", detail: "No warnings found from the bank or major news sites." },
   ],
   flags: [],

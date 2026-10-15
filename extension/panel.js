@@ -460,7 +460,7 @@ function shareBox(c, v) {
   const make = async () => {
     box.replaceChildren(h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("p", {}, "Making the link")));
     try {
-      const res = await api("/api/ext/share", { jobId: c.jobId, title: c.title || current.title || undefined, employer: c.employer || current.company || undefined, state: v.state });
+      const res = await api("/api/ext/share", { jobId: c.jobId, title: c.title || current.title || undefined, employer: c.employer || current.company || undefined, state: v.state, calm: Boolean(v.calm) });
       const wa = `https://wa.me/?text=${encodeURIComponent(`${res.text} ${res.url}`)}`;
       const x = `https://x.com/intent/post?text=${encodeURIComponent(res.text)}&url=${encodeURIComponent(res.url)}`;
       const copied = h("span", {}, "Copy link");
@@ -468,28 +468,11 @@ function shareBox(c, v) {
         h("p", { class: "eyebrow" }, "Share the check"),
         h("p", { class: "small muted", style: "margin-top:2px" }, "Shows the job and what we found. Never your name or details."),
         h(
-          "button",
-          {
-            class: "btn wa",
-            type: "button",
-            style: "margin-top:10px",
-            // The picture card (D-154): saved to the computer, then WhatsApp opens with the words.
-            onclick: async () => {
-              try {
-                const blob = await (await fetch(`${res.url}/card`)).blob();
-                const file = new File([blob], "job-check.png", { type: "image/png" });
-                if (navigator.canShare?.({ files: [file] })) return void (await navigator.share({ files: [file], text: `${res.text} ${res.url}` }));
-                const a = h("a", { href: URL.createObjectURL(blob), download: "job-check.png" });
-                a.click();
-                chrome.tabs.create({ url: wa });
-              } catch {
-                chrome.tabs.create({ url: wa });
-              }
-            },
-          },
-          "Share as a picture on WhatsApp",
+          "div",
+          { class: "row", style: "margin-top:10px" },
+          h("button", { class: "btn wa", type: "button", onclick: () => chrome.tabs.create({ url: wa }) }, "WhatsApp"),
+          h("button", { class: "btn xbtn", type: "button", onclick: () => chrome.tabs.create({ url: x }) }, "Post on X"),
         ),
-        h("div", { class: "row", style: "margin-top:8px" }, h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: wa }) }, "WhatsApp link"), h("button", { class: "btn xbtn", type: "button", onclick: () => chrome.tabs.create({ url: x }) }, "Post on X")),
         h(
           "button",
           {
@@ -516,10 +499,12 @@ const STATE = {
   unverified: { cls: "warn", icon: "warn", title: "We couldn't confirm it. Be careful." },
   red_flags: { cls: "bad", icon: "cross", title: "Red flags found" },
 };
+// Couldn't fully confirm, but the company is real and nothing looks wrong (D-156).
+const CALM = { cls: "info", icon: "shield", title: "No warning signs found" };
 const CHECK = { pass: { icon: "tick", cls: "pass", word: "Yes" }, fail: { icon: "cross", cls: "fail", word: "No" }, unknown: { icon: "minus", cls: "unknown", word: "Couldn't check" } };
 
 function results(c, v) {
-  const s = STATE[v.state] || STATE.unverified;
+  const s = v.calm && v.state === "unverified" ? CALM : STATE[v.state] || STATE.unverified;
   const flags = (v.signals || []).filter((x) => String(x.id).startsWith("L1") && x.severity !== "info");
   keepOpen({ view: v });
   show(
@@ -542,7 +527,7 @@ function results(c, v) {
         { class: "checks" },
         (v.checks || []).map((k) => {
           const m = CHECK[k.status] || CHECK.unknown;
-          return h("li", {}, icon(m.icon, 18, `ic ${m.cls}`), h("div", { style: "flex:1;min-width:0" }, h("div", { style: "display:flex" }, h("span", { class: "label" }, k.label), h("span", { class: `word ${m.cls}` }, m.word)), h("p", { class: "detail" }, k.detail)));
+          return h("li", {}, icon(m.icon, 18, `ic ${m.cls}`), h("div", { style: "flex:1;min-width:0" }, h("div", { style: "display:flex" }, h("span", { class: "label" }, k.label), h("span", { class: `word ${m.cls}` }, k.word || m.word)), h("p", { class: "detail" }, k.detail)));
         }),
       ),
       h("p", { class: "small muted", style: "margin-top:10px" }, "We describe what we found online. We can't prove a job is real, so never pay to apply and never share your BVN or bank PIN."),

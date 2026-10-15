@@ -12,9 +12,9 @@ const BODY = "283041";
 
 // The three designs (D-142), matching the PDF.
 const LOOK: Record<CvStyle, { font: string; accent: string; header: "center" | "left"; upperName: boolean; nameSpacing: number; upperHeadings: boolean }> = {
-  classic: { font: "Arial", accent: "14275F", header: "center", upperName: true, nameSpacing: 30, upperHeadings: true },
-  modern: { font: "Calibri", accent: "1F54D9", header: "left", upperName: false, nameSpacing: 0, upperHeadings: false },
-  executive: { font: "Times New Roman", accent: "1A1A1F", header: "center", upperName: true, nameSpacing: 48, upperHeadings: true },
+  classic: { font: "Calibri", accent: "14275F", header: "center", upperName: true, nameSpacing: 30, upperHeadings: true },
+  modern: { font: "Arial", accent: "1F54D9", header: "left", upperName: false, nameSpacing: 0, upperHeadings: false },
+  executive: { font: "Georgia", accent: "1A1A1F", header: "center", upperName: true, nameSpacing: 48, upperHeadings: true },
   signature: { font: "Calibri", accent: "0A7878", header: "left", upperName: false, nameSpacing: 8, upperHeadings: true },
 };
 const BAND = "0A3340";

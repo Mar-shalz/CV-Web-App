@@ -113,7 +113,9 @@ export function StylePicker({ value, onChange }: { value: CvStyle; onChange: (s:
           </label>
         ))}
       </div>
-      <p className="mt-2 text-xs leading-5 text-ink-500">{CV_STYLE_INFO[value].note} All four read cleanly in applicant tracking systems.</p>
+      <p className="mt-2 text-xs leading-5 text-ink-500">
+        {CV_STYLE_INFO[value].note} Font: {CV_STYLE_INFO[value].font} ({CV_STYLE_INFO[value].wordFont} in Word). All four read cleanly in applicant tracking systems.
+      </p>
       <AskForDesign />
     </fieldset>
   );

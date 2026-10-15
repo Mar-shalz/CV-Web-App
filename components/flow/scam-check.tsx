@@ -10,6 +10,8 @@ const STATE = {
   unverified: { tone: "bg-care-50 text-care-700 ring-care-100", icon: Warning2, title: "We couldn't confirm it. Be careful." },
   red_flags: { tone: "bg-flag-50 text-flag-700 ring-flag-100", icon: Danger, title: "Red flags found" },
 } as const;
+/** Couldn't fully confirm, but the company is real and nothing looks wrong (D-156). */
+const CALM = { tone: "bg-brand-50 text-brand-800 ring-brand-100", icon: ShieldSearch, title: "No warning signs found" } as const;
 
 const SIGNAL_ICON = {
   red: { icon: Danger, cls: "text-flag-600" },
@@ -42,7 +44,7 @@ function CheckRow({ c, loading }: { c: LegitimacyCheck; loading: boolean }) {
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline justify-between gap-x-2">
           <span className="text-[0.875rem] font-semibold text-ink-900">{c.label}</span>
-          <span className={`text-xs font-semibold ${pending ? "text-brand-700" : ic.cls}`}>{pending ? "Checking" : ic.word}</span>
+          <span className={`text-xs font-semibold ${pending ? "text-brand-700" : ic.cls}`}>{pending ? "Checking" : (c.word ?? ic.word)}</span>
         </span>
         {!pending ? <span className="mt-0.5 block text-[0.8125rem] leading-5 text-ink-600">{c.detail}</span> : null}
         {!pending && c.sourceUrl ? (
@@ -90,7 +92,7 @@ export function ScamCheck({ jobId, initial, large = false, title = null, employe
     setRound((n) => n + 1);
   };
 
-  const s = STATE[view.state];
+  const s = view.calm && view.state === "unverified" ? CALM : STATE[view.state];
   const Icon = s.icon;
   // Rule findings from the post itself (fees, WhatsApp only, and so on).
   const flags = view.signals.filter((x) => x.id.startsWith("L1") && x.severity !== "info");
@@ -155,7 +157,7 @@ export function ScamCheck({ jobId, initial, large = false, title = null, employe
         ) : null}
         {!loading && !failed ? (
           <div className="mt-4">
-            <ShareCheck jobId={jobId} state={view.state} title={title} employer={employer} />
+            <ShareCheck jobId={jobId} state={view.state} calm={Boolean(view.calm)} title={title} employer={employer} />
           </div>
         ) : null}
         <p className="mt-3 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">We describe what we found online. We can&apos;t prove a job is real, so never pay to apply and never share your BVN or bank PIN.</p>

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { key: "exists", label: "The company exists", status: "pass", detail: "Official website found at northbridgebank.ng.", sourceUrl: "https://northbridgebank.ng" },
         { key: "age", label: "How long it has been around", status: "pass", detail: "Around since 2004, about 22 years.", sourceUrl: null },
         { key: "domain", label: "Email and apply link are on the company's own website", status: "pass", detail: "The email and apply link are on the company's own website, northbridgebank.ng.", sourceUrl: null },
-        { key: "posted", label: "The company posted this job itself", status: "pass", detail: "Listed on the official careers page.", sourceUrl: "https://northbridgebank.ng/careers" },
+        { key: "posted", label: "Listed under the company's name", status: "pass", detail: "Yes. It's on the company's own careers page, northbridgebank.ng.", sourceUrl: "https://northbridgebank.ng/careers" },
         { key: "warnings", label: "No public warnings about this job", status: "pass", detail: "No warnings found from the bank or major news sites.", sourceUrl: null },
         { key: "contacts", label: "Its phone numbers and emails aren't in scam reports", status: "unknown", detail: "The post has no phone number to check.", sourceUrl: null },
       ],

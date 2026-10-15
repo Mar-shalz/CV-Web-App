@@ -13,7 +13,8 @@ describe("CV export", () => {
     const buf = await renderDocx(demoCvDoc(), {});
     expect(buf.subarray(0, 2).toString()).toBe("PK");
   });
-  it("swaps characters standard fonts can't draw", () => {
-    expect(safe("Collected ₦5,000 — monthly")).toBe("Collected NGN 5,000 ,  monthly");
+  it("keeps ₦ and accents, turns em dashes into commas, drops what the typefaces can't draw (D-157)", () => {
+    expect(safe("Collected ₦5,000 — monthly")).toBe("Collected ₦5,000, monthly");
+    expect(safe("Café “launch” at Ọ̀yọ́ 😀 中文")).toBe("Café “launch” at Oyo  ");
   });
 });

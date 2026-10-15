@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
-import { getSharedCheck, DEMO_SHARE, type SharedCheck } from "@/lib/share";
+import { getSharedCheck, DEMO_SHARE, isCalm, type SharedCheck } from "@/lib/share";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPreviewMode } from "@/lib/env";
 import { track } from "@/lib/analytics/server";
@@ -16,6 +16,7 @@ const STATE = {
   unverified: { tone: "bg-care-50 text-care-700 ring-care-100", icon: Warning2, title: "Couldn't be confirmed. Be careful." },
   red_flags: { tone: "bg-flag-50 text-flag-700 ring-flag-100", icon: Danger, title: "Warning signs in this job post" },
 } as const;
+const CALM = { tone: "bg-brand-50 text-brand-800 ring-brand-100", icon: ShieldSearch, title: "No warning signs found" } as const;
 const CHECK = {
   pass: { icon: TickCircle, cls: "text-proof-600", word: "Yes" },
   fail: { icon: CloseCircle, cls: "text-flag-600", word: "No" },
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!s) return { title: "Job check", robots: { index: false } };
   const job = [s.title, s.employer && `at ${s.employer}`].filter(Boolean).join(" ") || "A job post";
   const title = `Is this job real? ${job}`;
-  const description = `${STATE[s.state].title}. See what ${APP_NAME} checked, then check your own job, free.`;
+  const description = `${(isCalm(s) ? CALM : STATE[s.state]).title}. See what ${APP_NAME} checked, then check your own job, free.`;
   // Shared on WhatsApp and X, never indexed: a check is about one post, not a company.
   return { title, description, robots: { index: false, follow: false }, openGraph: { title, description, type: "article" }, twitter: { card: "summary_large_image", title, description } };
 }
@@ -53,7 +54,7 @@ export default async function SharedCheckPage({ params }: { params: Promise<{ sl
     });
     await track("check_share_opened", { state: s.state });
   }
-  const st = STATE[s.state];
+  const st = isCalm(s) ? CALM : STATE[s.state];
   const Icon = st.icon;
 
   return (
@@ -98,7 +99,7 @@ export default async function SharedCheckPage({ params }: { params: Promise<{ sl
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-baseline justify-between gap-x-2">
                         <span className="text-[0.875rem] font-semibold text-ink-900">{c.label}</span>
-                        <span className={`text-xs font-semibold ${m.cls}`}>{m.word}</span>
+                        <span className={`text-xs font-semibold ${m.cls}`}>{c.word ?? m.word}</span>
                       </span>
                       <span className="mt-0.5 block text-[0.8125rem] leading-5 text-ink-600">{c.detail}</span>
                     </span>

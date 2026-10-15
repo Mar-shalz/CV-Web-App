@@ -1,6 +1,7 @@
 "use client";
 
 import { StylePicker, useCvStyle } from "./style-picker";
+import { CV_STYLE_INFO } from "@/lib/cv/styles";
 import { ModalHeader } from "@/components/ui/modal-header";
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -77,7 +78,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
 
   return (
     <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <article aria-label="Your tailored CV" className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10" style={{ fontFamily: style === "executive" ? "'Times New Roman', Times, serif" : "Helvetica, Arial, sans-serif" }}>
+      <article aria-label="Your tailored CV" className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10" style={{ fontFamily: CV_STYLE_INFO[style].css }}>
         {/* The preview follows the chosen design (D-142). */}
         <header
           className={

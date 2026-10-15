@@ -30,8 +30,16 @@ export async function webSearch(q: string, n = 8): Promise<SearchHit[]> {
   const query = q.slice(0, 300);
   switch (searchProvider()) {
     case "serper": {
-      const d = (await get("https://google.serper.dev/search", { method: "POST", headers: { "X-API-KEY": process.env.SERPER_API_KEY!, "Content-Type": "application/json" }, body: JSON.stringify({ q: query, num: n, gl: "ng" }) })) as { organic?: { title?: string; link?: string; snippet?: string }[] } | null;
-      return (d?.organic ?? []).slice(0, n).flatMap((r) => (r.link ? [{ title: r.title ?? r.link, url: r.link, snippet: r.snippet ?? "" }] : []));
+      const d = (await get("https://google.serper.dev/search", { method: "POST", headers: { "X-API-KEY": process.env.SERPER_API_KEY!, "Content-Type": "application/json" }, body: JSON.stringify({ q: query, num: n, gl: "ng" }) })) as {
+        organic?: { title?: string; link?: string; snippet?: string }[];
+        knowledgeGraph?: { title?: string; website?: string; descriptionLink?: string; description?: string; attributes?: Record<string, string> };
+      } | null;
+      const hits = (d?.organic ?? []).slice(0, n).flatMap((r) => (r.link ? [{ title: r.title ?? r.link, url: r.link, snippet: r.snippet ?? "" }] : []));
+      // Google's panel about the company, when it shows one ("Founded: 2017", its website).
+      const kg = d?.knowledgeGraph;
+      const kgUrl = kg?.website ?? kg?.descriptionLink;
+      if (kg?.title && kgUrl) hits.unshift({ title: kg.title, url: kgUrl, snippet: [kg.description, ...Object.entries(kg.attributes ?? {}).map(([k, v]) => `${k}: ${v}`)].filter(Boolean).join(". ") });
+      return hits;
     }
     case "brave": {
       const d = (await get(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${n}`, { headers: { Accept: "application/json", "X-Subscription-Token": process.env.BRAVE_SEARCH_API_KEY! } })) as { web?: { results?: { title?: string; url?: string; description?: string }[] } } | null;
