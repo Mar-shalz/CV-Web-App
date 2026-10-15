@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { LegitimacyCheck, LegitimacyView } from "@/lib/legitimacy";
+import { ShareCheck } from "./share-check";
 import { ShieldSearch, ShieldTick, TickCircle, Danger, Warning2, InfoCircle, ExportSquare, CloseCircle, MinusCircle, Refresh } from "@/components/icons";
 
 const STATE = {
@@ -61,7 +62,7 @@ function CheckRow({ c, loading }: { c: LegitimacyCheck; loading: boolean }) {
  * its website and email, where the job was posted, warnings) fills a checklist that
  * says what passed, what didn't and what we couldn't check. Never says "safe".
  */
-export function ScamCheck({ jobId, initial, large = false }: { jobId: string; initial: LegitimacyView; large?: boolean }) {
+export function ScamCheck({ jobId, initial, large = false, title = null, employer = null }: { jobId: string; initial: LegitimacyView; large?: boolean; title?: string | null; employer?: string | null }) {
   const [view, setView] = useState<LegitimacyView>(initial);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -150,6 +151,11 @@ export function ScamCheck({ jobId, initial, large = false }: { jobId: string; in
               <Refresh size={16} />
               Check again
             </button>
+          </div>
+        ) : null}
+        {!loading && !failed ? (
+          <div className="mt-4">
+            <ShareCheck jobId={jobId} state={view.state} title={title} employer={employer} />
           </div>
         ) : null}
         <p className="mt-3 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">We describe what we found online. We can&apos;t prove a job is real, so never pay to apply and never share your BVN or bank PIN.</p>

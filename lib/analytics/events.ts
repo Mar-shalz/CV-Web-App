@@ -20,7 +20,10 @@ export type AnalyticsEvents = {
   cv_generated: { format: string; bullets_changed: number };
   fact_lock_violation: { type: string; prompt_version: string };
   claim_review_completed: { confirmed: number; edited: number; reverted: number };
-  cv_exported: { format: string; file_type: "pdf" | "docx" };
+  cv_exported: { format: string; file_type: "pdf" | "docx"; style?: string };
+  check_shared: Record<string, never>;
+  check_share_opened: { state: string };
+  cv_design_requested: { reason: string };
   pack_opened: { channel: string };
   application_sent: { channel: string };
   checkin_shown: { applications_count: number };
@@ -63,7 +66,10 @@ const ALLOWED_KEYS: { [K in EventName]: (keyof AnalyticsEvents[K])[] } = {
   cv_generated: ["format", "bullets_changed"],
   fact_lock_violation: ["type", "prompt_version"],
   claim_review_completed: ["confirmed", "edited", "reverted"],
-  cv_exported: ["format", "file_type"],
+  cv_exported: ["format", "file_type", "style"],
+  check_shared: [],
+  check_share_opened: ["state"],
+  cv_design_requested: ["reason"],
   pack_opened: ["channel"],
   application_sent: ["channel"],
   checkin_shown: ["applications_count"],

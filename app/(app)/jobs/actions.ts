@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/toast";
+import { shareJobCheck } from "@/lib/share";
+import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth/viewer";
@@ -128,4 +130,16 @@ export async function removeSavedJob(jobId: string): Promise<{ ok: false; error:
   revalidatePath("/applications");
   await flash("Removed from saved jobs.", "info");
   redirect("/applications?status=saved");
+}
+
+/** A public link to this job's check, to send on WhatsApp or X (D-147). No personal data goes on it. */
+export async function shareCheck(jobId: string): Promise<{ ok: true; slug: string } | { ok: false; error: string }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  if (viewer.preview) return { ok: true, slug: "demo000000" };
+  if (!z.uuid().safeParse(jobId).success) return { ok: false, error: "We couldn't find that job." };
+  if (!(await allow("job_check"))) return { ok: false, error: RATE_LIMITED_MESSAGE };
+  const res = await shareJobCheck(viewer.id, jobId);
+  if (res.ok) await track("check_shared", {}, viewer.id);
+  return res;
 }

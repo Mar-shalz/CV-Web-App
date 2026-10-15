@@ -1,5 +1,3 @@
-import { APP_URL } from "./config.js";
-
 // The toolbar button opens the side panel; right-clicking an image or highlighted text
 // sends it to the panel to read.
 chrome.runtime.onInstalled.addListener(() => {
@@ -21,6 +19,3 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         : null;
   if (pending) await chrome.storage.session.set({ pending: { ...pending, at: Date.now() } });
 });
-
-// The app's own pages never need reading.
-export const isAppPage = (url) => typeof url === "string" && url.startsWith(APP_URL);

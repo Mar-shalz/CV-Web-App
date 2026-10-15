@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { sortItems } from "./order";
 import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
@@ -84,7 +85,8 @@ function sortRoles(roles: VaultRole[]): VaultRole[] {
 }
 
 /** The whole vault for the signed in user, newest first within each kind. */
-export async function getVault(viewer: Viewer): Promise<Vault> {
+// Once per request: layouts, pages and actions often ask for the same vault (D-150).
+export const getVault = cache(async (viewer: Viewer): Promise<Vault> => {
   if (viewer.preview) return summarise(DEMO_VAULT);
   const supabase = await createClient();
   const [{ data: roles }, { data: items }] = await Promise.all([
@@ -125,4 +127,4 @@ export async function getVault(viewer: Viewer): Promise<Vault> {
     items: byRole.get(r.id) ?? [],
   }));
   return summarise(sortRoles(mapped));
-}
+});

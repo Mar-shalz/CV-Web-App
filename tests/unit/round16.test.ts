@@ -35,3 +35,12 @@ describe("CV designs (D-142)", () => {
     expect(isCvStyle("fancy")).toBe(false);
   });
 });
+
+describe("shared checks (D-147)", () => {
+  it("hides phone numbers and emails", async () => {
+    vi.doMock("@/lib/legitimacy", () => ({ fullCheck: vi.fn() }));
+    const { redact } = await import("@/lib/share");
+    expect(redact("Call +234 803 000 0000 or mail hr.jobs2026@gmail.com now")).toBe("Call [number] or mail [email] now");
+    expect(redact("Since 2015, about 11 years.")).toBe("Since 2015, about 11 years.");
+  });
+});

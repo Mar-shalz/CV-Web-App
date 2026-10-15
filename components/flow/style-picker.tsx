@@ -2,6 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { CV_STYLES, CV_STYLE_INFO, type CvStyle } from "@/lib/cv/styles";
+import { requestDesign } from "@/app/(app)/cv/actions";
+import { toast } from "@/components/ui/toaster";
+
+// Mirrors lib/cv/design-usage.ts (server only), the reasons people can pick.
+const REASONS = ["More colour", "Fits on one page", "Two columns", "With a photo", "More creative", "Something else"] as const;
+
+/** "None of these?": one tap to say what design they wanted. Counted, so new designs follow demand (D-148). */
+function AskForDesign() {
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  if (sent) return <p className="mt-2 text-xs font-medium text-proof-700">Thanks. We add the designs people ask for most.</p>;
+  if (!open)
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="mt-2 text-xs font-semibold text-brand-700 underline-offset-2 hover:underline">
+        None of these? Tell us what you&apos;d like
+      </button>
+    );
+  return (
+    <div className="mt-2 animate-rise">
+      <p className="text-xs text-ink-600">What would you like?</p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {REASONS.map((r) => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => {
+              setSent(true);
+              void requestDesign(r).then(() => toast("Thanks. We add the designs people ask for most."));
+            }}
+            className="min-h-9 rounded-full bg-white px-3 text-xs font-semibold text-ink-700 ring-1 ring-ink-150 hover:bg-brand-50 hover:text-brand-800"
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[0.6875rem] leading-4 text-ink-500">Two columns and photos can stop hiring software reading a CV, so we only add them if many people ask.</p>
+    </div>
+  );
+}
 
 const KEY = "rcpt-cv-style";
 
@@ -57,6 +96,7 @@ export function StylePicker({ value, onChange }: { value: CvStyle; onChange: (s:
         ))}
       </div>
       <p className="mt-2 text-xs leading-5 text-ink-500">{CV_STYLE_INFO[value].note} All three read cleanly in applicant tracking systems.</p>
+      <AskForDesign />
     </fieldset>
   );
 }

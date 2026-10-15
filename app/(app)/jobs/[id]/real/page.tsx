@@ -38,7 +38,7 @@ export default async function JobRealPage({ params }: { params: Promise<{ id: st
           ) : null}
         </ul>
       </header>
-      <ScamCheck jobId={job.id} initial={quick} large />
+      <ScamCheck jobId={job.id} initial={quick} large title={job.parsed.title} employer={job.parsed.employer_name} />
       <div className="flex flex-col gap-2 sm:flex-row">
         <Link href={`/jobs/${job.id}`} className={buttonClass("primary", "lg", "w-full sm:w-auto")}>
           <Magicpen size={20} variant="bulk" />

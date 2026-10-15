@@ -21,6 +21,7 @@ const ICON = {
   warn: '<path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10Z" fill="currentColor" opacity=".25"/><path d="M12 7.5v5M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>',
   user: '<path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" fill="currentColor" opacity=".4"/><path d="M20.6 22c0-3.9-3.9-7-8.6-7s-8.6 3.1-8.6 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>',
   key: '<path d="M19.8 14.9a7.4 7.4 0 0 1-7.4 1.8L7.7 21.4c-.3.4-1 .6-1.6.6H3.9c-.8 0-1.5-.7-1.5-1.5v-2.2c0-.6.3-1.3.7-1.6l4.7-4.7a7.4 7.4 0 1 1 12 3Z" fill="currentColor" opacity=".35"/><path d="M14.5 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" fill="currentColor"/>',
+  share: '<path d="M16.96 6.17c2 1.39 3.38 3.6 3.66 6.15M3.49 12.37A8.6 8.6 0 0 1 7.1 6.22M8.19 20.94a8.6 8.6 0 0 0 7.56.05M12.05 7.7a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94ZM4.83 19.92a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94ZM19.17 19.92a2.47 2.47 0 1 0 0-4.94 2.47 2.47 0 0 0 0 4.94Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
   external: '<path d="M13 11 21.2 2.8M22 6.8V2h-4.8M11 2H9C4 2 2 4 2 9v6c0 5 2 7 7 7h6c5 0 7-2 7-7v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
 };
 function icon(name, size = 20, cls = "") {
@@ -60,6 +61,9 @@ async function api(path, body) {
     headers: { authorization: `Bearer ${token}`, ...(body ? { "content-type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
+  const isJson = (res.headers.get("content-type") || "").includes("application/json");
+  // A protected deployment answers with its own sign in page, not our JSON: don't sign out for that.
+  if (!isJson) throw new Error(`Receipts at ${new URL(APP_URL).host} isn't answering the extension. If the site is protected (Vercel Deployment Protection), turn that off, or rebuild the extension for your live address.`);
   if (res.status === 401) {
     await signOutLocal();
     throw new Error("signin");
@@ -81,7 +85,7 @@ function setProfile() {
   $("profile").hidden = false;
   $("initials").textContent = me.initials;
   $("who-name").textContent = me.name;
-  $("who-email").textContent = me.email;
+  $("who-email").textContent = `${me.email} · ${new URL(APP_URL).host}`;
 }
 
 $("avatar").addEventListener("click", () => {
@@ -177,10 +181,13 @@ async function activeTab() {
 
 async function scan() {
   if (!token) return signedOut();
-  const tab = await activeTab();
-  if (!tab?.id || !/^https?:/.test(tab.url || "")) return emptyCard("Open a job advert", "Go to a job on LinkedIn, a company's careers page or any job site, and Receipts reads it here.");
-  if (tab.url.startsWith(APP_URL)) return emptyCard("You're on Receipts", "Open a job advert on another site, and this panel reads it.");
+  // Permission first: until Chrome grants it, it hides the page's address from us, so any
+  // check on the address would wrongly say "no job here" (founder, round 17).
   if (!(await hasAllSites())) return allowCard();
+  const tab = await activeTab();
+  if (!tab?.id) return emptyCard("Open a job advert", "Go to a job on LinkedIn, a company's careers page or any job site, and Receipts reads it here.");
+  if (tab.url && tab.url.startsWith(APP_URL)) return emptyCard("You're on Receipts", "Open a job advert on another site, and this panel reads it.");
+  if (tab.url && !/^https?:/.test(tab.url)) return emptyCard("Open a job advert", "This is one of Chrome's own pages. Go to a job advert on any website, and Receipts reads it here.");
   scanning();
   try {
     const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: detectJob });
@@ -188,13 +195,39 @@ async function scan() {
   } catch {
     current = null;
   }
-  if (!current) return emptyCard("We can't read this page", "Some pages, like Chrome's own, can't be read. Open the job advert in a normal tab.");
+  if (!current) return emptyCard("We can't read this page", "Some pages block extensions. Scan what's on your screen instead, or highlight the job's text and read again.", true);
   if (current.jobLike || current.source === "selection" || current.source === "structured") return jobCard();
   return noJobCard();
 }
 
-function emptyCard(title, body) {
-  show(h("section", { class: "card hero" }, h("div", { class: "art" }, icon("briefcase", 30)), h("h1", {}, title), h("p", {}, body)));
+/** Every state has a way forward: read again, and scan the screen when a page can be shown. */
+function emptyCard(title, body, canScan = false) {
+  show(
+    h(
+      "section",
+      { class: "card hero" },
+      h("div", { class: "art" }, icon("briefcase", 30)),
+      h("h1", {}, title),
+      h("p", {}, body),
+      canScan ? h("button", { class: "btn primary", type: "button", onclick: scanScreen }, icon("scan", 20), "Scan the screen") : null,
+      h("button", { class: `btn ${canScan ? "ghost" : "primary"}`, type: "button", onclick: scan }, "Read this page"),
+    ),
+  );
+}
+
+/** The app couldn't be reached: say so, name the address, and offer to try again. */
+function offline(message) {
+  show(
+    h(
+      "section",
+      { class: "card hero" },
+      h("div", { class: "art" }, icon("warn", 30)),
+      h("h1", {}, "Can't reach Receipts"),
+      h("p", {}, message || "Check your connection, then try again."),
+      h("p", { class: "small" }, `The extension talks to ${new URL(APP_URL).host}.`),
+      h("button", { class: "btn primary", type: "button", onclick: start }, "Try again"),
+    ),
+  );
 }
 
 const SOURCE_LABEL = { structured: "Found the job details on this page", site: "Found the job description", page: "Found what looks like the job description", selection: "Using the text you highlighted", image: "Read from the image" };
@@ -369,6 +402,46 @@ async function readCaptured() {
   }
 }
 
+/** Share the verdict (D-147): a public link with the job and what was checked, never who checked it. */
+function shareBox(c, v) {
+  const box = h("section", { class: "card" });
+  const make = async () => {
+    box.replaceChildren(h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("p", {}, "Making the link")));
+    try {
+      const res = await api("/api/ext/share", { jobId: c.jobId, title: c.title || current.title || undefined, employer: c.employer || current.company || undefined, state: v.state });
+      const wa = `https://wa.me/?text=${encodeURIComponent(`${res.text} ${res.url}`)}`;
+      const x = `https://x.com/intent/post?text=${encodeURIComponent(res.text)}&url=${encodeURIComponent(res.url)}`;
+      const copied = h("span", {}, "Copy link");
+      box.replaceChildren(
+        h("p", { class: "eyebrow" }, "Share the check"),
+        h("p", { class: "small muted", style: "margin-top:2px" }, "Shows the job and what we found. Never your name or details."),
+        h(
+          "div",
+          { class: "row", style: "margin-top:10px" },
+          h("button", { class: "btn wa", type: "button", onclick: () => chrome.tabs.create({ url: wa }) }, "WhatsApp"),
+          h("button", { class: "btn xbtn", type: "button", onclick: () => chrome.tabs.create({ url: x }) }, "Post on X"),
+        ),
+        h(
+          "button",
+          {
+            class: "btn ghost",
+            type: "button",
+            onclick: async () => {
+              await navigator.clipboard.writeText(res.url).catch(() => {});
+              copied.textContent = "Copied";
+            },
+          },
+          copied,
+        ),
+      );
+    } catch (e) {
+      if (e.message !== "signin") box.replaceChildren(h("p", { class: "error" }, e.message), h("button", { class: "btn ghost", type: "button", onclick: make }, "Try again"));
+    }
+  };
+  box.append(h("button", { class: "btn outline", type: "button", onclick: make }, icon("share", 18), "Share this check"));
+  return box;
+}
+
 const STATE = {
   verified: { cls: "good", icon: "tick", title: "Looks genuine on the checks we could run" },
   unverified: { cls: "warn", icon: "warn", title: "We couldn't confirm it. Be careful." },
@@ -399,6 +472,7 @@ function results(c, v) {
       ),
       h("p", { class: "small muted", style: "margin-top:10px" }, "We describe what we found online. We can't prove a job is real, so never pay to apply and never share your BVN or bank PIN."),
     ),
+    shareBox(c, v),
     h("section", { class: "row" }, h("button", { class: "btn outline", type: "button", onclick: save }, icon("bookmark", 18), "Save"), h("button", { class: "btn primary", type: "button", onclick: tailor }, icon("magic", 18), "Tailor my CV")),
     h("button", { class: "btn ghost", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/real` }) }, icon("external", 16), "Open the full check in Receipts"),
   );
@@ -422,7 +496,8 @@ async function start() {
   try {
     me = await api("/api/ext/me");
     setProfile();
-  } catch {
+  } catch (e) {
+    if (e.message !== "signin") offline(e.message === "Failed to fetch" ? null : e.message);
     return;
   }
   if (!(await takePending())) await scan();

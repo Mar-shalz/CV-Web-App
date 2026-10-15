@@ -6,7 +6,7 @@ import { outlinedInputClass } from "@/components/ui/field";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { FormError } from "@/components/auth/form-error";
 import type { VaultItem } from "@/lib/vault/data";
-import type { Ownership } from "@/lib/vault/schema";
+import type { Ownership } from "@/lib/vault/labels";
 import { CloseSquare, MagicStar } from "@/components/icons";
 import { VoiceRecorder, type SpokenMeta } from "./voice-recorder";
 

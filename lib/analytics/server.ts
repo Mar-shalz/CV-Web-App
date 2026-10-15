@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { after } from "next/server";
 import { sanitize, type AnalyticsEvents, type EventName } from "./events";
 
 /**
@@ -19,14 +20,23 @@ export async function track<E extends EventName>(event: E, props: AnalyticsEvent
   const key = process.env.POSTHOG_KEY;
   if (!key) return;
   const distinctId = userId ? pseudonymousId(userId) : "anonymous";
+  const send = async () => {
+    try {
+      await fetch("https://eu.i.posthog.com/capture/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: key, event, distinct_id: distinctId, properties: { ...sanitize(event, props), $process_person_profile: false } }),
+        signal: AbortSignal.timeout(2000),
+      });
+    } catch {
+      // Analytics must never break a user flow.
+    }
+  };
+  // Sent after the response, so analytics never slows a screen down (D-150). Outside a
+  // request (scripts, tests) it is sent straight away.
   try {
-    await fetch("https://eu.i.posthog.com/capture/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: key, event, distinct_id: distinctId, properties: { ...sanitize(event, props), $process_person_profile: false } }),
-      signal: AbortSignal.timeout(2000),
-    });
+    after(send);
   } catch {
-    // Analytics must never break a user flow.
+    await send();
   }
 }

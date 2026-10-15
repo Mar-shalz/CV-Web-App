@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { saveRole, type VaultActionState } from "@/app/(app)/experience/actions";
-import { ROLE_KINDS, EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_KINDS, type RoleKind, type EmploymentType } from "@/lib/vault/schema";
+import { ROLE_KINDS, EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_KINDS, type RoleKind, type EmploymentType } from "@/lib/vault/labels";
 import { inputClass } from "@/components/ui/field";
 import { MonthYearField } from "@/components/ui/date-fields";
 import { SubmitButton } from "@/components/auth/submit-button";

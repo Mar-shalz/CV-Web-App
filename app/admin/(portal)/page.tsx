@@ -1,5 +1,7 @@
 import { requireAdmin } from "@/lib/admin/auth";
 import { getOverview } from "@/lib/admin/data";
+import { designUsage } from "@/lib/cv/design-usage";
+import { CV_STYLES, CV_STYLE_INFO } from "@/lib/cv/styles";
 import { can } from "@/lib/admin/permissions";
 import { KpiCard, PageHeader, Panel, StatusPill } from "@/components/admin/ui";
 import { BarChart } from "@/components/admin/bar-chart";
@@ -10,7 +12,8 @@ export const metadata = { title: { absolute: "Overview · Back Office" } };
 
 export default async function AdminOverview() {
   const staff = await requireAdmin("overview");
-  const o = await getOverview(staff);
+  const [o, designs] = await Promise.all([getOverview(staff), designUsage()]);
+  const designTotal = CV_STYLES.reduce((n, s) => n + designs.downloads[s], 0);
   // Same cards as the app's Home: label, icon, number, one line of context.
   const queue = [
     { show: can(staff.role, "reviews"), href: "/admin/reviews", icon: <TaskSquare size={22} variant="bulk" />, tint: o.queue.overdueReports ? "care" : "brand", label: "Truth reports open", value: o.queue.openReports, hint: o.queue.overdueReports ? `${o.queue.overdueReports} past 48 hours` : "All inside 48 hours" },
@@ -65,6 +68,50 @@ export default async function AdminOverview() {
           </ul>
         </Panel>
       </div>
+
+      {/* Add CV designs when the numbers say so (D-148). */}
+      <Panel title="CV designs, last 30 days" action={<span className="text-xs text-ink-500">{designTotal} downloads</span>}>
+        <div className="grid gap-5 p-5 md:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Downloads by design</p>
+            <ul className="mt-2 space-y-2">
+              {CV_STYLES.map((s) => {
+                const n = designs.downloads[s];
+                const pct = designTotal ? Math.round((n / designTotal) * 100) : 0;
+                return (
+                  <li key={s}>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-ink-900">{CV_STYLE_INFO[s].label}</span>
+                      <span className="tabular-nums text-ink-600">
+                        {n} · {pct}%
+                      </span>
+                    </div>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-ink-100">
+                      <div className="h-full rounded-full bg-brand-600" style={{ width: `${pct}%` }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Asked for another design</p>
+            {designs.requests.length ? (
+              <ul className="mt-2 divide-y divide-ink-100">
+                {designs.requests.map((r) => (
+                  <li key={r.reason} className="flex justify-between py-2 text-sm">
+                    <span className="text-ink-900">{r.reason}</span>
+                    <span className="font-semibold tabular-nums text-ink-700">{r.count}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-ink-500">{designs.ready ? "No requests yet." : "Shows once the latest database update has been run."}</p>
+            )}
+            <p className="mt-3 text-xs leading-5 text-ink-500">Rule of thumb: add a design when one request reaches about 1 in 10 downloads. Two columns and photos hurt hiring software, so weigh those carefully.</p>
+          </div>
+        </div>
+      </Panel>
     </>
   );
 }

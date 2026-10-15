@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Viewer } from "@/lib/auth/viewer";
@@ -31,14 +32,14 @@ export async function getCvById(viewer: Viewer, cvId: string): Promise<CvRecord 
   return data ? { id: data.id, doc: data.content as CvDoc, locked: Boolean(data.locked_at), createdAt: data.created_at } : null;
 }
 
-export async function getContact(viewer: Viewer): Promise<ContactDetails> {
+export const getContact = cache(async (viewer: Viewer): Promise<ContactDetails> => {
   if (viewer.preview) return { fullName: "Tolu Adebayo", phone: "+234 8030000000", email: "tolu.adebayo@gmail.com", city: "Yaba", state: "Lagos", linkedin: null, portfolio: null, website: null };
   const supabase = await createClient();
   const { data } = await supabase.from("profiles").select("*").eq("user_id", viewer.id).maybeSingle();
   // select("*") so the page keeps working before the links migration runs.
   const row = (data ?? {}) as Record<string, string | null>;
   return { fullName: row.full_name ?? viewer.fullName, phone: row.phone ?? null, email: row.contact_email ?? viewer.email, city: row.city ?? null, state: row.state ?? null, linkedin: row.linkedin_url ?? null, portfolio: row.portfolio_url ?? null, website: row.website_url ?? null };
-}
+});
 
 export type GenerateResult = { ok: true; cvId: string } | { ok: false; reason: "paywall" | "cv_cap" | "error" | "no_items"; error: string };
 

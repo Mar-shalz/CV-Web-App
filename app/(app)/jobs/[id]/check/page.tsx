@@ -100,7 +100,7 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
           </Suspense>
         </div>
         <div className="space-y-3">
-          <ScamCheck jobId={job.id} initial={quick} />
+          <ScamCheck jobId={job.id} initial={quick} title={job.parsed.title} employer={job.parsed.employer_name} />
           <Suspense fallback={null}>
             <Gaps promise={verdictPromise} />
           </Suspense>

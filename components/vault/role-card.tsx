@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { confirmItem, confirmRole, deleteItem, deleteRole } from "@/app/(app)/experience/actions";
 import type { VaultItem, VaultRole } from "@/lib/vault/data";
-import { ROLE_KIND_LABELS, EMPLOYMENT_LABELS } from "@/lib/vault/schema";
+import { ROLE_KIND_LABELS, EMPLOYMENT_LABELS } from "@/lib/vault/labels";
 import { rangeLabel } from "@/lib/vault/dates";
 import lazy from "next/dynamic";
 

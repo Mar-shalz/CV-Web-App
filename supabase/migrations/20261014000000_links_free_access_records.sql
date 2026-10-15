@@ -151,3 +151,45 @@ create table if not exists public.extension_tokens (
 create index if not exists extension_tokens_user_idx on public.extension_tokens (user_id);
 alter table public.extension_tokens enable row level security;
 revoke all on public.extension_tokens from anon, authenticated;
+
+-- 16. Shareable job checks: a public link with the verdict on one job post. Holds the post's
+-- title, employer and what we checked, never who checked it publicly (user_id is kept only
+-- so the owner can stop sharing and for deletion). Read by slug through the service role.
+create table if not exists public.check_shares (
+  slug text primary key check (slug ~ '^[A-Za-z0-9]{10}$'),
+  job_id uuid references public.jobs (id) on delete set null,
+  user_id uuid not null references public.users (id) on delete cascade,
+  title text check (char_length(title) <= 200),
+  employer text check (char_length(employer) <= 160),
+  location text check (char_length(location) <= 160),
+  source_host text check (char_length(source_host) <= 120),
+  state text not null check (state in ('verified', 'unverified', 'red_flags')),
+  headline text check (char_length(headline) <= 600),
+  checks jsonb not null default '[]'::jsonb,
+  flags jsonb not null default '[]'::jsonb,
+  checked_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  views int not null default 0
+);
+create unique index if not exists check_shares_job_idx on public.check_shares (job_id) where job_id is not null;
+alter table public.check_shares enable row level security;
+revoke all on public.check_shares from anon, authenticated;
+
+-- 17. CV design usage, so new designs are added when people ask for them: downloads per
+-- design and requests for other designs. No user id, no CV content.
+create table if not exists public.cv_design_events (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  kind text not null check (kind in ('download', 'request')),
+  style text check (char_length(style) <= 20),
+  reason text check (char_length(reason) <= 40)
+);
+create index if not exists cv_design_events_at_idx on public.cv_design_events (at desc);
+alter table public.cv_design_events enable row level security;
+revoke all on public.cv_design_events from anon, authenticated;
+
+-- 18. Indexes for the queries the app runs most (founder round 17 engineering pass).
+create index if not exists jobs_user_state_idx on public.jobs (user_id, state);
+create index if not exists applications_job_idx on public.applications (job_id);
+create index if not exists cv_versions_user_job_idx on public.cv_versions (user_id, job_id, created_at desc);
+create index if not exists vault_items_role_idx on public.vault_items (role_id);

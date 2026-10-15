@@ -1,4 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
+import { recordDesignEvent } from "@/lib/cv/design-usage";
 import { getViewer } from "@/lib/auth/viewer";
 import { createClient } from "@/lib/supabase/server";
 import { getCvById } from "@/lib/cv/data";
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const open = openFlags(cv.doc);
   if (open) await track("cv_downloaded_with_flags", { open_flags_count: open }, viewer.id);
-  await track("cv_exported", { format: cv.doc.format, file_type: type }, viewer.id);
+  await track("cv_exported", { format: cv.doc.format, file_type: type, style }, viewer.id);
+  after(() => recordDesignEvent("download", { style }));
   return file;
 }
