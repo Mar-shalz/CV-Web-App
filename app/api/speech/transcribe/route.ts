@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   if (!(audio instanceof Blob) || audio.size === 0) return NextResponse.json({ ok: false, error: "We didn't get any audio. Try recording again." }, { status: 400 });
   if (audio.size > MAX_BYTES) return NextResponse.json({ ok: false, error: "That recording is too long. Keep it under 2 minutes." }, { status: 413 });
 
-  // Organisation names help the recogniser with Nigerian employers and places.
+  // Organisation names help the recogniser with employer and place names.
   const vault = await getVault(viewer);
   const vocabulary = [...new Set(vault.roles.flatMap((r) => [r.organisation, r.location]).filter((v): v is string => Boolean(v)))].slice(0, 50);
 

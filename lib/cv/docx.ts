@@ -6,7 +6,8 @@ import type { CvStyle } from "./styles";
 // The Word version of the same standard CV: one column, real headings, title and dates on
 // one line with a right tab, the employer in italics below, bullets, page numbers.
 
-const TEXT_WIDTH = 9906; // A4 width minus 1000 twip margins
+// Page sizes in twips: A4, or Letter for US resumes (D-168); 1000 twip side margins.
+const PAGE = { a4: { width: 11906, height: 16838 }, letter: { width: 12240, height: 15840 } };
 const MUTED = "586679";
 const BODY = "283041";
 
@@ -24,6 +25,7 @@ const TINT = "E8F5F5";
 type RunOpts = { bold?: boolean; italics?: boolean; size?: number; color?: string };
 
 export async function renderDocx(doc: CvDoc, personal: { dateOfBirth?: string | null }, style: CvStyle = "classic"): Promise<Buffer> {
+  const paper = doc.format === "us" ? PAGE.letter : PAGE.a4;
   const look = LOOK[style];
   const FONT = look.font;
   const ACCENT = look.accent;
@@ -44,7 +46,7 @@ export async function renderDocx(doc: CvDoc, personal: { dateOfBirth?: string | 
   const leftRight = (left: string, right: string | null, size = 21) =>
     new Paragraph({
       keepNext: true,
-      tabStops: [{ type: TabStopType.RIGHT, position: TEXT_WIDTH }],
+      tabStops: [{ type: TabStopType.RIGHT, position: paper.width - 2000 }],
       spacing: { before: 120, after: 10 },
       children: [run(left, { bold: true, size, color: "111827" }), ...(right ? [run(`\t${right}`, { size: 19, color: MUTED })] : [])],
     });
@@ -69,7 +71,7 @@ export async function renderDocx(doc: CvDoc, personal: { dateOfBirth?: string | 
   }
 
   if (doc.summary.text) {
-    children.push(heading(doc.format === "uk" ? "Profile" : "Profile summary"));
+    children.push(heading(doc.format === "uk" ? "Profile" : doc.format === "us" ? "Summary" : "Profile summary"));
     children.push(new Paragraph({ spacing: { after: 60, line: 300 }, children: [run(doc.summary.text)] }));
   }
 
@@ -114,7 +116,7 @@ export async function renderDocx(doc: CvDoc, personal: { dateOfBirth?: string | 
     creator: doc.name,
     title: `${doc.name} CV`,
     styles: { default: { document: { run: { font: FONT, size: 20 } } } },
-    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 900, bottom: 1000, left: 1000, right: 1000 } } }, footers: { default: footer }, children }],
+    sections: [{ properties: { page: { size: { width: paper.width, height: paper.height }, margin: { top: 900, bottom: 1000, left: 1000, right: 1000 } } }, footers: { default: footer }, children }],
   });
   return Packer.toBuffer(document);
 }

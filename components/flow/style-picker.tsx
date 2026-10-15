@@ -106,10 +106,10 @@ export function StylePicker({ value, onChange }: { value: CvStyle; onChange: (s:
       <legend className="text-sm font-semibold text-ink-900">Design</legend>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {CV_STYLES.map((s) => (
-          <label key={s} className={`cursor-pointer rounded-2xl p-2 ring-1 transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500 ${value === s ? "bg-brand-50 ring-2 ring-brand-500" : "bg-ink-50 ring-ink-150 hover:bg-ink-75"}`}>
+          <label key={s} className={`cursor-pointer rounded-2xl border-2 p-2 transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500 ${value === s ? "border-dashed border-brand-500 bg-brand-50/40" : "border-transparent bg-ink-50 ring-1 ring-ink-150 hover:bg-ink-75"}`}>
             <input type="radio" name="cv-style" value={s} checked={value === s} onChange={() => onChange(s)} className="sr-only" />
             <Thumb s={s} />
-            <span className="mt-1.5 block text-center text-[0.8125rem] font-semibold text-ink-900">{CV_STYLE_INFO[s].label}</span>
+            <span className={`mt-1.5 block text-center text-[0.8125rem] font-semibold ${value === s ? "text-brand-700" : "text-ink-900"}`}>{CV_STYLE_INFO[s].label}</span>
           </label>
         ))}
       </div>

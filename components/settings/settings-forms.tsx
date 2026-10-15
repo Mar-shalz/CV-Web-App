@@ -50,7 +50,7 @@ export function ProfileForm({ initial, codes }: { initial: ProfileValues; codes:
       {text("full_name", "Full name", { hint: "As it should appear at the top of your CV.", auto: "name" })}
       {text("contact_email", "Email for employers", { type: "email", hint: "Use a professional address. It can be different from your sign in email.", optional: true, auto: "email" })}
 
-      <Field id="phone" label="Phone number" error={err("phone")} optional hint="Employers in Nigeria often call before they email.">
+      <Field id="phone" label="Phone number" error={err("phone")} optional hint="Employers often call before they email.">
         <div className="grid grid-cols-[minmax(0,10.5rem)_minmax(0,1fr)] gap-2">
           <label htmlFor="phone_code" className="sr-only">
             Country code

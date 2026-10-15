@@ -135,10 +135,16 @@ function QuestionCard({ n, q, open, onToggle, applicationId, voice, tries }: { n
             <Lamp size={16} className="mt-0.5 shrink-0 text-care-600" />
             {q.why}
           </p>
-          <p className="rounded-xl bg-brand-50 px-3 py-2 text-[0.8125rem] leading-5 text-brand-900">
-            <span className="font-semibold">How to answer: </span>
-            {ANSWER_TIPS[q.kind]}
-          </p>
+          {/* A tip card, set apart from the blue voice button below (founder, round 21). */}
+          <div className="flex items-start gap-3 rounded-2xl border border-proof-100 bg-proof-50 p-3.5 shadow-[inset_4px_0_0_var(--color-proof-500)]">
+            <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-white text-proof-700 shadow-card">
+              <TickCircle size={18} variant="bulk" />
+            </span>
+            <p className="text-[0.8125rem] leading-5 text-ink-800">
+              <span className="block text-xs font-bold uppercase tracking-[0.08em] text-proof-700">How to answer</span>
+              {ANSWER_TIPS[q.kind]}
+            </p>
+          </div>
           {q.bulletText ? (
             <div className="torn-edge rounded-t-2xl bg-paper p-4">
               <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-500">

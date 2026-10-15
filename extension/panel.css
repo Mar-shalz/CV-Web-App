@@ -108,14 +108,28 @@ p { margin: 0; }
 .pass { color: var(--proof); }
 .fail { color: var(--flag); }
 .unknown { color: #8a97ab; }
+.warnc { color: var(--care); }
 .brand-ic { color: var(--brand); }
 .link { color: var(--brand); font-weight: 600; text-decoration: none; }
 .link:hover { text-decoration: underline; }
 
+/* Check score (round 21) */
+.score { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--bg); font-size: 13px; }
+.score strong { font-size: 15px; }
+.score-bar { display: flex; gap: 3px; margin-top: 6px; }
+.seg { height: 6px; flex: 1; border-radius: 99px; background: #e2e8f0; }
+.seg.pass { background: #22a06b; }
+.seg.warn { background: #f0a43c; }
+.seg.fail { background: #e5484d; }
+
 /* Your match (D-164) */
-.fit-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
-.ring { position: relative; display: grid; place-items: center; width: 64px; height: 64px; flex: none; }
-.ring-pct { position: absolute; font-weight: 700; font-size: 14px; }
+.mbar { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.mbar-pct { width: 44px; font-weight: 800; font-size: 16px; }
+.mbar-track { flex: 1; height: 9px; border-radius: 99px; background: #e2e8f0; overflow: hidden; }
+.mbar-fill { display: block; height: 100%; border-radius: 99px; }
+.mbar.good .mbar-pct { color: var(--proof); } .mbar.good .mbar-fill { background: #22a06b; }
+.mbar.mid .mbar-pct { color: var(--care); } .mbar.mid .mbar-fill { background: #f0a43c; }
+.mbar.low .mbar-pct { color: var(--flag); } .mbar.low .mbar-fill { background: #e5484d; }
 .fit-label { font-weight: 700; font-size: 16px; }
 
 /* Working */

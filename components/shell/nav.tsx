@@ -72,21 +72,19 @@ export function Sidebar({
 
   return (
     <aside
-      className={`sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-ink-150 bg-white transition-[width] duration-300 ease-[var(--ease-out)] lg:flex ${
+      className={`sticky top-0 z-30 hidden h-dvh shrink-0 flex-col border-r border-ink-150 bg-white transition-[width] duration-300 ease-[var(--ease-out)] lg:flex ${
         collapsed ? "w-[108px]" : "w-[248px]"
       }`}
     >
-      {/* The collapse control always sits beside the logo, so collapsing never adds a row. */}
-      <div
-        className={`flex h-[76px] items-center ${collapsed ? "justify-center gap-3 px-2" : "justify-between pl-6 pr-3"}`}
-      >
+      {/* The collapse control sits on the sidebar's edge, half over the page (founder, round 21). */}
+      <div className={`flex h-[76px] items-center ${collapsed ? "justify-center px-2" : "pl-6 pr-3"}`}>
         <Link href="/home" className="rounded-xl" aria-label="Home">
           <Logo collapsed={collapsed} />
         </Link>
         <button
           type="button"
           onClick={toggle}
-          className={`grid shrink-0 place-items-center rounded-full bg-white text-ink-600 shadow-[0_2px_8px_-2px_rgb(15_23_42/0.18),0_0_0_1px_rgb(15_23_42/0.06)] transition-[color,box-shadow,transform] hover:text-brand-700 hover:shadow-[0_6px_16px_-4px_rgb(30_71_217/0.35),0_0_0_1px_rgb(30_71_217/0.15)] active:scale-95 size-9`}
+          className="absolute -right-[18px] top-5 z-10 grid size-9 place-items-center rounded-full bg-white text-ink-600 shadow-[0_2px_8px_-2px_rgb(15_23_42/0.18),0_0_0_1px_rgb(15_23_42/0.08)] transition-[color,box-shadow,transform] hover:text-brand-700 hover:shadow-[0_6px_16px_-4px_rgb(30_71_217/0.35),0_0_0_1px_rgb(30_71_217/0.15)] active:scale-95"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!collapsed}
         >
@@ -169,6 +167,7 @@ export function Sidebar({
           </span>
         </Link>
         {collapsed ? footerCollapsed : footer}
+        <div className="mt-3 h-px bg-ink-150" aria-hidden="true" />
         <Link
           href="/settings"
           title={collapsed ? "Account and settings" : undefined}
@@ -248,10 +247,10 @@ export function TailorFab() {
     return null;
   return (
     // The sheen sets its own position, so the fixed placement sits on a wrapper.
-    <div className="fixed bottom-6 right-6 z-30 hidden lg:block">
+    <div className="fixed bottom-12 right-8 z-30 hidden lg:block">
       <Link
         href="/jobs/new"
-        className="cta-sheen inline-flex min-h-14 items-center gap-2 rounded-full bg-gradient-to-br from-brand-500 to-brand-800 pl-5 pr-6 text-[0.9375rem] font-semibold text-white shadow-[var(--shadow-cta)] transition-transform hover:-translate-y-0.5 active:scale-95"
+        className="cta-sheen inline-flex min-h-14 min-w-[230px] items-center justify-center gap-2.5 rounded-full bg-gradient-to-br from-brand-500 to-brand-800 px-8 text-base font-semibold text-white shadow-[var(--shadow-cta)] transition-transform hover:-translate-y-0.5 active:scale-95"
       >
         <Magicpen size={22} variant="bulk" />
         Tailor my CV

@@ -186,7 +186,7 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
         .filter((r) => r.kind === "education")
         .sort(sortRecent)
         .map((r) => {
-          const title = profile.id === "uk" && /\bhnd\b/i.test(r.title ?? "") && "hnd_explainer" in profile ? `${r.title} (${profile.hnd_explainer})` : (r.title ?? "Qualification");
+          const title = /\bhnd\b/i.test(r.title ?? "") && "hnd_explainer" in profile ? `${r.title} (${profile.hnd_explainer})` : (r.title ?? "Qualification");
           return { title, subtitle: [r.organisation, r.location].filter(Boolean).join(", ") || null, dates: rangeLabel(r.start, r.end, r.isCurrent) || null, detail: r.grade ? `Class of degree: ${r.grade}` : null };
         });
       if (entries.length) sections.push({ key, heading, kind: "entries", entries });
@@ -194,7 +194,7 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
       const n = roles.find((r) => r.kind === "nysc_ppa");
       if (n) {
         const status = n.isCurrent ? `Serving, ends ${monthLabel(n.end) ?? "this year"}` : `Completed ${monthLabel(n.end) ?? ""}`.trim();
-        const title = profile.id === "uk" && "nysc_explainer" in profile ? `National Youth Service Corps (${profile.nysc_explainer})` : "National Youth Service Corps (NYSC)";
+        const title = "nysc_explainer" in profile ? `National Youth Service Corps (${profile.nysc_explainer})` : "National Youth Service Corps (NYSC)";
         sections.push({ key, heading, kind: "entries", entries: [{ title, subtitle: [n.organisation ? `Place of primary assignment: ${n.organisation}` : null, n.location].filter(Boolean).join(", ") || null, dates: rangeLabel(n.start, n.end, n.isCurrent) || null, detail: status }] });
       }
     } else if (key === "skills") {
@@ -217,7 +217,7 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     }
   }
 
-  const place = profile.id === "uk" ? [contact.city, "Nigeria"].filter(Boolean).join(", ") : [contact.city, contact.state].filter(Boolean).join(", ");
+  const place = profile.id === "uk" || profile.id === "us" ? [contact.city, "Nigeria"].filter(Boolean).join(", ") : [contact.city, contact.state].filter(Boolean).join(", ");
   const doc: CvDoc = {
     format: job.destination.profile,
     profileVersion: profile.version,

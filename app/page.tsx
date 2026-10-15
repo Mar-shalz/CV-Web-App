@@ -199,7 +199,7 @@ export default function LandingPage() {
                 {price} <span className="text-base font-medium text-ink-500">for {pass.days} days</span>
               </p>
               <ul className="mt-5 space-y-3 text-[0.9375rem]">
-                {[`Up to ${pass.tailored_cvs} tailored CVs, in Nigerian and UK formats`, "Checks on every job: do you qualify, is it real", "Ready to send emails and form answers", "Interview prep from the CV you sent"].map((f) => (
+                {[`Up to ${pass.tailored_cvs} tailored CVs, in Nigerian, UK and US formats`, "Checks on every job: do you qualify, is it real", "Ready to send emails and form answers", "Interview prep from the CV you sent"].map((f) => (
                   <li key={f} className="flex items-center gap-2.5">
                     <TickCircle size={20} variant="bulk" className="text-brand-600" />
                     {f}

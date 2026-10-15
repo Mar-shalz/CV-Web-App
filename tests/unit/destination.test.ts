@@ -32,6 +32,11 @@ describe("destination detection (Build pack section 8)", () => {
     expect(d.profile).toBe("uk");
     expect(d.fallbackNote).toContain("Canada");
   });
+
+  it("uses the US resume format for US jobs, with no stand-in note (D-168)", () => {
+    const d = detectDestination(job({ location: { ...EMPTY_JOB.location, country: "United States", country_code: "US" } }), ["NG"]);
+    expect(d).toMatchObject({ country: "US", profile: "us", fallbackNote: null });
+  });
   it("remote roles default to the employer's home country", () => {
     const d = detectDestination(job({ location: { ...EMPTY_JOB.location, remote: true }, employer_domain_claimed: "acme.co.uk" }), ["NG"]);
     expect(d.country).toBe("GB");

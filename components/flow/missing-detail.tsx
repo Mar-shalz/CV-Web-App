@@ -5,7 +5,7 @@ import Link from "next/link";
 import { DayMonthYearField, MonthYearField } from "@/components/ui/date-fields";
 import { saveDetail, type DetailState } from "@/app/(app)/jobs/[id]/check/actions";
 import type { MissingDetail } from "@/lib/rules/eligibility/types";
-import { inputClass } from "@/components/ui/field";
+import { inputClass, optionClass } from "@/components/ui/field";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { FormError } from "@/components/auth/form-error";
 import { Lock1, MessageQuestion } from "@/components/icons";
@@ -58,7 +58,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
       {need === "gender" ? (
         <div className="grid grid-cols-2 gap-2">
           {["female", "male"].map((g) => (
-            <label key={g} className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white text-sm font-semibold capitalize text-ink-800 ring-1 ring-ink-150 has-[:checked]:bg-brand-600 has-[:checked]:text-white">
+            <label key={g} className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl text-sm font-semibold capitalize text-ink-800 ${optionClass}`}>
               <input type="radio" name="gender" value={g} className="sr-only" />
               {g}
             </label>
@@ -74,7 +74,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
               ["serving", "Serving now"],
               ["exempted", "Exempted"],
             ].map(([v, l]) => (
-              <label key={v} className="flex min-h-12 cursor-pointer items-center justify-center rounded-2xl bg-white text-sm font-semibold text-ink-800 ring-1 ring-ink-150 has-[:checked]:bg-brand-600 has-[:checked]:text-white">
+              <label key={v} className={`flex min-h-12 cursor-pointer items-center justify-center rounded-2xl text-sm font-semibold text-ink-800 ${optionClass}`}>
                 <input type="radio" name="nysc_status" value={v} checked={nysc === v} onChange={() => setNysc(v)} className="sr-only" />
                 {l}
               </label>
@@ -120,7 +120,7 @@ export function MissingDetailCard({ jobId, need, quote, country }: { jobId: stri
               ["yes", "Yes, I can work there"],
               ["needs_sponsorship", "I'd need a visa"],
             ].map(([v, l]) => (
-              <label key={v} className="flex min-h-12 cursor-pointer items-center justify-center rounded-2xl bg-white px-3 text-sm font-semibold text-ink-800 ring-1 ring-ink-150 has-[:checked]:bg-brand-600 has-[:checked]:text-white">
+              <label key={v} className={`flex min-h-12 cursor-pointer items-center justify-center rounded-2xl px-3 text-sm font-semibold text-ink-800 ${optionClass}`}>
                 <input type="radio" name="status" value={v} className="sr-only" />
                 {l}
               </label>

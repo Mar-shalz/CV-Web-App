@@ -19,6 +19,7 @@ const STATE = {
 const CALM = { tone: "bg-brand-50 text-brand-800 ring-brand-100", icon: ShieldSearch, title: "No warning signs found" } as const;
 const CHECK = {
   pass: { icon: TickCircle, cls: "text-proof-600", word: "Yes" },
+  warn: { icon: Warning2, cls: "text-care-700", word: "Check this" },
   fail: { icon: CloseCircle, cls: "text-flag-600", word: "No" },
   unknown: { icon: MinusCircle, cls: "text-ink-400", word: "Couldn't check" },
 } as const;
@@ -108,7 +109,7 @@ export default async function SharedCheckPage({ params }: { params: Promise<{ sl
               })}
             </ul>
             <p className="mt-3 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">
-              Checked {formatDate(s.checkedAt)}. This is about one job post, not the company named in it: scammers often use real company names. We can&apos;t prove a job is real, so never pay to apply and never share your BVN or bank PIN.
+              Checked {formatDate(s.checkedAt)}. This is about one job post, not the company named in it: scammers often use real company names. We can&apos;t prove a job is real, so never pay to apply and never share your bank PIN or ID numbers before an offer.
             </p>
           </section>
 

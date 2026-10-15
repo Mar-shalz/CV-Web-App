@@ -1,0 +1,47 @@
+{
+  "id": "us",
+  "version": "us_v1",
+  "reviewed_by": null,
+  "label": "Resume",
+  "paper": "Letter",
+  "spelling": "American English",
+  "date_style": "Mon YYYY",
+  "max_pages": {
+    "default": 2,
+    "over_10_years": 2
+  },
+  "section_order": [
+    "profile",
+    "experience",
+    "education",
+    "skills",
+    "certifications"
+  ],
+  "section_order_under_2_years": [
+    "profile",
+    "education",
+    "experience",
+    "skills",
+    "certifications"
+  ],
+  "personal_fields": {
+    "photo": "never",
+    "date_of_birth": "never",
+    "gender": "never",
+    "marital_status": "never",
+    "state_of_origin": "never",
+    "religion": "never"
+  },
+  "nysc": "one_line_explained",
+  "nysc_explainer": "Nigeria's mandatory one-year national service for graduates",
+  "hnd_explainer": "Higher National Diploma, a Nigerian vocational qualification",
+  "class_of_degree": "as_written",
+  "cgpa": "never",
+  "olevel": "never",
+  "referees": "left_out",
+  "right_to_work": "honest_line",
+  "address": "city_country_relocation",
+  "phone": "+234",
+  "file_name": "{first}_{last}_Resume_{role}",
+  "email_subject_default": "Application: {role}, {full_name}"
+}

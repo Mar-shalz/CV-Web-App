@@ -18,7 +18,7 @@ import sources from "@/config/lists/job_sources.json";
 
 export type LegitimacySignal = { id: string; severity: Severity | "ok"; text: string; evidence: string | null; sourceUrl: string | null };
 /** One line of "What we checked": passed, failed, or couldn't check (with why). `word` replaces "Couldn't check" when we did check and found nothing. */
-export type LegitimacyCheck = { key: string; label: string; status: "pass" | "fail" | "unknown"; detail: string; sourceUrl: string | null; word?: string };
+export type LegitimacyCheck = { key: string; label: string; status: "pass" | "warn" | "fail" | "unknown"; detail: string; sourceUrl: string | null; word?: string };
 /**
  * `calm`: couldn't fully confirm, but the company is real and nothing looks wrong (D-156).
  * Shown as "No warning signs found" instead of "Be careful", so a real job posted only on
@@ -82,7 +82,7 @@ function headlineFor(state: ScamState, signals: LegitimacySignal[], findings: Fi
   if (exists && official) return `${name} is a real company, and this job is on its own website. Apply there, and never pay to apply.`;
   if (exists && listed) return `${name} is a real company, and this job is listed under its name${listed.sourceUrl && boardOf(listed.sourceUrl) ? ` on ${boardOf(listed.sourceUrl)}` : ""}. Many companies post jobs only on job sites, so it's normal not to see it on their website. Never pay to apply.`;
   if (exists) return `${name} is a real company. We couldn't link this exact job to them, which is common when jobs are shared on other sites. Apply through the company's official contacts, and never pay to apply.`;
-  return "We couldn't confirm who posted this job. That doesn't mean it's fake. See what we checked below, and never pay or share your BVN to apply.";
+  return "We couldn't confirm who posted this job. That doesn't mean it's fake. See what we checked below, and never pay or share your bank details to apply.";
 }
 
 
@@ -141,10 +141,25 @@ function checklist(findings: Finding[], job: ParsedJob | null, live: boolean): L
   const pending = live ? "Checking" : "We couldn't check this right now.";
   const named = Boolean(job?.employer_name);
   const hasRoute = Boolean(job && (job.how_to_apply.email || job.how_to_apply.url || job.contacts.emails.length));
+  // Graded like the verdict (D-169): a red sign is "No", an amber one "Check this".
   const line = (key: string, label: string, x: Finding | undefined, pass: Finding["result"][], fail: Finding["result"][], why: string): LegitimacyCheck => {
     if (!x || x.result === "unknown") return { key, label, status: "unknown", detail: x?.text ?? why, sourceUrl: x?.sourceUrl ?? null };
-    return { key, label, status: pass.includes(x.result) ? "pass" : fail.includes(x.result) ? "fail" : "unknown", detail: x.text, sourceUrl: x.sourceUrl };
+    const failed = fail.includes(x.result);
+    return { key, label, status: pass.includes(x.result) ? "pass" : failed ? (findingSeverity(x) === "red" ? "fail" : "warn") : "unknown", detail: x.text, sourceUrl: x.sourceUrl };
   };
+  // Every finding that can raise a warning has its own line, so the verdict never rests on
+  // something the list doesn't show (founder round 21).
+  const extra = (
+    [
+      ["L2-04", "website_age", "Its website isn't brand new", [] as Finding["result"][], ["warning"] as Finding["result"][]],
+      ["L2-07", "footprint", "It has a real presence online", ["found"], ["warning"]],
+      ["L2-08", "forums", "No scam reports about it on forums", ["not_found"], ["warning"]],
+      ["L2-03", "registry", "It's in the company register", ["found", "match"], ["not_found", "warning"]],
+    ] as const
+  ).flatMap(([id, key, label, pass, fail]) => {
+    const x = f(id);
+    return x ? [line(key, label, x, [...pass], [...fail], "")] : [];
+  });
   return [
     line("exists", "The company exists", f("L2-09"), ["found"], ["not_found"], named ? pending : "The post doesn't name the company, so we couldn't look it up."),
     line("age", "How long it has been around", f("L2-10"), ["found"], ["warning"], named ? (live ? pending : "We couldn't find when the company started.") : "No company named in the post."),
@@ -153,6 +168,7 @@ function checklist(findings: Finding[], job: ParsedJob | null, live: boolean): L
     line("source", "Where the job was posted", f("L2-11"), ["found"], ["warning"], live ? pending : "We couldn't see where the job was posted."),
     line("warnings", "No public warnings about this job", f("L2-05"), ["not_found"], ["warning"], live ? pending : "We couldn't search for warnings right now."),
     line("contacts", "Its phone numbers and emails aren't in scam reports", f("L2-06"), ["not_found"], ["warning"], live ? pending : "We couldn't search scam reports right now."),
+    ...extra,
   ];
 }
 

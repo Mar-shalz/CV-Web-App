@@ -3,7 +3,7 @@ import markets from "@/config/markets.json";
 
 // Destination detection (Build pack section 8). Rules first; no model call.
 
-export type ProfileId = "ng_private" | "ng_graduate" | "uk";
+export type ProfileId = "ng_private" | "ng_graduate" | "uk" | "us";
 
 export type Destination = {
   country: string;
@@ -119,6 +119,8 @@ export function detectDestination(job: ParsedJob, markets: string[]): Destinatio
   let fallbackNote: string | null = null;
   if (country === "NG") profile = job.experience_level === "graduate_programme" ? "ng_graduate" : "ng_private";
   else if (country === "GB") profile = "uk";
+  // A US resume (D-168): Letter paper, American spelling, no photo, date of birth or references.
+  else if (country === "US") profile = "us";
   else {
     profile = "uk";
     fallbackNote = `We don't have a ${label(country)} format yet, so we've used our UK format, the closest we have.`;
@@ -130,6 +132,7 @@ export const PROFILE_LABELS: Record<ProfileId, string> = {
   ng_private: "Nigerian private sector",
   ng_graduate: "Nigerian graduate programme",
   uk: "UK",
+  us: "United States",
 };
 
 export const countryLabel = label;

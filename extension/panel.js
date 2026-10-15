@@ -459,28 +459,10 @@ async function readCaptured() {
 // ---------------------------------------------------------------------------------------
 // How well you match (D-164): the same fit check and percentage as the app
 // ---------------------------------------------------------------------------------------
-function ring(pct) {
-  const r = 26;
-  const c = 2 * Math.PI * r;
-  const tone = pct >= 70 ? "var(--proof)" : pct >= 45 ? "var(--care)" : "#64748b";
-  const wrap = h("span", { class: "ring", role: "img", "aria-label": `${pct}% match` });
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 64 64");
-  svg.setAttribute("width", "64");
-  svg.setAttribute("height", "64");
-  svg.setAttribute("aria-hidden", "true");
-  const circle = (stroke, dash) => {
-    const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    for (const [k, val] of Object.entries({ cx: 32, cy: 32, r, fill: "none", stroke, "stroke-width": 6, "stroke-linecap": "round", transform: "rotate(-90 32 32)" })) el.setAttribute(k, val);
-    if (dash !== undefined) {
-      el.setAttribute("stroke-dasharray", String(c));
-      el.setAttribute("stroke-dashoffset", String(dash));
-    }
-    return el;
-  };
-  svg.append(circle("#e2e8f0"), circle(tone, c * (1 - pct / 100)));
-  wrap.append(svg, h("span", { class: "ring-pct" }, `${pct}%`));
-  return wrap;
+// The match as a bar with the number in front; low matches in amber or red (round 21).
+function matchBar(pct) {
+  const tone = pct >= 70 ? "good" : pct >= 45 ? "mid" : "low";
+  return h("div", { class: `mbar ${tone}`, role: "img", "aria-label": `${pct}% match to this job` }, h("span", { class: "mbar-pct" }, `${pct}%`), h("span", { class: "mbar-track" }, h("span", { class: "mbar-fill", style: `width:${Math.max(3, pct)}%` })));
 }
 
 function fitBox(c) {
@@ -488,12 +470,9 @@ function fitBox(c) {
   const showResult = (f) =>
     box.replaceChildren(
       h("p", { class: "eyebrow" }, "Your match"),
-      h(
-        "div",
-        { class: "fit-row" },
-        f.pct === null || f.pct === undefined ? null : ring(f.pct),
-        h("div", {}, h("p", { class: "fit-label" }, f.label), h("p", { class: "small muted" }, `${f.met} of ${f.total} requirements met`)),
-      ),
+      h("p", { class: "fit-label", style: "margin-top:6px" }, f.label),
+      f.pct === null || f.pct === undefined ? null : matchBar(f.pct),
+      h("p", { class: "small muted", style: "margin-top:4px" }, `${f.met} of ${f.total} requirements met`),
       f.line ? h("p", { class: "small", style: "margin-top:8px;color:var(--ink-2)" }, f.line) : null,
       f.gaps && f.gaps.length ? h("p", { class: "small muted", style: "margin-top:6px" }, `Missing: ${f.gaps.join("; ")}`) : null,
       h("button", { class: "btn ghost", type: "button", style: "margin-top:6px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/check` }) }, icon("external", 16), "Open the full fit check"),
@@ -564,7 +543,7 @@ const STATE = {
 };
 // Couldn't fully confirm, but the company is real and nothing looks wrong (D-156).
 const CALM = { cls: "info", icon: "shield", title: "No warning signs found" };
-const CHECK = { pass: { icon: "tick", cls: "pass", word: "Yes" }, fail: { icon: "cross", cls: "fail", word: "No" }, unknown: { icon: "minus", cls: "unknown", word: "Couldn't check" } };
+const CHECK = { pass: { icon: "tick", cls: "pass", word: "Yes" }, warn: { icon: "warn", cls: "warnc", word: "Check this" }, fail: { icon: "cross", cls: "fail", word: "No" }, unknown: { icon: "minus", cls: "unknown", word: "Couldn't check" } };
 
 function results(c, v) {
   const s = v.calm && v.state === "unverified" ? CALM : STATE[v.state] || STATE.unverified;
@@ -583,6 +562,15 @@ function results(c, v) {
       h("h2", { style: "display:flex;align-items:center;gap:8px" }, icon("shield", 22, "brand-ic"), "Is this job real?"),
       h("div", { class: `banner ${s.cls}`, style: "margin-top:12px" }, icon(s.icon, 20), h("span", {}, s.title)),
       h("p", { class: "small", style: "margin-top:10px;color:var(--ink-2)" }, v.headline || ""),
+      // "6 of 8 checks passed", one coloured segment per check (founder round 21).
+      (v.checks || []).length
+        ? h(
+            "div",
+            { class: "score" },
+            h("p", {}, h("strong", {}, `${v.checks.filter((k) => k.status === "pass").length} of ${v.checks.length}`), " checks passed"),
+            h("div", { class: "score-bar", "aria-hidden": "true" }, v.checks.map((k) => h("span", { class: `seg ${k.status}` }))),
+          )
+        : null,
       flags.length ? h("ul", { class: "checks", style: "margin-top:8px" }, flags.map((f) => h("li", {}, icon(f.severity === "red" ? "cross" : "warn", 18, `ic ${f.severity === "red" ? "fail" : ""}`), h("div", {}, h("p", { class: "detail", style: "margin:0;color:var(--ink)" }, f.text))))) : null,
       h("p", { class: "eyebrow", style: "margin-top:14px" }, "What we checked"),
       h(
@@ -593,7 +581,7 @@ function results(c, v) {
           return h("li", {}, icon(m.icon, 18, `ic ${m.cls}`), h("div", { style: "flex:1;min-width:0" }, h("div", { style: "display:flex" }, h("span", { class: "label" }, k.label), h("span", { class: `word ${m.cls}` }, k.word || m.word)), h("p", { class: "detail" }, k.detail)));
         }),
       ),
-      h("p", { class: "small muted", style: "margin-top:10px" }, "We describe what we found online. We can't prove a job is real, so never pay to apply and never share your BVN or bank PIN."),
+      h("p", { class: "small muted", style: "margin-top:10px" }, "We describe what we found online. We can't prove a job is real, so never pay to apply and never share your bank PIN or ID numbers before an offer."),
     ),
     c.jobId ? fitBox(c) : null,
     shareBox(c, v),

@@ -26,7 +26,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Building, Location, Calendar1, Sms, Global, Magicpen, ArrowRight, TickCircle, Warning2, MinusCircle, Archive, Lamp, Crown1 } from "@/components/icons";
 import { PendingButton } from "@/components/ui/pending-button";
 import { WorkingNotice } from "@/components/ui/working-notice";
-import { StickyTop, SeeMore, MatchItem, MatchRing } from "@/components/flow/fit-parts";
+import { StickyTop, SeeMore, MatchItem, MatchBar } from "@/components/flow/fit-parts";
 import { getExtras, type CvExtras } from "@/lib/vault/extras";
 import { matchPercent, requirementKey } from "@/lib/rules/match-score";
 
@@ -61,14 +61,13 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
       <FlowSteps current="check" hrefs={{ add: `/jobs/${job.id}` }} back={`/jobs/${job.id}`} />
 
       <StickyTop>
-      <section className="animate-rise rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:px-6 lg:py-4 lg:group-data-[stuck=true]/stick:py-3">
+      <section className="animate-rise rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:px-6 lg:py-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-display text-[1.5rem] font-semibold leading-8 tracking-[-0.02em] text-ink-900 lg:text-[1.625rem] lg:leading-9 lg:group-data-[stuck=true]/stick:text-[1.125rem] lg:group-data-[stuck=true]/stick:leading-7">
+            <h1 className="font-display text-[1.5rem] font-semibold leading-8 tracking-[-0.02em] text-ink-900 lg:text-[1.625rem] lg:leading-9">
               {p.title ?? "Untitled job"}
-              <span className="hidden text-[0.9375rem] font-normal text-ink-600 lg:group-data-[stuck=true]/stick:inline">{p.employer_name ? ` · ${p.employer_name}` : ""}</span>
             </h1>
-            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-600 lg:mt-2 lg:group-data-[stuck=true]/stick:hidden">
+            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-600 lg:mt-2">
               <li className="flex items-center gap-1.5">
                 <Building size={18} />
                 {p.employer_name ?? (p.employer_is_agency_client ? "Employer not named" : "Employer not stated")}
@@ -92,11 +91,9 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
               </li>
             </ul>
           </div>
-          <span className="lg:group-data-[stuck=true]/stick:hidden">
-            <FormatChip initial={PROFILE_LABELS[job.destination.profile]} />
-          </span>
+          <FormatChip initial={PROFILE_LABELS[job.destination.profile]} />
         </div>
-        {job.destination.fallbackNote ? <p className="mt-3 text-xs text-ink-500 lg:group-data-[stuck=true]/stick:hidden">{job.destination.fallbackNote}</p> : null}
+        {job.destination.fallbackNote ? <p className="mt-3 text-xs text-ink-500">{job.destination.fallbackNote}</p> : null}
       </section>
 
       <Suspense fallback={<VerdictSkeleton />}>
@@ -190,30 +187,26 @@ async function VerdictHero({ promise, viewer, job, extras }: { promise: Promise<
   const pct = matchPercent(v.requirements, job.parsed.requirements, new Set(addedForJob(extras, job.id).keys()));
 
   return (
-    <section aria-labelledby="verdict-title" className={`animate-pop rounded-[var(--radius-panel)] border bg-gradient-to-br to-white p-5 lg:px-6 lg:py-5 lg:group-data-[stuck=true]/stick:py-3 ${t.tone}`}>
+    <section aria-labelledby="verdict-title" className={`animate-pop rounded-[var(--radius-panel)] border bg-gradient-to-br to-white p-5 lg:px-6 lg:py-5 ${t.tone}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-start gap-4 lg:group-data-[stuck=true]/stick:items-center">
-          <span className={`grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-raised lg:size-12 lg:group-data-[stuck=true]/stick:hidden ${pct !== null ? "max-lg:hidden" : ""} ${t.iconTone}`}>
+        <div className="flex items-start gap-4">
+          <span className={`grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-raised lg:size-12 ${t.iconTone}`}>
             <Icon size={28} variant="bulk" />
           </span>
-          {pct !== null ? (
-            <span className="lg:group-data-[stuck=true]/stick:scale-90">
-              <MatchRing pct={pct} />
-            </span>
-          ) : null}
           <div className="min-w-0">
-            <p className="text-sm font-medium text-ink-600 lg:group-data-[stuck=true]/stick:hidden">Our advice{pct !== null ? ` · ${pct}% match to this job` : ""}</p>
-            <h2 id="verdict-title" className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.02em] text-ink-900 lg:text-[1.5rem] lg:leading-8 lg:group-data-[stuck=true]/stick:text-[1.125rem]">
+            <p className="text-sm font-medium text-ink-600">Our advice</p>
+            <h2 id="verdict-title" className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.02em] text-ink-900 lg:text-[1.5rem] lg:leading-8">
               {t.label}
-              {pct !== null ? <span className="hidden text-[0.9375rem] font-medium text-ink-600 lg:group-data-[stuck=true]/stick:inline"> · {pct}% match</span> : null}
             </h2>
-            <div className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-700 lg:group-data-[stuck=true]/stick:hidden">
+            <div className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-700">
               <SeeMore lines={2}>{v.line}</SeeMore>
             </div>
-            <p className="mt-2 text-xs text-ink-500 lg:group-data-[stuck=true]/stick:hidden">
-              This is advice, not a decision. You can always apply anyway.
-              {pct !== null ? <span className="max-lg:hidden"> The match counts each requirement in the post: must-haves twice, partly met as half.</span> : null}
-            </p>
+            {pct !== null ? (
+              <div className="mt-2.5 max-w-xl">
+                <MatchBar pct={pct} />
+              </div>
+            ) : null}
+            <p className="mt-2 text-xs text-ink-500">Advice, not a decision: you can always apply.{pct !== null ? <span className="max-lg:hidden"> Must-haves count twice, partly met counts half.</span> : null}</p>
           </div>
         </div>
         {v.verdict !== "skip" ? (

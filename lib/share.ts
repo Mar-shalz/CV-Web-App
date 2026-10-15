@@ -17,7 +17,7 @@ export type SharedCheck = {
   sourceHost: string | null;
   state: LegitimacyView["state"];
   headline: string;
-  checks: { label: string; status: "pass" | "fail" | "unknown"; detail: string; word?: string }[];
+  checks: { label: string; status: "pass" | "warn" | "fail" | "unknown"; detail: string; word?: string }[];
   flags: string[];
   checkedAt: string;
 };

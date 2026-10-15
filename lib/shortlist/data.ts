@@ -1,4 +1,6 @@
 import "server-only";
+import { searchProvider } from "@/lib/search";
+import { searchNotes } from "@/lib/legitimacy/search-research";
 import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
 import { accessState, canUse } from "@/lib/entitlements";
@@ -179,9 +181,13 @@ const SAMPLE_WEB: WebQuestion[] = [
 export async function findWebQuestions(viewer: Viewer, app: ApplicationView, view: ShortlistView): Promise<WebQuestion[]> {
   if (viewer.preview) return SAMPLE_WEB;
   const parsed = app.snapshot?.parsed;
-  const country = parsed?.location?.country ?? "Nigeria";
-  const brief = `Employer: ${app.employer}\nRole: ${app.title}\nCountry: ${country}\nLevel: ${parsed?.experience_level ?? "unknown"}\nInterview format: ${view.invite.format}`;
-  const research = await runResearch({ name: "interview_search", model: "claude-sonnet-5-5", user: brief, maxSearches: 3, userId: viewer.id });
+  const country = parsed?.location?.country ?? null;
+  const brief = `Employer: ${app.employer}\nRole: ${app.title}\nCountry: ${country ?? "not stated"}\nLevel: ${parsed?.experience_level ?? "unknown"}\nInterview format: ${view.invite.format}`;
+  // Our own web search when a key is set (D-171); Gemini's search needs a paid key.
+  const role = app.title.replace(/["()]/g, " ").replace(/\s+/g, " ").trim();
+  const research = searchProvider()
+    ? await searchNotes([`"${app.employer}" ${role} interview questions`, `"${app.employer}" interview questions glassdoor OR indeed OR reddit`, `${role} interview questions${country ? ` ${country}` : ""}`])
+    : await runResearch({ name: "interview_search", model: "claude-sonnet-5-5", user: brief, maxSearches: 3, userId: viewer.id });
   if (!research.ok || !research.sources.length) return [];
   const res = await runTask("interview_research", { employer: app.employer, role: app.title, sources: research.sources, notes: research.notes }, { userId: viewer.id });
   if (!res.ok) return [];

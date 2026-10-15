@@ -61,3 +61,32 @@ export async function searchResearch(input: { employer: string | null; title: st
 export async function searchFounded(employer: string, seen: SearchHit[]): Promise<{ year: number; url: string } | null> {
   return foundedYear(seen, employer) ?? foundedYear(await webSearch(`"${employer}" founded`, 8), employer);
 }
+
+/**
+ * Generic numbered research from a few searches (D-171): the same shape the AI step
+ * expects, so it can only cite what the search returned. Used for questions people
+ * report from real interviews.
+ */
+export async function searchNotes(queries: string[], perQuery = 6): Promise<ResearchResult> {
+  const results = await Promise.all(queries.map((q) => webSearch(q, perQuery)));
+  const sources: { url: string; title: string }[] = [];
+  const index = new Map<string, number>();
+  const lines: string[] = [];
+  results.forEach((found, qi) => {
+    lines.push(`Search: ${queries[qi]}`);
+    if (!found.length) lines.push("(no results)");
+    for (const h of found) {
+      let n = index.get(h.url);
+      if (n === undefined && sources.length < 30) {
+        sources.push({ url: h.url, title: h.title });
+        n = sources.length;
+        index.set(h.url, n);
+      }
+      if (n !== undefined) lines.push(`[${n}] ${h.title}: ${h.snippet}`.slice(0, 500));
+    }
+    lines.push("");
+  });
+  if (!sources.length) return { ok: false };
+  return { ok: true, notes: lines.join("\n").slice(0, 12_000), sources, searches: queries.length };
+}
+

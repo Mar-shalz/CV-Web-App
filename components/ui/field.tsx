@@ -54,3 +54,14 @@ export function FieldError({ id, children }: { id?: string; children: ReactNode 
 export function TextInput({ invalid, describedBy, className = "", ...props }: ComponentProps<"input"> & { invalid?: boolean; describedBy?: string }) {
   return <input className={`${inputClass} ${className}`} aria-invalid={invalid || undefined} aria-describedby={describedBy} {...props} />;
 }
+
+/**
+ * A chosen option (founder, round 21): never filled like a button. A dashed brand outline
+ * and brand text show the choice. `optionClass` for labels wrapping a radio input;
+ * `optionOn` / `optionOff` when the state is held in code.
+ */
+export const optionClass =
+  "border-2 border-transparent bg-white ring-1 ring-ink-150 transition-colors has-[:checked]:border-dashed has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/40 has-[:checked]:text-brand-700 has-[:checked]:ring-0 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500";
+export const optionOn = "border-2 border-dashed border-brand-500 bg-brand-50/40 text-brand-700";
+export const optionOff = "border-2 border-transparent bg-white ring-1 ring-ink-150 text-ink-800 hover:bg-ink-50";
+

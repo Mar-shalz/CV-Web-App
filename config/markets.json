@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-12",
+  "version": "2026-10-16",
   "career_stages": [
     { "id": "final_year", "label": "Final year student" },
     { "id": "nysc", "label": "Serving NYSC member" },
@@ -15,7 +15,7 @@
     { "code": "NG", "label": "Nigeria", "profile": "ng_private" },
     { "code": "GB", "label": "United Kingdom", "profile": "uk" },
     { "code": "CA", "label": "Canada", "profile": null },
-    { "code": "US", "label": "United States", "profile": null },
+    { "code": "US", "label": "United States", "profile": "us" },
     { "code": "DE", "label": "Germany", "profile": null },
     { "code": "AE", "label": "United Arab Emirates", "profile": null },
     { "code": "GH", "label": "Ghana", "profile": null },

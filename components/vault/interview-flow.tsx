@@ -5,7 +5,7 @@ import Link from "next/link";
 import { startInterview, submitAnswer, keepItems, type InterviewStep } from "@/app/(app)/experience/interview/actions";
 import type { DraftItem, Ownership } from "@/lib/vault/schema";
 import { VoiceRecorder } from "./voice-recorder";
-import { inputClass } from "@/components/ui/field";
+import { inputClass, optionOn, optionOff } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/auth/form-error";
 import { MessageQuestion, TickCircle, ArrowRight, Keyboard, Microphone2, Lamp } from "@/components/icons";
@@ -155,7 +155,7 @@ export function InterviewFlow({ roles, voice, initialRoleId }: { roles: RoleOpti
                       role="radio"
                       aria-checked={d.ownership === o}
                       onClick={() => setDrafts((all) => all!.map((x, j) => (j === i ? { ...x, ownership: o } : x)))}
-                      className={`min-h-10 rounded-xl px-3 text-xs font-semibold ${d.ownership === o ? "bg-ink-900 text-white" : "bg-ink-75 text-ink-600 hover:bg-ink-100"}`}
+                      className={`min-h-10 rounded-xl px-3 text-xs font-semibold ${d.ownership === o ? optionOn : optionOff}`}
                     >
                       {o === "did" ? "I did it" : o === "helped" ? "I helped" : "I led it"}
                     </button>

@@ -199,7 +199,7 @@ function RefereesCard({ initial }: { initial: Referee[] }) {
     <Card
       icon={<Profile2User size={20} variant="bulk" />}
       title="Referees"
-      hint="Nigerian employers often want two referees named. Ask them first. They go on a CV only when the job or format wants them; otherwise it says “Available on request”."
+      hint="Many employers want two referees named. Ask them first. They go on a CV when the format or the job wants them; otherwise it says “Available on request”."
       action={!editing ? <EditButton onClick={() => (setDraft(list.length ? list : [EMPTY_REF]), setEditing(true))} label={list.length ? "Edit" : "Add"} /> : null}
     >
       {editing ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { addSkillFromCheck } from "@/app/(app)/experience/extras-actions";
 import { Badge } from "@/components/ui/status";
 import { Button } from "@/components/ui/button";
@@ -9,28 +9,12 @@ import { toast } from "@/components/ui/toaster";
 import { ArrowDown2, Add, TickCircle } from "@/components/icons";
 
 /**
- * The job and the advice stick to the top on laptops and tablets once you scroll, and
- * shrink to one compact band (founder, round 20). Children hide extra detail with
- * `lg:group-data-[stuck=true]/stick:hidden`.
+ * The job and the advice stick to the top on laptops and tablets once they reach it, at
+ * a fixed size, and the rest scrolls under them (founder, round 21: like the CV header).
+ * Nothing changes size while scrolling, so the page never jumps.
  */
 export function StickyTop({ children }: { children: ReactNode }) {
-  const sentinel = useRef<HTMLDivElement>(null);
-  const [stuck, setStuck] = useState(false);
-  useEffect(() => {
-    const el = sentinel.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([e]) => setStuck(!e!.isIntersecting), { threshold: 0 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <>
-      <div ref={sentinel} aria-hidden="true" className="h-px" />
-      <div data-stuck={stuck} className="group/stick space-y-3 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8 lg:data-[stuck=true]:space-y-2 lg:data-[stuck=true]:bg-[var(--app-bg)]/95 lg:data-[stuck=true]:pb-3 lg:data-[stuck=true]:pt-3 lg:data-[stuck=true]:shadow-[0_8px_16px_-12px_rgb(15_23_42/0.25)] lg:data-[stuck=true]:backdrop-blur-md">
-        {children}
-      </div>
-    </>
-  );
+  return <div className="space-y-3 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:bg-[var(--app-bg)] lg:px-8 lg:pb-3 lg:pt-3">{children}</div>;
 }
 
 /** Long advice folds on phones with "See more" (founder, round 20). Wider screens show it all. */
@@ -149,18 +133,16 @@ export function MatchItem({
   );
 }
 
-/** The match percentage as a ring (D-164). */
-export function MatchRing({ pct, size = 64 }: { pct: number; size?: number }) {
-  const r = (size - 8) / 2;
-  const c = 2 * Math.PI * r;
-  const tone = pct >= 70 ? "text-proof-600" : pct >= 45 ? "text-care-600" : "text-ink-500";
+/** The match percentage as a bar with the number in front; low matches show in amber or red (D-164, round 21). */
+export function MatchBar({ pct }: { pct: number }) {
+  const tone = pct >= 70 ? { text: "text-proof-700", bar: "bg-proof-500" } : pct >= 45 ? { text: "text-care-700", bar: "bg-care-500" } : { text: "text-flag-700", bar: "bg-flag-500" };
   return (
-    <span className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }} role="img" aria-label={`${pct}% match`}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth="6" className="text-white/80" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} className={tone} />
-      </svg>
-      <span className="absolute text-sm font-bold tabular-nums text-ink-900">{pct}%</span>
-    </span>
+    <div className="flex items-center gap-3" role="img" aria-label={`${pct}% match to this job`}>
+      <span className={`w-12 shrink-0 text-lg font-bold tabular-nums ${tone.text}`}>{pct}%</span>
+      <span className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white ring-1 ring-ink-150">
+        <span className={`block h-full rounded-full ${tone.bar}`} style={{ width: `${Math.max(3, pct)}%` }} />
+      </span>
+      <span className="shrink-0 text-xs font-medium text-ink-600">match to this job</span>
+    </div>
   );
 }

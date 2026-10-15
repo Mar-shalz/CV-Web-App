@@ -12,11 +12,12 @@ import type { CvStyle } from "./styles";
 // numbers. Each design embeds its own open licence typeface (D-157), cut down to the
 // letters used, with a text map so hiring software reads every word.
 
-const A4 = { w: 595.28, h: 841.89 };
+const A4_SIZE = { w: 595.28, h: 841.89 };
+/** US resumes print on Letter paper (D-168). */
+const LETTER = { w: 612, h: 792 };
 const MX = 50;
 const MT = 46;
 const MB = 52;
-const W = A4.w - MX * 2;
 const INK = rgb(0.07, 0.09, 0.15);
 const BODY = rgb(0.16, 0.19, 0.25);
 const MUTED = rgb(0.36, 0.41, 0.48);
@@ -82,6 +83,8 @@ function wrap(text: string, font: PDFFont, size: number, width: number, firstWid
 }
 
 export async function renderPdf(doc: CvDoc, personal: { dateOfBirth?: string | null }, style: CvStyle = "classic"): Promise<Uint8Array> {
+  const A4 = doc.format === "us" ? LETTER : A4_SIZE;
+  const W = A4.w - MX * 2;
   const look = LOOK[style];
   const ACCENT = look.accent;
   const pdf = await PDFDocument.create();
@@ -226,7 +229,7 @@ export async function renderPdf(doc: CvDoc, personal: { dateOfBirth?: string | n
   }
 
   if (doc.summary.text) {
-    heading(doc.format === "uk" ? "Profile" : "Profile summary");
+    heading(doc.format === "uk" ? "Profile" : doc.format === "us" ? "Summary" : "Profile summary");
     paragraph(doc.summary.text, 10, regular, BODY, 14.4);
   }
 

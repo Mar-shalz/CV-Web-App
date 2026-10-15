@@ -21,7 +21,7 @@ const tile =
   "flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-[0.9375rem] font-medium transition-colors duration-200 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500";
 
 const REGION_HINT: Record<string, string> = {
-  nigeria: "We format your CVs the way Nigerian employers expect.",
+  nigeria: "We format your CVs the way employers there expect.",
   abroad: "No need to pick countries. We read the country from each job post and format that CV for it.",
   both: "No need to pick countries. We read the country from each job post and format that CV for it.",
 };
@@ -48,7 +48,7 @@ export function SetupForm({ stages, regions, initial, submitLabel = "Finish setu
             const Icon = STAGE_ICON[s.id] ?? Briefcase;
             const on = stage === s.id;
             return (
-              <label key={s.id} className={`${tile} min-h-16 ${on ? "border-brand-500 bg-brand-50/70 text-brand-900" : "border-transparent bg-ink-75 text-ink-900 hover:bg-ink-100"}`}>
+              <label key={s.id} className={`${tile} min-h-16 ${on ? "border-2 border-dashed border-brand-500 bg-brand-50/40 text-brand-700" : "border-2 border-transparent bg-ink-75 text-ink-900 hover:bg-ink-100"}`}>
                 <input type="radio" name="career_stage" value={s.id} checked={on} onChange={() => setStage(s.id)} className="sr-only" />
                 <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-brand-600 text-white" : "bg-white text-ink-600"}`}>
                   <Icon size={20} variant={on ? "bulk" : "linear"} />

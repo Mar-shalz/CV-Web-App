@@ -1,9 +1,10 @@
 import ngPrivate from "@/config/country_profiles/ng_private.json";
 import ngGraduate from "@/config/country_profiles/ng_graduate.json";
 import uk from "@/config/country_profiles/uk.json";
+import us from "@/config/country_profiles/us.json";
 import type { ProfileId } from "@/lib/rules/destination";
 
-export const PROFILES = { ng_private: ngPrivate, ng_graduate: ngGraduate, uk } as const;
+export const PROFILES = { ng_private: ngPrivate, ng_graduate: ngGraduate, uk, us } as const;
 export type Profile = (typeof PROFILES)[ProfileId];
 
 export const SECTION_HEADINGS: Record<string, string> = {
@@ -25,7 +26,8 @@ export function profileRules(p: Profile, underTwoYears: boolean): string[] {
     `Single column, standard headings, real text, no tables, icons, graphics or photo${p.personal_fields.photo === "never" ? "" : " unless the job asks"}.`,
     `Length: at most ${p.max_pages.default} pages.`,
     `Reverse chronological within each section. Never a functional CV.`,
-    p.id === "uk" ? `Explain NYSC once as ${("nysc_explainer" in p && p.nysc_explainer) || "national service"} and HND as ${("hnd_explainer" in p && p.hnd_explainer) || "a degree level qualification"}.` : "Write NYSC and SIWES as Nigerian recruiters expect.",
+    "nysc_explainer" in p ? `Explain NYSC once as ${p.nysc_explainer} and HND as ${("hnd_explainer" in p && p.hnd_explainer) || "a degree level qualification"}.` : "Write NYSC and SIWES the way local recruiters expect.",
+    ...(p.id === "us" ? ["Write it as a US resume: American spelling, a short Summary, Experience before Education once the person has real work experience, no photo, no date of birth, no references section."] : []),
     p.class_of_degree === "prominent" ? "Make class of degree easy to see in the title line or summary." : "Class of degree appears in the Education section as written.",
   ];
 }

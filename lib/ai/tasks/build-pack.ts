@@ -5,11 +5,14 @@ import { defineTask, trusted, untrusted } from "../types";
 export const buildPack = defineTask({
   name: "build_pack",
   model: "claude-haiku-5-5",
-  promptVersion: "v1",
+  promptVersion: "v2",
   input: z.object({
-    person: z.object({ full_name: z.string(), course: z.string().nullable(), phone: z.string().nullable() }),
+    person: z.object({ full_name: z.string(), course: z.string().nullable(), phone: z.string().nullable(), email: z.string().nullable().default(null), title_line: z.string().nullable().default(null) }),
+    /** What the job asks for most (D-170), so the proof answers it. */
+    requirements: z.array(z.string()).max(6).default([]),
+    spelling: z.string().default("British English"),
     job: z.object({ title: z.string(), employer: z.string(), channel: z.string(), email: z.string().nullable(), subject_format: z.string().nullable(), url: z.string().nullable(), required_documents: z.array(z.string()).max(10) }),
-    proof: z.array(z.string()).max(5),
+    proof: z.array(z.string()).max(6),
     gap_note: z.string().nullable(),
     cv_file: z.string(),
   }),
@@ -25,13 +28,13 @@ export const buildPack = defineTask({
   timeoutMs: 25_000,
   effort: "low",
   render: (i) => [
-    trusted(`Applicant: ${i.person.full_name}${i.person.course ? `, ${i.person.course}` : ""}${i.person.phone ? `, ${i.person.phone}` : ""}.`),
+    trusted(`Applicant: ${i.person.full_name}${i.person.course ? `, ${i.person.course}` : ""}. Phone: ${i.person.phone ?? "not given"}. Email: ${i.person.email ?? "not given"}.${i.person.title_line ? `\nTheir CV title line: ${i.person.title_line}` : ""}\nSpelling: ${i.spelling}.`),
     trusted(`CV file name: ${i.cv_file}`),
     trusted(`Their strongest proof for this job (use only these facts):\n${i.proof.map((p) => `- ${p}`).join("\n")}`),
     ...(i.gap_note ? [trusted(`One gap to address honestly in a sentence: ${i.gap_note}`)] : []),
     untrusted(
       "how_to_apply",
-      `Job: ${i.job.title} at ${i.job.employer}\nChannel: ${i.job.channel}\nEmail: ${i.job.email ?? "none"}\nSubject format: ${i.job.subject_format ?? "none stated"}\nLink: ${i.job.url ?? "none"}\nDocuments asked for: ${i.job.required_documents.join(", ") || "none listed"}`,
+      `Job: ${i.job.title} at ${i.job.employer}\nWhat they ask for most:\n${i.requirements.map((r) => `- ${r}`).join("\n") || "- not listed"}\nChannel: ${i.job.channel}\nEmail: ${i.job.email ?? "none"}\nSubject format: ${i.job.subject_format ?? "none stated"}\nLink: ${i.job.url ?? "none"}\nDocuments asked for: ${i.job.required_documents.join(", ") || "none listed"}`,
     ),
   ],
   cache: null,

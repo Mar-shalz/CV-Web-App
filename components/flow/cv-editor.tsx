@@ -123,7 +123,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
             {doc.include.date_of_birth ? <p className="text-[0.8125rem] text-ink-600">Date of birth: added at download</p> : null}
           </header>
           {doc.summary.text || doc.summary.own ? (
-            <CvSectionBlock title={doc.format === "uk" ? "Profile" : "Profile summary"}>
+            <CvSectionBlock title={doc.format === "uk" ? "Profile" : doc.format === "us" ? "Summary" : "Profile summary"}>
               <SummaryBlock doc={doc} busy={busy} onChoose={chooseSummary} />
             </CvSectionBlock>
           ) : null}
@@ -324,9 +324,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
             <div className="mt-4">
               <StylePicker value={style} onChange={setStyle} />
             </div>
-            <div className="mt-4 grid gap-2">
-              <DownloadMenu onPick={(t) => download(t)} disabled={busy} full />
-            </div>
+            {/* Download CV lives in the header above (founder, round 21). */}
             {downloaded && !survey ? (
               <div className="mt-4 animate-pop rounded-2xl bg-ink-50 p-3.5" aria-live="polite">
                 <p className="text-sm font-semibold text-ink-900">Would you send this as it is?</p>

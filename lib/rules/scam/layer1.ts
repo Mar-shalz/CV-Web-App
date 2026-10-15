@@ -170,7 +170,7 @@ export function layer1(text: string, job: ParsedJob): Signal[] {
     signals.push({
       id: "L1-00",
       severity: risky ? "amber" : "info",
-      text: risky ? "The employer isn't named, and the post asks for money or ID. Be extra careful." : "The employer isn't named. That's common in Nigerian adverts from recruiters.",
+      text: risky ? "The employer isn't named, and the post asks for money or ID. Be extra careful." : "The employer isn't named. That's common in adverts from recruiters.",
       evidence: null,
     });
   }

@@ -20,11 +20,38 @@ const SIGNAL_ICON = {
   ok: { icon: TickCircle, cls: "text-proof-600" },
 } as const;
 
+// Each check is numbered and graded by colour (founder round 21): green passed, amber to
+// look at, red a red flag, grey couldn't check.
 const CHECK_ICON = {
-  pass: { icon: TickCircle, cls: "text-proof-600", word: "Yes" },
-  fail: { icon: CloseCircle, cls: "text-flag-600", word: "No" },
-  unknown: { icon: MinusCircle, cls: "text-ink-400", word: "Couldn't check" },
+  pass: { icon: TickCircle, cls: "text-proof-600", word: "Yes", dot: "bg-proof-600 text-white", bar: "bg-proof-500" },
+  warn: { icon: Warning2, cls: "text-care-700", word: "Check this", dot: "bg-care-500 text-white", bar: "bg-care-400" },
+  fail: { icon: CloseCircle, cls: "text-flag-600", word: "No", dot: "bg-flag-600 text-white", bar: "bg-flag-500" },
+  unknown: { icon: MinusCircle, cls: "text-ink-500", word: "Couldn't check", dot: "bg-ink-200 text-ink-700", bar: "bg-ink-200" },
 } as const;
+
+/** "6 of 8 checks passed", with one coloured segment per check. */
+function ScoreBar({ checks }: { checks: LegitimacyCheck[] }) {
+  const count = (s: LegitimacyCheck["status"]) => checks.filter((c) => c.status === s).length;
+  const passed = count("pass");
+  const tone = count("fail") ? "text-flag-700" : count("warn") ? "text-care-700" : passed === checks.length ? "text-proof-700" : "text-ink-800";
+  const rest = [count("warn") ? `${count("warn")} to look at` : null, count("fail") ? `${count("fail")} red ${count("fail") === 1 ? "flag" : "flags"}` : null, count("unknown") ? `${count("unknown")} couldn't check` : null].filter(Boolean);
+  return (
+    <div className="mt-3 rounded-2xl bg-ink-50 p-3.5">
+      <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
+        <span className={`text-lg font-bold tabular-nums ${tone}`}>
+          {passed} of {checks.length}
+        </span>
+        <span className="font-semibold text-ink-900">checks passed</span>
+        {rest.length ? <span className="text-[0.8125rem] text-ink-600">· {rest.join(" · ")}</span> : null}
+      </p>
+      <div className="mt-2 flex gap-1" aria-hidden="true">
+        {checks.map((c) => (
+          <span key={c.key} className={`h-2 flex-1 rounded-full ${CHECK_ICON[c.status].bar}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function host(url: string): string {
   try {
@@ -34,13 +61,18 @@ function host(url: string): string {
   }
 }
 
-function CheckRow({ c, loading }: { c: LegitimacyCheck; loading: boolean }) {
+function CheckRow({ c, n, loading }: { c: LegitimacyCheck; n: number; loading: boolean }) {
   const pending = loading && c.status === "unknown";
   const ic = CHECK_ICON[c.status];
-  const Icon = ic.icon;
   return (
     <li className="flex animate-rise items-start gap-3 py-2.5">
-      {pending ? <span className="mt-0.5 size-[18px] shrink-0 animate-spin rounded-full border-2 border-brand-500 border-r-transparent" aria-hidden="true" /> : <Icon size={20} variant="bulk" className={`mt-px shrink-0 ${ic.cls}`} />}
+      {pending ? (
+        <span className="mt-0.5 size-6 shrink-0 animate-spin rounded-full border-2 border-brand-500 border-r-transparent" aria-hidden="true" />
+      ) : (
+        <span className={`mt-px grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold tabular-nums ${ic.dot}`} aria-hidden="true">
+          {n}
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline justify-between gap-x-2">
           <span className="text-[0.875rem] font-semibold text-ink-900">{c.label}</span>
@@ -120,6 +152,7 @@ export function ScamCheck({ jobId, initial, ready = false, large = false, title 
               {s.title}
             </p>
             <p className="mt-3 text-[0.8125rem] leading-5 text-ink-700">{view.headline}</p>
+            {view.checks.length ? <ScoreBar checks={view.checks} /> : null}
           </>
         )}
 
@@ -143,8 +176,8 @@ export function ScamCheck({ jobId, initial, ready = false, large = false, title 
 
         <h3 className="mt-4 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">What We Checked</h3>
         <ul className="mt-1 divide-y divide-ink-100">
-          {view.checks.map((c) => (
-            <CheckRow key={c.key} c={c} loading={loading} />
+          {view.checks.map((c, i) => (
+            <CheckRow key={c.key} c={c} n={i + 1} loading={loading} />
           ))}
         </ul>
 
@@ -162,7 +195,7 @@ export function ScamCheck({ jobId, initial, ready = false, large = false, title 
             <ShareCheck jobId={jobId} state={view.state} calm={Boolean(view.calm)} title={title} employer={employer} />
           </div>
         ) : null}
-        <p className="mt-3 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">We describe what we found online. We can&apos;t prove a job is real, so never pay to apply and never share your BVN or bank PIN.</p>
+        <p className="mt-3 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">We describe what we found online. We can&apos;t prove a job is real, so never pay to apply and never share your bank PIN or ID numbers before an offer.</p>
       </div>
     </section>
   );

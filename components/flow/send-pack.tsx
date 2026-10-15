@@ -3,20 +3,32 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import type { PackView } from "@/lib/applications/data";
-import { sentIt } from "@/app/(app)/jobs/[id]/pack/actions";
+import { sentIt, rewriteEmail } from "@/app/(app)/jobs/[id]/pack/actions";
+import { useRouter } from "next/navigation";
 import { CopyButton, CopyField } from "@/components/ui/copy-button";
 import { Button } from "@/components/ui/button";
-import { Sms, Send2, Share, TickCircle, TickSquare, ArrowRight, Paperclip2, ShieldTick, Global, DocumentDownload, Danger } from "@/components/icons";
+import { MagicStar, Sms, Send2, TickCircle, TickSquare, ArrowRight, Paperclip2, ShieldTick, Global, DocumentDownload, Danger } from "@/components/icons";
 
 /**
  * The application pack (screen 16). Email: copy each part, share the CV straight into
  * Gmail, or open the mail app with subject and body filled. Forms and portals: the field
  * list or steps. The person always sends it themselves.
  */
-export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: PackView; applicationId: string; cvId: string; alreadySent: boolean }) {
+export function SendPack({ pack, applicationId, cvId, alreadySent, jobId }: { pack: PackView; applicationId: string; cvId: string; alreadySent: boolean; jobId?: string }) {
+  const router = useRouter();
+  const [rewriting, startRewrite] = useTransition();
+  const rewrite = () =>
+    startRewrite(async () => {
+      if (!jobId) return;
+      const res = await rewriteEmail(jobId);
+      if (res.ok) router.refresh();
+      else setShareError(res.error ?? "We couldn't write it again just now.");
+    });
   const [checks, setChecks] = useState(pack.checklist.map(() => false));
   const [sent, setSent] = useState(alreadySent);
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNote] = useState<{ tone: "ok"; text: string } | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
   // Phones can hand the CV file straight to Gmail; laptops can't (checked after load).
@@ -35,21 +47,47 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
   const cvUrl = `/api/cv/${cvId}/export?type=pdf`;
   const cvName = pack.attachmentNames[0] ?? "CV.pdf";
 
-  async function share() {
+  /** Saves the CV file to the device with an anchor, so the page stays open. */
+  function saveCv() {
+    const a = document.createElement("a");
+    a.href = cvUrl;
+    a.download = cvName;
+    a.rel = "noopener";
+    a.click();
+  }
+
+  /**
+   * "Send through Gmail" (founder, round 21). Phones: the share sheet hands the CV file to
+   * the Gmail app (subject and message are copied first, to paste). Laptops and tablets:
+   * Gmail opens in a new tab with the address, subject and message filled in, and the CV
+   * is saved at the same time to attach. Web pages can't attach a file to Gmail for you.
+   */
+  async function sendViaGmail() {
     setNote(null);
+    setShareError(null);
+    setOpening(true);
     try {
-      const blob = await (await fetch(cvUrl)).blob();
-      const file = new File([blob], cvName, { type: "application/pdf" });
-      // Copy the subject and body first: not every app picks them up from the share.
-      await navigator.clipboard?.writeText(`${pack.subject}\n\n${pack.body}`).catch(() => {});
-      if (navigator.canShare?.({ files: [file] })) {
+      if (canShareFiles) {
+        const blob = await (await fetch(cvUrl)).blob();
+        const file = new File([blob], cvName, { type: "application/pdf" });
+        await navigator.clipboard?.writeText(`${pack.subject}\n\n${pack.body}`).catch(() => {});
         await navigator.share({ files: [file], title: pack.subject, text: pack.body });
-        setNote("Shared. If your email app didn't fill the subject and message, paste them: they're copied.");
+        setNote({ tone: "ok", text: "Shared to your email app with the CV attached. If the subject or message is empty, paste them: we copied them for you." });
       } else {
-        setNote("Sharing files isn't available in this browser. Download the CV, then open your email app below.");
+        const gmail = `https://mail.google.com/mail/?view=cm&fs=1${safeEmail ? `&to=${encodeURIComponent(safeEmail)}` : ""}&su=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(pack.body)}`;
+        const tab = window.open(gmail, "_blank", "noopener");
+        saveCv();
+        if (!tab) {
+          setShareError("Your browser blocked the Gmail tab. Allow pop ups for this site, or use “Another email app”.");
+        } else {
+          setNote({ tone: "ok", text: "Gmail is open in a new tab with everything filled in. We saved your CV to Downloads: attach it there, then press Send." });
+        }
       }
-    } catch {
-      setNote("Sharing didn't finish. Download the CV and attach it in your email app.");
+    } catch (e) {
+      // Closing the share sheet isn't an error.
+      if ((e as Error)?.name !== "AbortError") setShareError("We couldn't open Gmail from here. Use “Another email app”, or copy the parts above into Gmail and attach your CV.");
+    } finally {
+      setTimeout(() => setOpening(false), 900);
     }
   }
 
@@ -95,10 +133,16 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
               <span className="grid size-11 place-items-center rounded-2xl bg-brand-50 text-brand-700">
                 <Sms size={22} variant="bulk" />
               </span>
-              <div>
+              <div className="min-w-0 flex-1">
                 <h2 className="text-[0.9375rem] font-semibold text-ink-900">Your Application Email</h2>
-                <p className="text-[0.8125rem] text-ink-500">Copy each part, or open it ready in your email app.</p>
+                <p className="text-[0.8125rem] text-ink-500">Copy each part, or open it ready in Gmail.</p>
               </div>
+              {jobId ? (
+                <button type="button" onClick={rewrite} disabled={rewriting} aria-busy={rewriting || undefined} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-ink-150 px-3 text-sm font-semibold text-ink-700 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-progress disabled:opacity-70">
+                  {rewriting ? <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" /> : <MagicStar size={16} />}
+                  {rewriting ? "Writing" : "Write it again"}
+                </button>
+              ) : null}
             </div>
             <dl className="divide-y divide-ink-100">
               {pack.toEmail ? <Row label="To" value={pack.toEmail} /> : null}
@@ -117,45 +161,43 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
                     <span className="truncate">{a}</span>
                   </dd>
                 ))}
-              </div>
-            </dl>
-            {/* Sending, as three plain steps (founder, round 20: the old buttons weren't clear). */}
-            <div className="border-t border-ink-100 p-5">
-              <h3 className="text-[0.9375rem] font-semibold text-ink-900">Send it from your own email</h3>
-              <p className="mt-0.5 text-[0.8125rem] text-ink-500">We never send it for you. It takes about a minute.</p>
-              <ol className="mt-4 space-y-4">
-                <Step n={1} title="Get your CV file" body={`Saves ${cvName} to this device.`}>
-                  <a href={cvUrl} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-brand-600 bg-white px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+                <dd className="ml-auto">
+                  <a href={cvUrl} download={cvName} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-[1.5px] border-brand-600 bg-white px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">
                     <DocumentDownload size={18} variant="bulk" />
                     Download my CV
                   </a>
-                </Step>
-                <Step
-                  n={2}
-                  title="Open your email with everything filled in"
-                  body={mailto ? "Gmail or your email app opens with the address, subject and message ready. Attach the CV you just downloaded." : "Copy the subject and message above into your email, then attach the CV."}
+                </dd>
+              </div>
+            </dl>
+            {/* Send it: Gmail first, any other email app second (founder, round 21). */}
+            <div className="border-t border-ink-100 p-5">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={sendViaGmail}
+                  disabled={opening}
+                  aria-busy={opening || undefined}
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-brand-600 px-5 font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-progress disabled:opacity-80"
                 >
-                  <div className="flex flex-wrap gap-2">
-                    {mailto ? (
-                      <a href={mailto} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
-                        <Send2 size={18} variant="bulk" />
-                        Open my email, ready to send
-                      </a>
-                    ) : null}
-                    {canShareFiles ? (
-                      <button type="button" onClick={share} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-semibold text-ink-800 ring-1 ring-ink-200 hover:bg-ink-50">
-                        <Share size={18} />
-                        Or share the CV straight to Gmail
-                      </button>
-                    ) : null}
-                  </div>
-                  {canShareFiles ? <p className="mt-1.5 text-xs leading-5 text-ink-500">Sharing attaches the CV for you; paste the subject and message, we copy them first.</p> : null}
-                </Step>
-                <Step n={3} title="Press Send in your email, then come back" body="Tap “I've sent it” so we keep this application with the exact CV you sent." />
-              </ol>
-              {note ? (
-                <p role="status" className="mt-3 text-xs text-proof-700">
-                  {note}
+                  {opening ? <span className="size-5 animate-spin rounded-full border-2 border-white border-r-transparent" aria-hidden="true" /> : <Send2 size={20} variant="bulk" />}
+                  {opening ? "Opening Gmail" : "Send through Gmail"}
+                </button>
+                {mailto ? (
+                  <a href={mailto} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-ink-200 bg-white px-5 font-semibold text-ink-900 hover:bg-ink-50">
+                    <Sms size={20} />
+                    Another email app
+                  </a>
+                ) : null}
+              </div>
+              {shareError ? (
+                <p role="alert" className="mt-3 flex items-start gap-2 rounded-2xl bg-flag-50 p-3 text-sm font-medium text-flag-700 ring-1 ring-flag-100">
+                  <Danger size={18} variant="bulk" className="mt-px shrink-0" />
+                  {shareError}
+                </p>
+              ) : note ? (
+                <p role="status" className="mt-3 flex items-start gap-2 rounded-2xl bg-proof-50 p-3 text-sm font-medium text-proof-700 ring-1 ring-proof-100">
+                  <TickCircle size={18} variant="bulk" className="mt-px shrink-0" />
+                  {note.text}
                 </p>
               ) : null}
             </div>
@@ -243,6 +285,18 @@ export function SendPack({ pack, applicationId, cvId, alreadySent }: { pack: Pac
             We never send anything to an employer for you.
           </p>
         </section>
+
+        {pack.channel === "email" ? (
+          <section aria-labelledby="how-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
+            <h2 id="how-title" className="text-[0.9375rem] font-semibold text-ink-900">
+              How to Send It
+            </h2>
+            <ol className="mt-3 space-y-3">
+              <Step n={1} title="Open your email with everything filled in" body={`“Send through Gmail” opens Gmail with the address, subject and message ready${canShareFiles ? ", with your CV attached" : ", and saves your CV to attach"}.`} />
+              <Step n={2} title="Press Send, then come back" body="Tap “I've sent it” so we keep this application with the exact CV you sent." />
+            </ol>
+          </section>
+        ) : null}
       </aside>
     </div>
   );
