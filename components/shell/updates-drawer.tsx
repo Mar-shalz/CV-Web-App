@@ -164,9 +164,6 @@ export function UpdatesDrawer({
         onClose={() => {
           if (openOn) hide();
         }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) hide();
-        }}
         className="side-sheet m-0 ml-auto h-dvh max-h-none w-full max-w-[420px] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/40 backdrop:backdrop-blur-[2px]"
       >
         <div className="flex h-full flex-col">

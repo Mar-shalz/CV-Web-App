@@ -47,10 +47,6 @@ export function RouteModal({ title, description, children, href, frame = false }
         e.preventDefault();
         router.back();
       }}
-      onClick={(e) => {
-        // A click on the backdrop lands on the dialog element itself.
-        if (e.target === e.currentTarget) router.back();
-      }}
       data-settled={settled || undefined}
       className="route-modal m-0 mt-auto max-h-[96dvh] min-h-[80dvh] w-full max-w-none overflow-hidden rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:min-h-0 sm:w-[calc(100%-3rem)] sm:max-w-4xl sm:rounded-[var(--radius-panel)]"
     >

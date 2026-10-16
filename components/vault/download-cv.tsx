@@ -43,9 +43,6 @@ export function DownloadCv({ ready }: { ready: boolean }) {
       <dialog
         ref={ref}
         aria-labelledby="dl-title"
-        onClick={(e) => {
-          if (e.target === e.currentTarget && !busy) close();
-        }}
         onCancel={(e) => {
           if (busy) e.preventDefault();
         }}

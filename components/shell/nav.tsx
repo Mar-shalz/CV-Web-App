@@ -13,6 +13,7 @@ import {
   ArrowRight2,
   Global,
   MessageQuestion,
+  ShieldSearch,
 } from "@/components/icons";
 import { Logo } from "@/components/brand/logo";
 import { NAV_ITEMS, type NavItem } from "./nav-items";
@@ -29,13 +30,16 @@ const ICONS = {
   tailor: Magicpen,
   applications: Send2,
   experience: Briefcase,
+  check: ShieldSearch,
   settings: Setting2,
 };
 
 function isActive(path: string, href: string) {
   // Tailoring a CV is part of an application: Applications stays lit through every step.
+  const checking = path === "/jobs/real" || /^\/jobs\/[^/]+\/real$/.test(path);
+  if (href === "/jobs/real") return checking;
   if (href === "/applications")
-    return path.startsWith("/applications") || path.startsWith("/jobs");
+    return path.startsWith("/applications") || (path.startsWith("/jobs") && !checking);
   if (href === "/jobs/new") return path === "/jobs/new";
   return path === href || path.startsWith(`${href}/`);
 }
@@ -218,20 +222,15 @@ function SideLink({
           variant="linear"
           className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${active ? "text-brand-900" : ""}`}
         />
-        <span className={collapsed ? "sr-only" : ""}>{item.label}</span>
+        <span className={collapsed ? "sr-only" : "flex-1"}>{item.label}</span>
+        {"badge" in item && !collapsed ? <span className="rounded-full bg-proof-50 px-2 py-0.5 text-[0.6875rem] font-semibold text-proof-700">{item.badge}</span> : null}
       </Link>
     </li>
   );
 }
 
 // Phone order puts the main action in the thumb's centre.
-const MOBILE_ORDER = [
-  NAV_ITEMS[0],
-  NAV_ITEMS[2],
-  NAV_ITEMS[1],
-  NAV_ITEMS[3],
-  NAV_ITEMS[4],
-];
+const MOBILE_ORDER = NAV_ITEMS.filter((i) => !("sidebarOnly" in i)).sort((a, b) => ["home", "applications", "tailor", "experience", "settings"].indexOf(a.icon) - ["home", "applications", "tailor", "experience", "settings"].indexOf(b.icon));
 
 /**
  * "Tailor my CV" floating at the bottom right on laptops and tablets (D-160), on every

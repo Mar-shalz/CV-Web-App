@@ -25,6 +25,7 @@ const ICON = {
   close: '<path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>',
   whatsapp: '<path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>',
   xlogo: '<path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/>',
+  send: '<path d="m7.4 6.3 8.5-2.8c3.8-1.3 5.9.8 4.6 4.6l-2.8 8.5c-1.9 5.7-5 5.7-6.9 0l-.8-2.5-2.5-.8c-5.7-1.9-5.7-5 0-6.9ZM10.1 13.6l3.6-3.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
   external: '<path d="M13 11 21.2 2.8M22 6.8V2h-4.8M11 2H9C4 2 2 4 2 9v6c0 5 2 7 7 7h6c5 0 7-2 7-7v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
 };
 function icon(name, size = 20, cls = "") {
@@ -476,6 +477,7 @@ function fitBox(c) {
       f.line ? h("p", { class: "small", style: "margin-top:8px;color:var(--ink-2)" }, f.line) : null,
       f.gaps && f.gaps.length ? h("p", { class: "small muted", style: "margin-top:6px" }, `Missing: ${f.gaps.join("; ")}`) : null,
       h("button", { class: "btn ghost", type: "button", style: "margin-top:6px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/check` }) }, icon("external", 16), "Open the full fit check"),
+      applyChoice(c, f),
     );
   const run = async () => {
     box.replaceChildren(h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("p", {}, "Comparing the job with your experience")));
@@ -495,6 +497,215 @@ function fitBox(c) {
       h("button", { class: "btn primary", type: "button", style: "margin-top:10px", onclick: run }, icon("magic", 18), "See how well I match"),
     );
   return box;
+}
+
+// ---------------------------------------------------------------------------------------
+// Apply from the panel (D-178): write the CV, accept it, prepare the email, send it from
+// your own Gmail. Anyone who wants to review or change the wording continues in the app.
+// ---------------------------------------------------------------------------------------
+function applyChoice(c, f) {
+  const a = openJob?.apply;
+  const resume = a?.pack ? () => packScreen(c, a.pack) : a?.cv ? () => cvReady(c, a.cv) : null;
+  return h(
+    "div",
+    { class: "apply-box" },
+    h("p", { class: "apply-title" }, f.verdict === "skip" ? "Still want to apply?" : "Ready to apply?"),
+    h(
+      "p",
+      { class: "small muted" },
+      resume
+        ? "You've started this application. Pick up where you left off."
+        : "Apply now: we write your CV for this job from your experience and prepare your email, right here. Want to review or change the wording first? Open it in the app.",
+    ),
+    h(
+      "div",
+      { class: "row", style: "margin-top:10px" },
+      h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/${a?.cv ? "cv" : "check"}` }) }, "Edit in the app"),
+      h("button", { class: "btn primary", type: "button", onclick: resume || (() => applyNow(c)) }, icon("send", 18), resume ? "Continue" : "Apply now"),
+    ),
+  );
+}
+
+/** The job's header with Close, then the step's card. Back goes to the job's results. */
+function applyShow(c, ...cards) {
+  show(
+    h(
+      "section",
+      { class: "card job" },
+      h("div", { class: "card-top" }, h("p", { class: "eyebrow" }, "Applying for"), h("button", { class: "close", type: "button", onclick: closeJob, "aria-label": "Close this job", title: "Close this job" }, icon("close", 16), "Close")),
+      h("div", { class: "job-head" }, h("span", { class: "job-icon" }, icon("briefcase", 22)), h("div", {}, h("p", { class: "job-title" }, c.title || current?.title || "This job"), c.employer ? h("p", { class: "job-meta" }, c.employer) : null)),
+    ),
+    ...cards,
+    h("button", { class: "btn ghost", type: "button", onclick: () => (openJob?.view ? results(c, openJob.view) : jobCard()) }, "Back to the job"),
+  );
+}
+
+function applyWorking(c, title, body) {
+  applyShow(c, h("section", { class: "card" }, h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("div", {}, h("p", {}, h("strong", {}, title)), h("p", { class: "small muted", style: "margin-top:2px" }, body)))));
+}
+
+function applyError(c, e, retry) {
+  const pass = /trial|pass|CVs/i.test(e.message || "");
+  applyShow(
+    c,
+    h(
+      "section",
+      { class: "card" },
+      h("div", { class: "banner bad" }, icon("warn", 20), h("span", {}, e.message || "That didn't work. Try again.")),
+      h(
+        "div",
+        { class: "actions", style: "margin-top:12px" },
+        pass ? h("button", { class: "btn primary", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/pass?from=tailor` }) }, "See the pass") : h("button", { class: "btn primary", type: "button", onclick: retry }, "Try again"),
+        h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/check` }) }, "Finish in the app"),
+      ),
+    ),
+  );
+}
+
+async function applyNow(c) {
+  applyWorking(c, "Writing your CV for this job", "Only from experience you've confirmed. Usually 20 to 60 seconds.");
+  try {
+    const { cv } = await api("/api/ext/apply", { step: "cv", jobId: c.jobId });
+    keepOpen({ apply: { cv } });
+    cvReady(c, cv);
+  } catch (e) {
+    if (e.message !== "signin") applyError(c, e, () => applyNow(c));
+  }
+}
+
+function cvReady(c, cv) {
+  const accept = async () => {
+    applyWorking(c, "Preparing your email", "Using the CV you just accepted.");
+    try {
+      await api("/api/ext/apply", { step: "accept", jobId: c.jobId, cvId: cv.cvId });
+      const { pack } = await api("/api/ext/apply", { step: "pack", jobId: c.jobId });
+      keepOpen({ apply: { cv, pack } });
+      packScreen(c, pack);
+    } catch (e) {
+      if (e.message !== "signin") applyError(c, e, accept);
+    }
+  };
+  applyShow(
+    c,
+    h(
+      "section",
+      { class: "card" },
+      h("div", { class: "banner good" }, icon("tick", 20), h("span", {}, "Your CV for this job is ready")),
+      h("p", { class: "small", style: "margin-top:10px;color:var(--ink-2)" }, `${cv.tailored} of ${cv.lines} lines rewritten for this job, from your own experience.`),
+      cv.summary ? h("div", { class: "quote" }, h("p", { class: "eyebrow" }, "Profile summary"), h("p", { class: "small" }, cv.summary)) : null,
+      h(
+        "p",
+        { class: "small muted", style: "margin-top:10px" },
+        cv.toCheck
+          ? `Accepting uses the new wording. ${cv.toCheck} ${cv.toCheck === 1 ? "line has" : "lines have"} words we couldn't trace to your experience, so ${cv.toCheck === 1 ? "it stays" : "they stay"} in your own words.`
+          : "Accepting uses the new wording. Every line comes from your experience.",
+      ),
+      h(
+        "div",
+        { class: "actions", style: "margin-top:12px" },
+        h("button", { class: "btn primary", type: "button", onclick: accept }, icon("tick", 18), "Accept and prepare my email"),
+        h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/cv` }) }, icon("external", 16), "Review and edit in the app"),
+      ),
+    ),
+  );
+}
+
+/** Downloads the CV file through the extension's key; resolves when the file is saved. */
+async function downloadCv(cvId, file, style) {
+  const res = await fetch(`${APP_URL}/api/ext/cv?cvId=${encodeURIComponent(cvId)}&style=${encodeURIComponent(style)}`, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("We couldn't get your CV file. Try again.");
+  const blob = await res.blob();
+  const a = h("a", { href: URL.createObjectURL(blob), download: file || "CV.pdf" });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function copyButton(text, label) {
+  const b = h("button", { class: "copy", type: "button", "aria-label": `Copy ${label}` }, "Copy");
+  b.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      b.textContent = "Copied";
+      setTimeout(() => (b.textContent = "Copy"), 1500);
+    } catch {
+      b.textContent = "Select and copy";
+    }
+  });
+  return b;
+}
+
+function packScreen(c, pack) {
+  const file = pack.attachments?.[0] || "CV.pdf";
+  const style = h(
+    "select",
+    { class: "select", "aria-label": "CV design" },
+    ["classic", "modern", "executive", "signature"].map((x) => h("option", { value: x }, x.charAt(0).toUpperCase() + x.slice(1))),
+  );
+  const note = h("p", { class: "small", role: "status", style: "margin-top:8px" });
+  const say = (text, bad) => {
+    note.textContent = text;
+    note.className = `small ${bad ? "error" : "okc"}`;
+  };
+  const gmail = async () => {
+    const url = `https://mail.google.com/mail/?view=cm&fs=1${pack.toEmail ? `&to=${encodeURIComponent(pack.toEmail)}` : ""}&su=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(pack.body)}`;
+    chrome.tabs.create({ url });
+    try {
+      await downloadCv(pack.cvId, file, style.value);
+      say("Gmail is open in a new tab with everything filled in. We saved your CV to Downloads: attach it there, then press Send.");
+    } catch (e) {
+      say(e.message, true);
+    }
+  };
+  const sent = async () => {
+    try {
+      await api("/api/ext/apply", { step: "sent", jobId: c.jobId, applicationId: pack.applicationId });
+      keepOpen({ apply: { ...(openJob?.apply || {}), sent: true } });
+      applyShow(
+        c,
+        h(
+          "section",
+          { class: "card" },
+          h("div", { class: "banner good" }, icon("tick", 20), h("span", {}, "Application saved")),
+          h("p", { class: "small", style: "margin-top:10px;color:var(--ink-2)" }, "We kept the job post and the exact CV you sent. We'll check in with you about it."),
+          h("button", { class: "btn outline", type: "button", style: "margin-top:12px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/applications/${pack.applicationId}` }) }, icon("external", 16), "See it in Receipts"),
+        ),
+      );
+    } catch (e) {
+      if (e.message !== "signin") say(e.message, true);
+    }
+  };
+  const email = pack.channel === "email";
+  applyShow(
+    c,
+    h(
+      "section",
+      { class: "card" },
+      h("p", { class: "eyebrow" }, email ? "Your application email" : "How to apply"),
+      email
+        ? h(
+            "div",
+            { class: "fields" },
+            pack.toEmail ? h("div", { class: "field" }, h("p", { class: "label" }, "To"), h("div", { class: "value" }, h("span", {}, pack.toEmail), copyButton(pack.toEmail, "address"))) : null,
+            h("div", { class: "field" }, h("p", { class: "label" }, "Subject"), h("div", { class: "value" }, h("span", {}, pack.subject), copyButton(pack.subject, "subject"))),
+            h("div", { class: "field" }, h("p", { class: "label" }, "Message"), h("pre", { class: "message" }, pack.body), copyButton(pack.body, "message")),
+          )
+        : h("p", { class: "small", style: "margin-top:6px;color:var(--ink-2)" }, "This employer takes applications on their own page. Download your CV, then open their page to upload it."),
+      h("div", { class: "field", style: "margin-top:10px" }, h("p", { class: "label" }, "CV design"), style),
+      h(
+        "div",
+        { class: "actions", style: "margin-top:12px" },
+        email
+          ? h("button", { class: "btn primary", type: "button", onclick: gmail }, icon("send", 18), "Send via Gmail")
+          : pack.applyUrl
+            ? h("button", { class: "btn primary", type: "button", onclick: () => chrome.tabs.create({ url: pack.applyUrl }) }, icon("external", 16), "Open their application page")
+            : null,
+        h("button", { class: "btn outline", type: "button", onclick: () => downloadCv(pack.cvId, file, style.value).then(() => say("Your CV is in Downloads.")).catch((e) => say(e.message, true)) }, "Download my CV"),
+      ),
+      note,
+      h("p", { class: "small muted", style: "margin-top:10px" }, "We never send anything for you. Press Send in your own email, then tell us here."),
+      h("button", { class: "btn outline", type: "button", style: "margin-top:8px", onclick: sent }, icon("tick", 18), "I've sent it"),
+    ),
+  );
 }
 
 function shareBox(c, v) {

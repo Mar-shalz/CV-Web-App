@@ -52,7 +52,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent, jobId }: { pa
       const ok = touch && Boolean(navigator.canShare?.({ files: [new File(["x"], "x.pdf", { type: "application/pdf" })] }));
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCanShareFiles(ok);
-      // Fetch the CV ahead, so tapping "Send through Gmail" can share it at once.
+      // Fetch the CV ahead, so tapping "Send via Gmail" can share it at once.
       if (ok)
         void fetch(`${cvUrl}&prefetch=1`)
           .then((r) => r.blob())
@@ -76,7 +76,7 @@ export function SendPack({ pack, applicationId, cvId, alreadySent, jobId }: { pa
   }
 
   /**
-   * "Send through Gmail" (founder, round 21). Phones: the share sheet hands the CV file to
+   * "Send via Gmail" (founder, rounds 21 and 23). Phones: the share sheet hands the CV file to
    * the Gmail app (subject and message are copied first, to paste). Laptops and tablets:
    * Gmail opens in a new tab with the address, subject and message filled in, and the CV
    * is saved at the same time to attach. Web pages can't attach a file to Gmail for you.
@@ -180,46 +180,41 @@ export function SendPack({ pack, applicationId, cvId, alreadySent, jobId }: { pa
                     <span className="truncate">{a}</span>
                   </dd>
                 ))}
-                <dd className="ml-auto">
-                  <a href={cvUrl} download={cvName} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-[1.5px] border-brand-600 bg-white px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">
-                    <DocumentDownload size={18} variant="bulk" />
-                    Download my CV
-                  </a>
+                {/* Send via Gmail sits where Download my CV was (founder, round 23). */}
+                <dd className="ml-auto flex flex-wrap items-center gap-2">
+                  {mailto ? (
+                    <a href={mailto} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-ink-600 underline-offset-2 hover:text-ink-900 hover:underline">
+                      Another email app
+                    </a>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={sendViaGmail}
+                    disabled={opening}
+                    aria-busy={opening || undefined}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-progress disabled:opacity-80"
+                  >
+                    {opening ? <span className="size-4 animate-spin rounded-full border-2 border-white border-r-transparent" aria-hidden="true" /> : <Send2 size={18} variant="bulk" />}
+                    {opening ? "Opening Gmail" : "Send via Gmail"}
+                  </button>
                 </dd>
               </div>
             </dl>
-            {/* Send it: Gmail first, any other email app second (founder, round 21). */}
-            <div className="border-t border-ink-100 p-5">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={sendViaGmail}
-                  disabled={opening}
-                  aria-busy={opening || undefined}
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-brand-600 px-5 font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-progress disabled:opacity-80"
-                >
-                  {opening ? <span className="size-5 animate-spin rounded-full border-2 border-white border-r-transparent" aria-hidden="true" /> : <Send2 size={20} variant="bulk" />}
-                  {opening ? "Opening Gmail" : "Send through Gmail"}
-                </button>
-                {mailto ? (
-                  <a href={mailto} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-ink-200 bg-white px-5 font-semibold text-ink-900 hover:bg-ink-50">
-                    <Sms size={20} />
-                    Another email app
-                  </a>
+            {shareError || note ? (
+              <div className="border-t border-ink-100 px-5 py-4">
+                {shareError ? (
+                  <p role="alert" className="flex items-start gap-2 rounded-2xl bg-flag-50 p-3 text-sm font-medium text-flag-700 ring-1 ring-flag-100">
+                    <Danger size={18} variant="bulk" className="mt-px shrink-0" />
+                    {shareError}
+                  </p>
+                ) : note ? (
+                  <p role="status" className="flex items-start gap-2 rounded-2xl bg-proof-50 p-3 text-sm font-medium text-proof-700 ring-1 ring-proof-100">
+                    <TickCircle size={18} variant="bulk" className="mt-px shrink-0" />
+                    {note.text}
+                  </p>
                 ) : null}
               </div>
-              {shareError ? (
-                <p role="alert" className="mt-3 flex items-start gap-2 rounded-2xl bg-flag-50 p-3 text-sm font-medium text-flag-700 ring-1 ring-flag-100">
-                  <Danger size={18} variant="bulk" className="mt-px shrink-0" />
-                  {shareError}
-                </p>
-              ) : note ? (
-                <p role="status" className="mt-3 flex items-start gap-2 rounded-2xl bg-proof-50 p-3 text-sm font-medium text-proof-700 ring-1 ring-proof-100">
-                  <TickCircle size={18} variant="bulk" className="mt-px shrink-0" />
-                  {note.text}
-                </p>
-              ) : null}
-            </div>
+            ) : null}
           </>
         ) : (
           <div className="p-5">
@@ -271,19 +266,28 @@ export function SendPack({ pack, applicationId, cvId, alreadySent, jobId }: { pa
           <h2 id="checklist-title" className="text-[0.9375rem] font-semibold text-ink-900">
             Before you Press Send
           </h2>
+          {/* A checklist for you, not a form (founder, round 23: crossing items out confused). */}
+          <p className="mt-0.5 text-[0.8125rem] leading-5 text-ink-500">What this employer asked for. Tick each one when it&apos;s ready; it&apos;s only for you.</p>
           <ul className="mt-3 space-y-1">
             {pack.checklist.map((c, i) => (
               <li key={c.item}>
-                <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-2 text-sm text-ink-800 hover:bg-ink-50">
-                  <input type="checkbox" checked={checks[i]} onChange={(e) => setChecks((cur) => cur.map((v, j) => (j === i ? e.target.checked : v)))} className="size-5 accent-brand-600" />
-                  <span className={checks[i] ? "text-ink-500 line-through" : ""}>
+                <label className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-2 text-sm hover:bg-ink-50 ${checks[i] ? "text-proof-700" : "text-ink-800"}`}>
+                  <input type="checkbox" checked={checks[i]} onChange={(e) => setChecks((cur) => cur.map((v, j) => (j === i ? e.target.checked : v)))} className="size-5 accent-proof-600" />
+                  <span>
                     {c.item}
                     {!c.required ? <span className="ml-1 text-xs text-ink-500">(optional)</span> : null}
+                    {checks[i] ? <span className="ml-1.5 text-xs font-semibold">Ready</span> : null}
                   </span>
                 </label>
               </li>
             ))}
           </ul>
+          {pack.channel === "email" ? (
+            <a href={cvUrl} download={cvName} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-brand-600 bg-white px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+              <DocumentDownload size={18} variant="bulk" />
+              Download my CV
+            </a>
+          ) : null}
         </section>
 
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
@@ -308,11 +312,15 @@ export function SendPack({ pack, applicationId, cvId, alreadySent, jobId }: { pa
         {pack.channel === "email" ? (
           <section aria-labelledby="how-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
             <h2 id="how-title" className="text-[0.9375rem] font-semibold text-ink-900">
-              How to Send It
+              How to Send It Yourself
             </h2>
+            <p className="mt-0.5 text-[0.8125rem] leading-5 text-ink-500">If &ldquo;Send via Gmail&rdquo; doesn&apos;t open, or you use another email, it takes about a minute:</p>
             <ol className="mt-3 space-y-3">
-              <Step n={1} title="Open your email with everything filled in" body={`“Send through Gmail” opens Gmail with the address, subject and message ready${canShareFiles ? ", with your CV attached" : ", and saves your CV to attach"}.`} />
-              <Step n={2} title="Press Send, then come back" body="Tap “I've sent it” so we keep this application with the exact CV you sent." />
+              <Step n={1} title="Download your CV" body="Use “Download my CV” above. It saves to your Downloads folder (Files on a phone)." />
+              <Step n={2} title="Start a new email" body="Open Gmail or your email app and press Compose." />
+              <Step n={3} title="Copy the three parts" body="Copy the To address, the Subject and the Message from your application email, using each Copy button." />
+              <Step n={4} title="Attach your CV" body="Press the paperclip and pick the CV you downloaded." />
+              <Step n={5} title="Press Send, then come back" body="Tap “I've sent it” so we keep this application with the exact CV you sent." />
             </ol>
           </section>
         ) : null}

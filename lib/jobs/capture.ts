@@ -85,7 +85,7 @@ export async function captureJob(supabase: SupabaseClient, userId: string, targe
         if (!read) {
           const msg =
             res.reason === "login"
-              ? "That site only shows the job to people who are signed in, and we couldn't find a public copy. Copy the job text from the page and paste it, or add a screenshot."
+              ? "That site only shows the job to people who are signed in, and we couldn't find a public copy. Copy the job text from the page and paste it, or add a screenshot. On a laptop, our Chrome extension reads the job straight from the page, because you're already signed in there."
               : "We couldn't open that link or find a public copy of the job. Copy the job text and paste it, or add a screenshot.";
           return { ok: false, error: msg, fallback: res.reason === "login" ? "screenshot" : "paste" };
         }

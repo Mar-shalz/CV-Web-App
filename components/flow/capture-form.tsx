@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { compressImage } from "@/lib/client/compress-image";
-import { DocumentText, DocumentUpload, Link21, Gallery, ArrowRight, TickCircle, Trash } from "@/components/icons";
+import { DocumentText, DocumentUpload, Link21, Gallery, ArrowRight, TickCircle, Trash, Global } from "@/components/icons";
+import Link from "next/link";
 import { attachFile } from "@/lib/client/upload";
 import { UPLOAD_MAX_BYTES, sizeLabel, tooBigMessage } from "@/lib/uploads/limits";
 import { LIMITS } from "@/lib/config";
@@ -51,6 +52,7 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [error, setError] = useState<string | undefined>(initialError);
+  const [signedInOnly, setSignedInOnly] = useState(false);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState(0);
   const [text, setText] = useState("");
@@ -129,6 +131,8 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
       const data = (await res.json()) as { ok: boolean; jobId?: string; error?: string; fallback?: Mode };
       if (!data.ok || !data.jobId) {
         setError(data.error ?? "That didn't work on our side. Try again in a moment.");
+        // Behind a login: the Chrome extension reads the job on the page they're signed in to (round 23).
+        setSignedInOnly(data.fallback === "screenshot");
         // A link behind a login: move to paste or screenshot without losing anything.
         if (data.fallback && mode === "link") setMode(data.fallback);
         return;
@@ -166,6 +170,12 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
       <FormError message={error} />
+      {signedInOnly ? (
+        <Link href="/extension" className="-mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-50 px-3.5 text-sm font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100">
+          <Global size={18} variant="bulk" />
+          Get the Chrome extension
+        </Link>
+      ) : null}
       {from !== null && mode === "paste" ? (
         <p role="status" className="flex items-start gap-2.5 rounded-2xl bg-brand-50 px-3.5 py-3 text-sm leading-5 text-brand-800 ring-1 ring-brand-100">
           <TickCircle size={20} variant="bulk" className="mt-px shrink-0 text-brand-600" />

@@ -48,9 +48,6 @@ export function ConfirmDialog({
         e.preventDefault();
         if (!busy) onClose();
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
-      }}
       className="route-modal m-0 mt-auto min-h-[48dvh] w-full max-w-none rounded-t-[var(--radius-panel)] bg-white p-0 text-ink-900 shadow-raised backdrop:bg-ink-950/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:min-h-0 sm:w-[calc(100%-3rem)] sm:max-w-md sm:rounded-[var(--radius-panel)]"
     >
       {/* Phones: a taller sheet (founder, round 20), with the buttons at the bottom within thumb reach. */}

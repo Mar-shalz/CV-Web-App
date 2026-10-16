@@ -49,7 +49,7 @@ export async function extUser(request: NextRequest): Promise<ExtUser | null> {
   return { id: u.id, email: u.email, name: (profile?.full_name as string | null) ?? null, targetMarkets: u.target_markets ?? [], preview: false };
 }
 
-const LIMITS = { ext_capture: 30, ext_check: 30, ext_save: 60, ext_fit: 20 } as const;
+const LIMITS = { ext_capture: 30, ext_check: 30, ext_save: 60, ext_fit: 20, ext_apply: 40 } as const;
 
 /** Per person, per hour, like the app's limits (lib/rate-limit.ts), counted with the service role. */
 export async function extAllow(userId: string, bucket: keyof typeof LIMITS): Promise<boolean> {

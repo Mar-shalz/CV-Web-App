@@ -4,6 +4,7 @@ import type { Vault, VaultRole } from "@/lib/vault/data";
 import type { JobView } from "@/lib/jobs/data";
 import { runTask } from "@/lib/ai";
 import { factLock, lockLine, type LockSource } from "@/lib/rules/fact-lock";
+import { lintCopy } from "@/lib/copy-lint";
 import { rangeLabel, monthLabel } from "@/lib/vault/dates";
 import { EMPLOYMENT_KINDS, EMPLOYMENT_ON_CV, withTerms } from "@/lib/vault/schema";
 import { PROFILES, SECTION_HEADINGS, fileBase, profileRules } from "./profiles";
@@ -80,6 +81,25 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
   const underTwo = workMonths < 24;
   const expRoles = roles.filter((r) => EXPERIENCE_KINDS.includes(r.kind));
 
+  // The summary has its own focused writer (D-177), run alongside the CV writer.
+  const level = workMonths < 12 ? "graduate or entry level" : workMonths < 36 ? "early career" : workMonths < 96 ? "mid level" : "senior";
+  const summaryP = runTask(
+    "cv_summary",
+    {
+      job: { title: job.parsed.title ?? "the role", employer: job.parsed.employer_name ?? "the employer", requirements: job.parsed.requirements.map((r) => r.text).slice(0, 12) },
+      title_line: null,
+      level,
+      experience_months: workMonths,
+      education: roles.filter((r) => r.kind === "education").map((r) => [r.title, r.organisation, r.grade, rangeLabel(r.start, r.end, r.isCurrent)].filter(Boolean).join(", ")).slice(0, 8),
+      certifications: roles.filter((r) => r.kind === "certification" || r.kind === "licence").map((r) => [r.title, r.organisation, r.grade].filter(Boolean).join(", ")).slice(0, 10),
+      items: expRoles.flatMap((r) => r.items.filter((i) => i.confirmed).map((i) => ({ id: i.id, role: [r.title, r.organisation].filter(Boolean).join(", ").slice(0, 200), text: i.text.slice(0, 400), source_quote: i.sourceQuote?.slice(0, 600) ?? null }))).slice(0, 40),
+      skills: vaultSkills.slice(0, 60),
+      own_summary: extras.summary,
+      spelling: profile.spelling,
+    },
+    { userId: viewer.preview ? undefined : viewer.id },
+  ).catch(() => null);
+
   let out: TailorOut | null = null;
   let violations: string[] = [];
   let generated = false;
@@ -132,6 +152,18 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
       experience: expRoles.map((r) => ({ role_id: r.id, bullets: r.items.filter((i) => i.confirmed).slice(0, 5).map((i) => ({ text: i.text, source_item_ids: [i.id], rewrite_type: "kept" as const })) })),
       skills: { tools: [], professional: vaultSkills.slice(0, 12), languages: [] },
     };
+  }
+
+  // Use the focused summary when it traces as well as the CV writer's one (D-177).
+  const focused = await summaryP;
+  if (focused?.ok) {
+    const ids = focused.data.source_item_ids.filter((id) => sources.has(id));
+    const text = focused.data.text.replace(/\s*\u2014\s*/g, ", ").trim();
+    const srcs = [...ids.map((id) => sources.get(id)!), ...(ownSummary ? [ownSummary] : [])];
+    const flagsNew = lockLine(text, srcs.length ? srcs : all).length;
+    const oldSrcs = [...out.summary.source_item_ids.map((id) => sources.get(id)).filter((x): x is LockSource => Boolean(x)), ...(ownSummary ? [ownSummary] : [])];
+    const flagsOld = out.summary.text ? lockLine(out.summary.text, oldSrcs.length ? oldSrcs : all).length : Infinity;
+    if (!lintCopy(text).some((i) => i.kind === "phrase") && flagsNew <= flagsOld) out = { ...out, summary: { text, source_item_ids: ids } };
   }
 
   // Assemble, with flags attached to every untraced line.

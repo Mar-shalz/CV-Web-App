@@ -3,7 +3,7 @@ import { z } from "zod";
 import { extAllow, extUser } from "@/lib/ext/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { withClient } from "@/lib/supabase/server";
-import type { Viewer } from "@/lib/auth/viewer";
+import { extViewer } from "@/lib/ext/viewer";
 import { getJob } from "@/lib/jobs/data";
 import { getVault } from "@/lib/vault/data";
 import { getExtras } from "@/lib/vault/extras";
@@ -32,22 +32,7 @@ export async function POST(request: NextRequest) {
   if (!(await extAllow(user.id, "ext_fit"))) return NextResponse.json({ ok: false, error: "You've checked your match a lot in the last hour. Try again soon." }, { status: 429 });
 
   const db = createAdminClient();
-  const { data: row } = await db.from("users").select("*").eq("id", user.id).maybeSingle();
-  const u = (row ?? {}) as { career_stage?: string | null; target_markets?: string[] | null; low_data_mode?: boolean };
-  const viewer: Viewer = {
-    id: user.id,
-    email: user.email,
-    fullName: user.name,
-    careerStage: u.career_stage ?? null,
-    targetMarkets: u.target_markets ?? user.targetMarkets,
-    lowDataMode: Boolean(u.low_data_mode),
-    consentDone: true,
-    setupDone: true,
-    trial: { startedAt: null, endsAt: null, cvsUsed: 0 },
-    activePass: null,
-    suspended: false,
-    preview: false,
-  };
+  const viewer = await extViewer(db, user);
   try {
     const out = await withClient(db, async () => {
       const job = await getJob(viewer, id.data.jobId);
