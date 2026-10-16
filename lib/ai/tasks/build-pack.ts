@@ -5,7 +5,7 @@ import { defineTask, trusted, untrusted } from "../types";
 export const buildPack = defineTask({
   name: "build_pack",
   model: "claude-haiku-5-5",
-  promptVersion: "v2",
+  promptVersion: "v3",
   input: z.object({
     person: z.object({ full_name: z.string(), course: z.string().nullable(), phone: z.string().nullable(), email: z.string().nullable().default(null), title_line: z.string().nullable().default(null) }),
     /** What the job asks for most (D-170), so the proof answers it. */
@@ -18,7 +18,7 @@ export const buildPack = defineTask({
   }),
   output: z.object({
     subject: z.string().max(200),
-    body: z.string().max(900),
+    body: z.string().max(1600),
     attachment_names: z.array(z.string().max(120)).max(8),
     checklist: z.array(z.object({ item: z.string().max(120), required: z.boolean() })).max(10),
     form_fields: z.array(z.object({ label: z.string().max(80), hint: z.string().max(160) })).max(20),

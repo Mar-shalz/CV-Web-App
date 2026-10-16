@@ -16,12 +16,12 @@ const VERDICT_WORDS: Record<Verdict, string> = { verified: "looks genuine on the
  * checked it. WhatsApp first (it's where job posts travel in Nigeria), then X, copy, and the
  * phone's own share sheet.
  */
-export function ShareCheck({ jobId, state, calm = false, title, employer }: { jobId: string; state: Verdict; calm?: boolean; title: string | null; employer: string | null }) {
+export function ShareCheck({ jobId, state, calm = false, mostly = false, title, employer }: { jobId: string; state: Verdict; calm?: boolean; mostly?: boolean; title: string | null; employer: string | null }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const job = [title, employer && `at ${employer}`].filter(Boolean).join(" ") || "this job";
-  const text = `I checked ${job} before applying: it ${calm && state === "unverified" ? "showed no warning signs" : VERDICT_WORDS[state]}. See what was checked, and check your own job free:`;
+  const text = `I checked ${job} before applying: it ${calm && state === "unverified" ? "showed no warning signs" : mostly && state === "unverified" ? "mostly checks out" : VERDICT_WORDS[state]}. See what was checked, and check your own job free:`;
 
   const make = () =>
     start(async () => {
@@ -49,13 +49,12 @@ export function ShareCheck({ jobId, state, calm = false, title, employer }: { jo
       <p className="text-[0.8125rem] font-semibold text-ink-900">Share the check</p>
       <p className="text-xs text-ink-500">The link shows the job and what we found. Never your name or details.</p>
       <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#1f9d55] px-3 text-sm font-semibold text-white hover:bg-[#188247]">
-          <WhatsAppLogo size={19} />
-          WhatsApp
+        {/* Just the logos (founder, round 22); the names are for screen readers and hover. */}
+        <a href={whatsapp} target="_blank" rel="noopener noreferrer" aria-label="Share on WhatsApp" title="Share on WhatsApp" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#1f9d55] px-3 text-white hover:bg-[#188247]">
+          <WhatsAppLogo size={24} />
         </a>
-        <a href={x} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-ink-900 px-3 text-sm font-semibold text-white hover:bg-ink-800">
-          <XLogo size={15} />
-          Post on X
+        <a href={x} target="_blank" rel="noopener noreferrer" aria-label="Post on X" title="Post on X" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink-900 px-3 text-white hover:bg-ink-800">
+          <XLogo size={19} />
         </a>
         <button
           type="button"

@@ -48,6 +48,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { error } = await supabase.storage.from("cv-exports").upload(path, bytes, { contentType: mime, upsert: true });
   if (!error && !cv.locked) await supabase.from("cv_versions").update(type === "pdf" ? { pdf_path: path } : { docx_path: path }).eq("id", cv.id).eq("user_id", viewer.id);
 
+  // Fetched ahead for the phone's share sheet: not a download yet, so not counted.
+  if (request.nextUrl.searchParams.get("prefetch") === "1") return file;
   const open = openFlags(cv.doc);
   if (open) await track("cv_downloaded_with_flags", { open_flags_count: open }, viewer.id);
   await track("cv_exported", { format: cv.doc.format, file_type: type, style }, viewer.id);

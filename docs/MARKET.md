@@ -123,6 +123,38 @@ Trustpilot and BBB summaries); no interviews yet, so treat it as hypotheses to t
    all", the suggestions are trusted; if mostly "Keep my words", the writing is off.)
 4. How many people add referees, and do Nigerian employers ask for them at the CV stage?
 
+## Chrome extensions: does anyone do what ours does? (founder round 22, 16 October 2026)
+
+A UX research read of the job search extensions on the Chrome Web Store and the big
+tools' own extensions. Desk research; user counts and claims come from store listings and
+vendor pages, so treat them as hypotheses.
+
+What our extension does in one panel: finds the job on any page (or in a flyer image),
+checks if it's real (company, age, where it was posted, scam reports), shows how well the
+person matches it (the same fit check and percentage as the app), saves it, and sends it to
+the app to tailor a truthful CV, with a shareable check.
+
+| Group | Examples | What they do | What they don't |
+| --- | --- | --- | --- |
+| Trackers with a clipper | Teal, Huntr, StylingCV Job Hunter | Save a job from 40+ boards to a tracker; Teal shows a keyword match score (full score paid, about $29 a month); Huntr highlights keywords and autofills forms | No scam check, no fact lock, keyword overlap only |
+| Match score extensions | Jobscan, Jobinstant, TalentSync, JobTune, Interview10x, ResuMe | A keyword or skills match score on LinkedIn or Indeed, some tailor a resume | Scores are keyword overlap and disagree between tools; tailoring isn't checked against the person's real record; most are tiny (5 to a few hundred users) |
+| Autofill and auto apply | Simplify, Jobright Autofill, AI Apply style extensions, LazyApply | Fill application forms, some tailor and submit for you | Volume over care; nothing on truth or scams; send on your behalf |
+| Scam and ghost job detectors | GhostJob, Trouvr, HireRadar, ScamShield, JobScamAlert Pro, LinkedIn Fake Job Post Detector, Fake Job Detector India | A trust or risk score, red flag patterns, some check links (Safe Browsing, VirusTotal) or try to find the official careers page | No fit check, no CV, no record; mostly new with very few users; one had many security findings in a third party scan; some say "SAFE", which we never do |
+
+**Verdict:** no extension found does all of it. The closest are GhostJob (trust score plus
+an attempt to find the official careers page, LinkedIn only) on the scam side, and Teal or
+Jobright on the match and tailoring side. Nobody combines a real company check, a fit
+percentage, image and flyer reading, and a truthful tailored CV in one panel, and none is
+built for Nigerian job boards, NYSC and SIWES, or WhatsApp sharing.
+
+**Risks to watch:** Teal and Jobright have the distribution to add a scam check quickly;
+scam detector extensions are cheap to build, so our moat is the evidence behind each check
+(sources shown, never "safe") and the loop after it (fit, truthful CV, record, interview prep).
+
+**What to test:** do people open the panel on job boards they already trust (LinkedIn) or
+mostly on WhatsApp and flyer adverts? That decides whether the scan or the scam check leads
+the Chrome Web Store listing.
+
 ## Sources
 - AI CV tool pricing and features: dupple.com (best AI resume builders 2026), four-leaf.ai,
   blog.fastapply.co (verified prices), nextcv.net, pitchmeai.com, reztune.com.
@@ -138,3 +170,8 @@ Trustpilot and BBB summaries); no interviews yet, so treat it as hypotheses to t
   blog.fastapply.co (competitor sources: read with care).
 - Totaljobs: Apple App Store listing, archived totaljobs.com homepage, betterteam.com,
   losclouds.com (directory, may be dated).
+- Extensions: Chrome Web Store listings and extscope.org, chromeboard.com, extensionauditor.com
+  and riskyplugins.com pages for GhostJob, Trouvr, HireRadar, ScamShield, JobScamAlert Pro,
+  LinkedIn Fake Job Post Detector, Fake Job Detector India, Jobinstant, TalentSync,
+  Interview10x, ResuMe and Jobright Autofill; Product Hunt (JobTune); stylingcv.com; Huntr help
+  centre; Jobscan comparison pages (Jobscan vs Teal, Jobscan vs Simplify); jobright.ai Teal review.

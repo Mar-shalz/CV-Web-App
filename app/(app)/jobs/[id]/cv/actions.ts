@@ -9,7 +9,7 @@ import { generateForJob, getCvById, type GenerateResult } from "@/lib/cv/data";
 import { ensureDraftApplication } from "@/lib/applications/pack";
 import { getVault } from "@/lib/vault/data";
 import { lockLine, type LockSource } from "@/lib/rules/fact-lock";
-import { findBullet, mergeFlags, updateBullet } from "@/lib/cv/ops";
+import { findBullet, mergeFlags, removeSkill, updateBullet } from "@/lib/cv/ops";
 import type { CvDoc } from "@/lib/cv/types";
 import { extractMetrics } from "@/lib/vault/metrics";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
@@ -29,14 +29,15 @@ export async function generateCv(jobId: string): Promise<GenerateResult> {
 
 const opSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("resolve"), bulletId: z.string(), action: z.enum(["removed", "kept"]) }),
-  z.object({ kind: z.literal("edit"), bulletId: z.string(), text: z.string().trim().min(5).max(320) }),
+  z.object({ kind: z.literal("edit"), bulletId: z.string(), text: z.string().trim().min(5).max(360) }),
   z.object({ kind: z.literal("original"), bulletId: z.string() }),
   z.object({ kind: z.literal("vault"), bulletId: z.string() }),
   z.object({ kind: z.literal("include"), field: z.enum(["date_of_birth"]), on: z.boolean() }),
   // Suggestions take effect only when accepted (D-163).
   z.object({ kind: z.literal("accept"), bulletId: z.string() }),
   z.object({ kind: z.literal("accept_all") }),
-  z.object({ kind: z.literal("summary"), choice: z.enum(["suggested", "own", "edit"]), text: z.string().trim().max(640).optional() }),
+  z.object({ kind: z.literal("summary"), choice: z.enum(["suggested", "own", "edit"]), text: z.string().trim().max(900).optional() }),
+  z.object({ kind: z.literal("remove_skill"), skill: z.string().trim().min(1).max(80) }),
 ]);
 export type CvOp = z.infer<typeof opSchema>;
 export type EditResult = { ok: true; doc: CvDoc; cvId: string; newFacts: string[] } | { ok: false; error: string };
@@ -68,6 +69,8 @@ export async function editCv(cvId: string, rawOp: CvOp): Promise<EditResult> {
   if (o.kind === "include") {
     doc = { ...doc, include: { ...doc.include, [o.field]: o.on } };
     if (o.on) await supabase.from("consents").insert({ user_id: viewer.id, type: "sensitive_details", version: `export:${cvId}:${o.field}`, granted_at: new Date().toISOString() });
+  } else if (o.kind === "remove_skill") {
+    doc = removeSkill(doc, o.skill);
   } else if (o.kind === "accept_all") {
     doc = { ...doc, sections: doc.sections.map((s) => (s.kind === "roles" ? { ...s, roles: s.roles.map((r) => ({ ...r, bullets: r.bullets.map((b) => ({ ...b, pending: false })) })) } : s)) };
     await track("claim_review_completed", { confirmed: 1, edited: 0, reverted: 0 }, viewer.id);

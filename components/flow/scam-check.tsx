@@ -12,6 +12,8 @@ const STATE = {
 } as const;
 /** Couldn't fully confirm, but the company is real and nothing looks wrong (D-156). */
 const CALM = { tone: "bg-brand-50 text-brand-800 ring-brand-100", icon: ShieldSearch, title: "No warning signs found" } as const;
+/** Most checks passed, nothing red, something to look at (D-173). */
+const mostlyTitle = (n: number) => `Mostly checks out: ${n} ${n === 1 ? "thing" : "things"} to look at`;
 
 const SIGNAL_ICON = {
   red: { icon: Danger, cls: "text-flag-600" },
@@ -126,7 +128,7 @@ export function ScamCheck({ jobId, initial, ready = false, large = false, title 
     setRound((n) => n + 1);
   };
 
-  const s = view.calm && view.state === "unverified" ? CALM : STATE[view.state];
+  const s = view.calm && view.state === "unverified" ? CALM : view.mostly && view.state === "unverified" ? { tone: "bg-care-50 text-care-800 ring-care-100", icon: ShieldSearch, title: mostlyTitle(view.mostly.toLook) } : STATE[view.state];
   const Icon = s.icon;
   // Rule findings from the post itself (fees, WhatsApp only, and so on).
   const flags = view.signals.filter((x) => x.id.startsWith("L1") && x.severity !== "info");
@@ -192,7 +194,7 @@ export function ScamCheck({ jobId, initial, ready = false, large = false, title 
         ) : null}
         {!loading && !failed ? (
           <div className="mt-4">
-            <ShareCheck jobId={jobId} state={view.state} calm={Boolean(view.calm)} title={title} employer={employer} />
+            <ShareCheck jobId={jobId} state={view.state} calm={Boolean(view.calm)} mostly={Boolean(view.mostly)} title={title} employer={employer} />
           </div>
         ) : null}
         <p className="mt-3 border-t border-ink-100 pt-3 text-xs leading-5 text-ink-500">We describe what we found online. We can&apos;t prove a job is real, so never pay to apply and never share your bank PIN or ID numbers before an offer.</p>

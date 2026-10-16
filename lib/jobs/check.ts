@@ -6,7 +6,7 @@ import type { JobView } from "./data";
 import { createClient } from "@/lib/supabase/server";
 import { checkEligibility } from "@/lib/rules/eligibility";
 import type { EligibilityResult } from "@/lib/rules/eligibility/types";
-import { finalizeVerdict, type FinalVerdict } from "@/lib/rules/verdict";
+import { alignVerdict, finalizeVerdict, type FinalVerdict } from "@/lib/rules/verdict";
 import { buildEligibilityProfile } from "@/lib/eligibility/profile";
 import { runTask } from "@/lib/ai";
 import { FILTER_LABELS } from "./labels";
@@ -36,7 +36,7 @@ export async function getVerdict(viewer: Viewer, job: JobView, vault: Vault, eli
   const ids = new Set(confirmed.map((i) => i.id));
 
   if (viewer.preview) {
-    return finalizeVerdict(
+    return alignVerdict(finalizeVerdict(
       {
         verdict: DEMO_VERDICT.verdict,
         top_match: "your SIWES banking work",
@@ -46,7 +46,7 @@ export async function getVerdict(viewer: Viewer, job: JobView, vault: Vault, eli
       },
       eligibility,
       ids,
-    );
+    ), job.parsed.requirements, eligibility);
   }
 
   const key = createHash("sha256")
@@ -56,7 +56,7 @@ export async function getVerdict(viewer: Viewer, job: JobView, vault: Vault, eli
   const supabase = await createClient();
   const { data: cached } = await supabase.from("verdicts").select("verdict, line, requirements, gaps, forced_by_rules").eq("job_id", job.id).eq("cache_key", key).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (cached?.line) {
-    return { verdict: cached.verdict, line: cached.line, requirements: cached.requirements, gaps: cached.gaps, forcedByRules: cached.forced_by_rules };
+    return alignVerdict({ verdict: cached.verdict, line: cached.line, requirements: cached.requirements, gaps: cached.gaps, forcedByRules: cached.forced_by_rules }, job.parsed.requirements, eligibility);
   }
 
   const education = vault.roles.filter((r) => r.kind === "education" && r.confirmed).map((r) => [r.title, r.organisation, r.grade].filter(Boolean).join(", "));
@@ -71,7 +71,7 @@ export async function getVerdict(viewer: Viewer, job: JobView, vault: Vault, eli
     },
     { userId: viewer.id },
   );
-  const final = finalizeVerdict(res.ok ? res.data : null, eligibility, ids);
+  const final = alignVerdict(finalizeVerdict(res.ok ? res.data : null, eligibility, ids), job.parsed.requirements, eligibility);
   await supabase.from("verdicts").insert({
     job_id: job.id,
     user_id: viewer.id,

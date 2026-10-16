@@ -33,3 +33,43 @@ export function updateBullet(doc: CvDoc, bulletId: string, fn: (b: CvBullet) => 
     ),
   };
 }
+
+/** Splits "Excel (macros, pivot tables), Sage 50" on commas outside brackets. */
+export function splitSkills(text: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let cur = "";
+  for (const ch of text) {
+    if (ch === "(") depth++;
+    if (ch === ")") depth = Math.max(0, depth - 1);
+    if (ch === "," && depth === 0) {
+      if (cur.trim()) out.push(cur.trim());
+      cur = "";
+    } else cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+
+/** Takes one skill out of the Skills section ("Core skills: a, b, c"), dropping empty lines (round 22). */
+export function removeSkill(doc: CvDoc, skill: string): CvDoc {
+  const want = skill.trim().toLowerCase();
+  return {
+    ...doc,
+    sections: doc.sections
+      .map((s) => {
+        if (s.key !== "skills" || s.kind !== "lines") return s;
+        const lines = s.lines
+          .map((l) => {
+            const at = l.indexOf(": ");
+            const label = at > 0 && at < 30 ? l.slice(0, at) : null;
+            const items = splitSkills(label ? l.slice(at + 2) : l).filter((x) => x.toLowerCase() !== want);
+            return items.length ? (label ? `${label}: ${items.join(", ")}` : items.join(", ")) : null;
+          })
+          .filter((l): l is string => Boolean(l));
+        return { ...s, lines };
+      })
+      .filter((s) => !(s.key === "skills" && s.kind === "lines" && !s.lines.length)),
+  };
+}
+

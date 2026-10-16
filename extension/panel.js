@@ -502,7 +502,7 @@ function shareBox(c, v) {
   const make = async () => {
     box.replaceChildren(h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("p", {}, "Making the link")));
     try {
-      const res = await api("/api/ext/share", { jobId: c.jobId, title: c.title || current.title || undefined, employer: c.employer || current.company || undefined, state: v.state, calm: Boolean(v.calm) });
+      const res = await api("/api/ext/share", { jobId: c.jobId, title: c.title || current.title || undefined, employer: c.employer || current.company || undefined, state: v.state, calm: Boolean(v.calm), mostly: Boolean(v.mostly) });
       const wa = `https://wa.me/?text=${encodeURIComponent(`${res.text} ${res.url}`)}`;
       const x = `https://x.com/intent/post?text=${encodeURIComponent(res.text)}&url=${encodeURIComponent(res.url)}`;
       const copied = h("span", {}, "Copy link");
@@ -512,8 +512,8 @@ function shareBox(c, v) {
         h(
           "div",
           { class: "row", style: "margin-top:10px" },
-          h("button", { class: "btn wa", type: "button", onclick: () => chrome.tabs.create({ url: wa }) }, icon("whatsapp", 18), "WhatsApp"),
-          h("button", { class: "btn xbtn", type: "button", onclick: () => chrome.tabs.create({ url: x }) }, icon("xlogo", 15), "Post on X"),
+          h("button", { class: "btn wa", type: "button", "aria-label": "Share on WhatsApp", title: "Share on WhatsApp", onclick: () => chrome.tabs.create({ url: wa }) }, icon("whatsapp", 24)),
+          h("button", { class: "btn xbtn", type: "button", "aria-label": "Post on X", title: "Post on X", onclick: () => chrome.tabs.create({ url: x }) }, icon("xlogo", 19)),
         ),
         h(
           "button",
@@ -546,7 +546,7 @@ const CALM = { cls: "info", icon: "shield", title: "No warning signs found" };
 const CHECK = { pass: { icon: "tick", cls: "pass", word: "Yes" }, warn: { icon: "warn", cls: "warnc", word: "Check this" }, fail: { icon: "cross", cls: "fail", word: "No" }, unknown: { icon: "minus", cls: "unknown", word: "Couldn't check" } };
 
 function results(c, v) {
-  const s = v.calm && v.state === "unverified" ? CALM : STATE[v.state] || STATE.unverified;
+  const s = v.calm && v.state === "unverified" ? CALM : v.mostly && v.state === "unverified" ? { cls: "warn", icon: "shield", title: `Mostly checks out: ${v.mostly.toLook} ${v.mostly.toLook === 1 ? "thing" : "things"} to look at` } : STATE[v.state] || STATE.unverified;
   const flags = (v.signals || []).filter((x) => String(x.id).startsWith("L1") && x.severity !== "info");
   keepOpen({ view: v });
   show(

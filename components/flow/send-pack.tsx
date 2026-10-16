@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { PackView } from "@/lib/applications/data";
 import { sentIt, rewriteEmail } from "@/app/(app)/jobs/[id]/pack/actions";
@@ -31,21 +31,40 @@ export function SendPack({ pack, applicationId, cvId, alreadySent, jobId }: { pa
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
-  // Phones can hand the CV file straight to Gmail; laptops can't (checked after load).
-  const [canShareFiles, setCanShareFiles] = useState(false);
+  const cvName = pack.attachmentNames[0] ?? "CV.pdf";
+  // The design chosen on the CV screen (kept on this device), so the file matches it.
+  const [style, setStyle] = useState("classic");
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCanShareFiles(Boolean(navigator.canShare?.({ files: [new File(["x"], "x.pdf", { type: "application/pdf" })] })));
+      setStyle(localStorage.getItem("rcpt-cv-style") || "classic");
     } catch {}
   }, []);
+  const cvUrl = `/api/cv/${cvId}/export?type=pdf&style=${encodeURIComponent(style)}`;
+  // Phones and tablets with touch hand the CV file straight to the Gmail app. Laptops use
+  // Gmail in the browser: desktop share sheets don't reach Gmail, and sharing needs the tap
+  // itself, which a download in between used up (the "couldn't open Gmail" error, round 22).
+  const [canShareFiles, setCanShareFiles] = useState(false);
+  const cvFile = useRef<File | null>(null);
+  useEffect(() => {
+    try {
+      const touch = window.matchMedia("(pointer: coarse)").matches;
+      const ok = touch && Boolean(navigator.canShare?.({ files: [new File(["x"], "x.pdf", { type: "application/pdf" })] }));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCanShareFiles(ok);
+      // Fetch the CV ahead, so tapping "Send through Gmail" can share it at once.
+      if (ok)
+        void fetch(`${cvUrl}&prefetch=1`)
+          .then((r) => r.blob())
+          .then((b) => (cvFile.current = new File([b], cvName, { type: "application/pdf" })))
+          .catch(() => {});
+    } catch {}
+  }, [cvUrl, cvName]);
   // Both come from the job post, so they're checked: a plain address only (no extra
   // headers like ?bcc= smuggled in), and only web links.
   const safeEmail = pack.toEmail && /^[^\s@?&#,;]+@[^\s@?&#,;]+\.[a-z]{2,}$/i.test(pack.toEmail) ? pack.toEmail : null;
   const applyUrl = pack.applyUrl && /^https?:\/\//i.test(pack.applyUrl) ? pack.applyUrl : null;
   const mailto = safeEmail ? `mailto:${safeEmail}?subject=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(pack.body)}` : null;
-  const cvUrl = `/api/cv/${cvId}/export?type=pdf`;
-  const cvName = pack.attachmentNames[0] ?? "CV.pdf";
 
   /** Saves the CV file to the device with an anchor, so the page stays open. */
   function saveCv() {
@@ -67,11 +86,11 @@ export function SendPack({ pack, applicationId, cvId, alreadySent, jobId }: { pa
     setShareError(null);
     setOpening(true);
     try {
-      if (canShareFiles) {
-        const blob = await (await fetch(cvUrl)).blob();
-        const file = new File([blob], cvName, { type: "application/pdf" });
-        await navigator.clipboard?.writeText(`${pack.subject}\n\n${pack.body}`).catch(() => {});
-        await navigator.share({ files: [file], title: pack.subject, text: pack.body });
+      if (canShareFiles && cvFile.current) {
+        // Share first, while the tap still counts; then copy the words to paste.
+        const shared = navigator.share({ files: [cvFile.current], title: pack.subject, text: pack.body });
+        void navigator.clipboard?.writeText(`${pack.subject}\n\n${pack.body}`).catch(() => {});
+        await shared;
         setNote({ tone: "ok", text: "Shared to your email app with the CV attached. If the subject or message is empty, paste them: we copied them for you." });
       } else {
         const gmail = `https://mail.google.com/mail/?view=cm&fs=1${safeEmail ? `&to=${encodeURIComponent(safeEmail)}` : ""}&su=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(pack.body)}`;

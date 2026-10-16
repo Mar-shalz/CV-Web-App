@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
-import { getSharedCheck, DEMO_SHARE, isCalm, type SharedCheck } from "@/lib/share";
+import { getSharedCheck, DEMO_SHARE, isCalm, mostlyOf, type SharedCheck } from "@/lib/share";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPreviewMode } from "@/lib/env";
 import { track } from "@/lib/analytics/server";
@@ -55,7 +55,8 @@ export default async function SharedCheckPage({ params }: { params: Promise<{ sl
     });
     await track("check_share_opened", { state: s.state });
   }
-  const st = isCalm(s) ? CALM : STATE[s.state];
+  const look = mostlyOf(s);
+  const st = isCalm(s) ? CALM : look ? { tone: "bg-care-50 text-care-800 ring-care-100", icon: ShieldSearch, title: `Mostly checks out: ${look} ${look === 1 ? "thing" : "things"} to look at` } : STATE[s.state];
   const Icon = st.icon;
 
   return (

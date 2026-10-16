@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineTask, trusted, untrusted } from "../types";
 
 const bullet = z.object({
-  text: z.string().min(5).max(320),
+  text: z.string().min(5).max(360),
   source_item_ids: z.array(z.string()).min(1).max(4),
   rewrite_type: z.enum(["kept", "reworded", "reordered", "merged"]),
 });
@@ -11,7 +11,7 @@ const bullet = z.object({
 export const tailorCv = defineTask({
   name: "tailor_cv",
   model: "claude-sonnet-5-5",
-  promptVersion: "v2",
+  promptVersion: "v3",
   input: z.object({
     profile: z.object({ label: z.string(), spelling: z.string(), rules: z.array(z.string()).max(20) }),
     job: z.object({ title: z.string(), employer: z.string(), requirements: z.array(z.string()).max(20) }),
@@ -36,7 +36,7 @@ export const tailorCv = defineTask({
   }),
   output: z.object({
     title_line: z.string().max(120),
-    summary: z.object({ text: z.string().max(640), source_item_ids: z.array(z.string()).max(6) }),
+    summary: z.object({ text: z.string().max(900), source_item_ids: z.array(z.string()).max(8) }),
     experience: z
       .array(
         z.object({
@@ -52,7 +52,7 @@ export const tailorCv = defineTask({
     }),
     key_terms_used: z.array(z.string().max(40)).max(8),
   }),
-  maxTokens: 12_000,
+  maxTokens: 14_000,
   timeoutMs: 60_000,
   effort: "medium",
   render: (i) => [

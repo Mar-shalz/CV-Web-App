@@ -24,7 +24,11 @@ export type LegitimacyCheck = { key: string; label: string; status: "pass" | "wa
  * Shown as "No warning signs found" instead of "Be careful", so a real job posted only on
  * LinkedIn or Indeed doesn't put people off. Never "safe".
  */
-export type LegitimacyView = { state: ScamState; headline: string; signals: LegitimacySignal[]; checks: LegitimacyCheck[]; cached: boolean; checkedAt: string; retry?: boolean; calm?: boolean };
+/**
+ * `mostly`: couldn't fully confirm, no red flag, and most checks passed (D-173). Shown as
+ * "Mostly checks out: 1 thing to look at" instead of "We couldn't confirm it".
+ */
+export type LegitimacyView = { state: ScamState; headline: string; signals: LegitimacySignal[]; checks: LegitimacyCheck[]; cached: boolean; checkedAt: string; retry?: boolean; calm?: boolean; mostly?: { passed: number; total: number; toLook: number } };
 
 const NEWS = ["punchng.com", "premiumtimesng.com", "guardian.ng", "vanguardngr.com", "thecable.ng", "channelstv.com", "businessday.ng", "dailytrust.com", "saharareporters.com", "tribuneonlineng.com", "thisdaylive.com", "leadership.ng", "nairametrics.com", "techcabal.com", "arise.tv"];
 const FORUMS = ["nairaland.com", "reddit.com", "quora.com"];
@@ -184,7 +188,15 @@ function view(layer: Signal[], findings: Finding[], cached: boolean, checkedAt: 
   ].sort((a, b) => order[a.severity]! - order[b.severity]!);
   const retry = findings.some((f) => f.note === "search_unavailable");
   const calm = state === "unverified" && !retry && !signals.some((s) => s.severity === "amber" || s.severity === "red") && findings.some((f) => f.id === "L2-09" && f.result === "found");
-  return { state, headline: headlineFor(state, signals, findings, retry, job?.employer_name?.trim() || null), signals, checks: checklist(findings, job, live), cached, checkedAt, retry, calm };
+  const checks = checklist(findings, job, live);
+  // Most checks passed and nothing is red: say so, and point at what to look at (D-173).
+  const passed = checks.filter((c) => c.status === "pass").length;
+  const toLook = checks.filter((c) => c.status === "warn").length + layer.filter((s) => s.severity === "amber").length;
+  const mostly = state === "unverified" && !retry && !live && !calm && toLook > 0 && checks.length > 0 && passed / checks.length >= 0.7 ? { passed, total: checks.length, toLook } : undefined;
+  const headline = mostly
+    ? `${passed} of ${mostly.total} checks passed. Look at ${toLook === 1 ? "the one" : `the ${toLook}`} marked “Check this” before you send your details, and never pay to apply.`
+    : headlineFor(state, signals, findings, retry, job?.employer_name?.trim() || null);
+  return { state, headline, signals, checks, cached, checkedAt, retry, calm, mostly };
 }
 
 /**

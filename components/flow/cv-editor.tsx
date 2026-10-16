@@ -9,8 +9,8 @@ import { editCv, type CvOp } from "@/app/(app)/jobs/[id]/cv/actions";
 import { answerSurvey } from "@/app/(app)/jobs/[id]/check/actions";
 import type { CvBullet, CvDoc } from "@/lib/cv/types";
 import { openFlags, pendingSuggestions } from "@/lib/cv/types";
-import { findBullet, updateBullet } from "@/lib/cv/ops";
-import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, ArrowDown2, InfoCircle, Magicpen, Warning2, Lock1, Sms, DocumentText } from "@/components/icons";
+import { findBullet, removeSkill, splitSkills, updateBullet } from "@/lib/cv/ops";
+import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, ArrowDown2, InfoCircle, Magicpen, Warning2, Lock1, Sms, DocumentText, CloseCircle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 
@@ -129,7 +129,9 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
           ) : null}
           {doc.sections.map((s) => (
             <CvSectionBlock key={s.key} title={s.heading}>
-              {s.kind === "lines" ? (
+              {s.kind === "lines" && s.key === "skills" ? (
+                <SkillLines lines={s.lines} busy={busy} onRemove={(skill) => run({ kind: "remove_skill", skill }, (d) => removeSkill(d, skill))} />
+              ) : s.kind === "lines" ? (
                 <div className="space-y-1">
                   {s.lines.map((l) => {
                     const at = l.indexOf(": ");
@@ -618,6 +620,35 @@ function SuggestButton({ children, onClick, disabled, tone, className = "" }: { 
     >
       {children}
     </button>
+  );
+}
+
+/** Skills you can take off this CV one by one (founder, round 22). They stay on My Experience. */
+function SkillLines({ lines, busy, onRemove }: { lines: string[]; busy: boolean; onRemove: (skill: string) => void }) {
+  return (
+    <div className="space-y-2">
+      {lines.map((l) => {
+        const at = l.indexOf(": ");
+        const label = at > 0 && at < 30 ? l.slice(0, at) : null;
+        const items = splitSkills(label ? l.slice(at + 2) : l);
+        return (
+          <div key={l} className="text-sm leading-6 text-ink-800">
+            {label ? <span className="mr-1 font-bold text-ink-900">{label}:</span> : null}
+            <span className="inline-flex flex-wrap gap-1.5 align-middle font-[family-name:var(--font-sans)]">
+              {items.map((it) => (
+                <span key={it} className="inline-flex items-center gap-1 rounded-full bg-white py-0.5 pl-2.5 pr-1 text-[0.8125rem] ring-1 ring-ink-150">
+                  {it}
+                  <button type="button" onClick={() => onRemove(it)} disabled={busy} aria-label={`Remove ${it} from this CV`} title="Remove from this CV" className="grid size-6 place-items-center rounded-full text-ink-500 hover:bg-flag-50 hover:text-flag-700 disabled:opacity-50">
+                    <CloseCircle size={14} />
+                  </button>
+                </span>
+              ))}
+            </span>
+          </div>
+        );
+      })}
+      <p className="font-[family-name:var(--font-sans)] text-xs text-ink-500">Remove any skill you don&apos;t want on this CV. It stays on My Experience.</p>
+    </div>
   );
 }
 

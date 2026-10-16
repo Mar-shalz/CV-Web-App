@@ -78,7 +78,7 @@ export async function generateForJob(viewer: Viewer, job: JobView): Promise<Gene
   }
   const bullets = doc.sections.flatMap((s) => (s.kind === "roles" ? s.roles.flatMap((r) => r.bullets) : []));
   await track("cv_generated", { format: doc.format, bullets_changed: bullets.filter((b) => b.rewriteType !== "kept").length }, viewer.id);
-  for (const v of violations) await track("fact_lock_violation", { type: v.split(":")[1]?.trim().split(" ")[0] ?? "unknown", prompt_version: "tailor_cv/v2" }, viewer.id);
+  for (const v of violations) await track("fact_lock_violation", { type: v.split(":")[1]?.trim().split(" ")[0] ?? "unknown", prompt_version: "tailor_cv/v3" }, viewer.id);
   for (const f of bullets.flatMap((b) => b.flags)) await track("flag_shown", { type: f.type }, viewer.id);
   void generated;
   return { ok: true, cvId: data.id };

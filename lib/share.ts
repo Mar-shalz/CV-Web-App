@@ -98,10 +98,18 @@ export function isCalm(s: Pick<SharedCheck, "state" | "checks" | "flags">): bool
   return s.state === "unverified" && !s.flags.length && s.checks.every((c) => c.status !== "fail") && s.checks.some((c) => c.label === "The company exists" && c.status === "pass");
 }
 
+/** Most checks passed, nothing red, something to look at (D-173), from what the share kept. */
+export function mostlyOf(s: Pick<SharedCheck, "state" | "checks">): number | null {
+  if (s.state !== "unverified" || !s.checks.length || s.checks.some((c) => c.status === "fail")) return null;
+  const warn = s.checks.filter((c) => c.status === "warn").length;
+  const passed = s.checks.filter((c) => c.status === "pass").length;
+  return warn > 0 && passed / s.checks.length >= 0.7 ? warn : null;
+}
+
 /** The words that go with the link on WhatsApp and X. */
-export function shareText(s: Pick<SharedCheck, "state" | "title" | "employer"> & { calm?: boolean }): string {
+export function shareText(s: Pick<SharedCheck, "state" | "title" | "employer"> & { calm?: boolean; mostly?: boolean }): string {
   const job = [s.title, s.employer && `at ${s.employer}`].filter(Boolean).join(" ") || "this job";
-  const verdict = s.state === "red_flags" ? "showed warning signs" : s.state === "verified" ? "looks genuine on the checks" : s.calm ? "showed no warning signs" : "couldn't be confirmed";
+  const verdict = s.state === "red_flags" ? "showed warning signs" : s.state === "verified" ? "looks genuine on the checks" : s.calm ? "showed no warning signs" : s.mostly ? "mostly checks out" : "couldn't be confirmed";
   return `I checked ${job} with ${APP.APP_NAME} before applying: it ${verdict}. See what was checked, and check your own job free:`;
 }
 

@@ -24,3 +24,33 @@ describe("match percentage (D-164)", () => {
     expect(matchPercent([], job)).toBeNull();
   });
 });
+
+import { alignVerdict } from "@/lib/rules/verdict";
+
+describe("advice follows the match (D-174)", () => {
+  const job = [
+    { text: "Figma", importance: "must" as const },
+    { text: "Design systems", importance: "must" as const },
+    { text: "User research", importance: "must" as const },
+    { text: "Claude Design", importance: "must" as const },
+  ];
+  const elig = (overall: "pass" | "unknown") => ({ ruleSetVersion: "t", overall, outcomes: [] });
+  const care = { verdict: "apply_with_care" as const, line: "Apply with care.", gaps: [{ gap: "Claude Design tool experience", addressIn: "email" as const, how: "x" }], forcedByRules: false };
+
+  it("turns care into apply at 85% or more when every hard rule is met", () => {
+    const v = alignVerdict({ ...care, requirements: [req("Figma", "met"), req("Design systems", "met"), req("User research", "met"), req("Claude Design", "partly")] }, job, elig("pass"));
+    expect(v.verdict).toBe("apply");
+    expect(v.line).toContain("88%");
+    expect(v.line).toContain("Claude Design tool experience");
+  });
+
+  it("keeps care when a hard rule is still unknown", () => {
+    const v = alignVerdict({ ...care, requirements: [req("Figma", "met"), req("Design systems", "met"), req("User research", "met"), req("Claude Design", "met")] }, job, elig("unknown"));
+    expect(v.verdict).toBe("apply_with_care");
+  });
+
+  it("never says a plain apply under 50%", () => {
+    const v = alignVerdict({ ...care, verdict: "apply", requirements: [req("Figma", "met"), req("Design systems", "missing"), req("User research", "missing"), req("Claude Design", "missing")] }, job, elig("pass"));
+    expect(v.verdict).toBe("apply_with_care");
+  });
+});
