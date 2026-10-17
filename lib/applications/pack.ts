@@ -8,6 +8,7 @@ import { finalDoc } from "@/lib/cv/types";
 import { formatPhone } from "@/lib/cv/generate";
 import { runTask } from "@/lib/ai";
 import { fillSubject } from "@/lib/pack/subject";
+import { formatEmailBody } from "@/lib/pack/body";
 import { lintCopy } from "@/lib/copy-lint";
 import { matchAgency } from "@/lib/rules/scam/layer1";
 import { canTransition } from "@/lib/rules/status-flow";
@@ -90,6 +91,7 @@ export async function ensurePack(viewer: Viewer, job: JobView, cv: CvRecord, gap
   const employer = job.parsed.employer_name ?? null;
   let body = res.ok ? res.data.body.replace(/\s*\u2014\s*/g, ", ") : templateBody(name, role, employer, phone, contact.email, proof);
   if (lintCopy(body).length || words(body) > 270) body = templateBody(name, role, employer, phone, contact.email, proof);
+  body = formatEmailBody(body, { name, phone, email: contact.email });
   const checklist = res.ok && res.data.checklist.length ? res.data.checklist : [{ item: "Your CV as a PDF", required: true }, ...job.parsed.how_to_apply.required_documents.filter((d) => !/^cv$|resume|curriculum/i.test(d)).map((d) => ({ item: d, required: true }))];
   if (job.parsed.how_to_apply.subject_format) checklist.unshift({ item: "Use the exact subject line above", required: true });
   const attachments = res.ok && res.data.attachment_names.length ? [cvFile, ...res.data.attachment_names.filter((a) => a !== cvFile)] : [cvFile];

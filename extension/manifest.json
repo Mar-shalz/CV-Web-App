@@ -2,15 +2,57 @@
   "manifest_version": 3,
   "name": "Receipts: check a job, tailor your CV",
   "short_name": "Receipts",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Check if the job you're looking at is real, save it, or tailor your CV to it, without leaving the page.",
-  "action": { "default_title": "Open Receipts", "default_icon": { "128": "icon.png" } },
-  "side_panel": { "default_path": "panel.html" },
-  "background": { "service_worker": "background.js", "type": "module" },
-  "icons": { "128": "icon.png" },
-  "permissions": ["sidePanel", "storage", "scripting", "activeTab", "contextMenus"],
-  "host_permissions": ["__APP_URL__/*"],
-  "optional_host_permissions": ["<all_urls>"],
-  "content_scripts": [{ "matches": ["__APP_URL__/extension/connect*"], "js": ["connect.js"], "run_at": "document_idle" }],
+  "action": {
+    "default_title": "Open Receipts",
+    "default_icon": {
+      "128": "icon.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "128": "icon.png"
+  },
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "scripting",
+    "activeTab",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "__APP_URL__/*",
+    "https://mail.google.com/*"
+  ],
+  "optional_host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "__APP_URL__/extension/connect*"
+      ],
+      "js": [
+        "connect.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "__APP_URL__/jobs/*"
+      ],
+      "js": [
+        "app-bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
   "minimum_chrome_version": "116"
 }

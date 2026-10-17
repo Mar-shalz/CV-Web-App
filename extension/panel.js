@@ -1,5 +1,6 @@
 import { APP_URL } from "./config.js";
 import { detectJob } from "./detect.js";
+import { composeWithCv, blobToBase64 } from "./gmail.js";
 
 // The side panel (D-144). It stays open while you browse, reads the job on the page you're
 // on, and checks, saves or sends it to Receipts. It is built with DOM calls only: nothing
@@ -646,12 +647,19 @@ function packScreen(c, pack) {
     note.textContent = text;
     note.className = `small ${bad ? "error" : "okc"}`;
   };
+  // Gmail opens with everything filled in and the CV attached (D-181).
   const gmail = async () => {
-    const url = `https://mail.google.com/mail/?view=cm&fs=1${pack.toEmail ? `&to=${encodeURIComponent(pack.toEmail)}` : ""}&su=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(pack.body)}`;
-    chrome.tabs.create({ url });
+    say("Opening Gmail and attaching your CV…");
     try {
-      await downloadCv(pack.cvId, file, style.value);
-      say("Gmail is open in a new tab with everything filled in. We saved your CV to Downloads: attach it there, then press Send.");
+      const res = await fetch(`${APP_URL}/api/ext/cv?cvId=${encodeURIComponent(pack.cvId)}&style=${encodeURIComponent(style.value)}`, { headers: { authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error("We couldn't get your CV file. Try again.");
+      const base64 = await blobToBase64(await res.blob());
+      const result = await composeWithCv({ to: pack.toEmail || "", subject: pack.subject, body: pack.body }, { name: file, base64, mime: "application/pdf" });
+      if (result.ok) return say("Gmail is open with your CV attached and everything filled in. Check it, then press Send.");
+      if (result.reason === "signed_out") return say("Sign in to Gmail in the tab we opened, then press Send via Gmail again.", true);
+      await downloadCv(pack.cvId, file, style.value).catch(() => {});
+      say("Gmail has changed its page, so we couldn't attach your CV this time. Our team has been told and is fixing it. We saved your CV to Downloads: attach it in Gmail with the paperclip.", true);
+      api("/api/ext/report", { reason: result.reason || "unknown", method: result.method || null }).catch(() => {});
     } catch (e) {
       say(e.message, true);
     }

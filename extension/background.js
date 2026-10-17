@@ -1,3 +1,5 @@
+import { composeWithCv } from "./gmail.js";
+
 // The toolbar button opens the side panel; right-clicking an image or highlighted text
 // sends it to the panel to read.
 chrome.runtime.onInstalled.addListener(() => {
@@ -19,3 +21,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         : null;
   if (pending) await chrome.storage.session.set({ pending: { ...pending, at: Date.now() } });
 });
+
+// "Send via Gmail" from the app's pages (D-181): open Gmail's compose window and attach the CV.
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg?.kind !== "gmail-attach" || !sender.tab) return false;
+  composeWithCv(msg.email, msg.file).then(reply, (e) => reply({ ok: false, reason: "extension_error", detail: String(e?.message || e).slice(0, 200) }));
+  return true; // answered later
+});
+

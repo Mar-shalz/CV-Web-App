@@ -53,6 +53,11 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
   const [mode, setMode] = useState<Mode>(initialMode);
   const [error, setError] = useState<string | undefined>(initialError);
   const [signedInOnly, setSignedInOnly] = useState(false);
+  // Bring a new error into view, so it's seen on a phone without scrolling (round 24).
+  const errorBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) errorBox.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [error]);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState(0);
   const [text, setText] = useState("");
@@ -169,7 +174,9 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
-      <FormError message={error} />
+      <div ref={errorBox} className="scroll-mt-24">
+        <FormError message={error} />
+      </div>
       {signedInOnly ? (
         <Link href="/extension" className="-mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-50 px-3.5 text-sm font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100">
           <Global size={18} variant="bulk" />

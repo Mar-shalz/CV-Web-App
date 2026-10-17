@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "light";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "light" | "outline";
 type Size = "sm" | "md" | "lg";
 
 const base =
@@ -21,6 +21,8 @@ const variants: Record<ButtonVariant, string> = {
   danger:
     "border border-flag-600/30 bg-white text-flag-700 hover:bg-flag-50 disabled:text-ink-400 aria-disabled:text-ink-400",
   light: "bg-white text-brand-800 shadow-[0_10px_24px_-12px_rgb(11_24_56/0.5)] hover:bg-brand-50",
+  // Brand stroke and text, no fill (like "Download my CV").
+  outline: "border-[1.5px] border-brand-600 bg-white text-brand-700 hover:bg-brand-50 disabled:border-ink-150 disabled:text-ink-400",
 };
 
 // 48px minimum tap target on every size (WCAG 2.5.8 and the Build pack's 48px rule).

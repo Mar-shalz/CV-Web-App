@@ -54,3 +54,11 @@ describe("advice follows the match (D-174)", () => {
     expect(v.verdict).toBe("apply_with_care");
   });
 });
+
+import { noEmDashes } from "@/lib/ai";
+
+describe("model output never carries an em dash (round 24)", () => {
+  it("cleans every string, deeply", () => {
+    expect(noEmDashes({ a: "Led reconciliation — every month", b: ["x—y"], n: 3 })).toEqual({ a: "Led reconciliation, every month", b: ["x, y"], n: 3 });
+  });
+});

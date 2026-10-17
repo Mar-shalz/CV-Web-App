@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { APP } from "@/lib/config";
 import { CopyButton } from "@/components/ui/copy-button";
-import { Global, DocumentDownload, ShieldTick, Magicpen, ShieldSearch, TickCircle } from "@/components/icons";
+import { Global, DocumentDownload, ShieldTick, Magicpen, ShieldSearch, TickCircle, Sms } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Chrome Extension" };
 
@@ -30,7 +30,7 @@ export default async function ExtensionPage() {
           <Global size={30} variant="bulk" />
         </span>
         <h1 className="mt-4 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Chrome Extension</h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">A panel that sits beside any job page, on LinkedIn, a company site or any job board. It finds the job on the page by itself, checks if it&apos;s real right there, saves it for later, or sends it here to tailor your CV. Job in a picture? It reads that too. Everything saves to your account, so it&apos;s on your phone as well.</p>
+        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">A panel that sits beside any job page, on LinkedIn, a company site or any job board, even ones that need you signed in. It finds the job on the page by itself, checks if it&apos;s real, shows how well you match, and can take you all the way to applying. Job in a picture? It reads that too. Everything saves to your account, so it&apos;s on your phone as well.</p>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-3">

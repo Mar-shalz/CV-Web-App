@@ -258,6 +258,29 @@ export function TailorFab() {
   );
 }
 
+/**
+ * Phones: "Is this job real?" floats at the bottom right of Home, above the bottom bar, in
+ * dark ink so it never competes with the blue Tailor CV button (founder, round 24, D-180).
+ */
+export function CheckJobFab() {
+  const path = usePathname();
+  if (path !== "/home") return null;
+  return (
+    <Link
+      href="/jobs/real"
+      className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex min-h-12 items-center gap-2 rounded-full bg-ink-900 py-2 pl-3 pr-4 text-sm font-semibold text-white shadow-[0_12px_28px_-10px_rgb(15_23_42/0.6)] ring-2 ring-white transition-transform active:scale-95 lg:hidden"
+    >
+      <span className="grid size-8 place-items-center rounded-full bg-proof-500 text-white">
+        <ShieldSearch size={18} variant="bulk" />
+      </span>
+      <span className="leading-tight">
+        Is this job real?
+        <span className="block text-[0.6875rem] font-medium text-white/70">Check it free</span>
+      </span>
+    </Link>
+  );
+}
+
 export function BottomNav() {
   const path = usePathname();
   return (

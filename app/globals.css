@@ -284,6 +284,15 @@ select {
 }
 
 /* Motion kit. All of it stops for reduced motion and for data saver (rules below). */
+/* Phones zoom in on any field under 16px when it's tapped, and a zoomed page makes the
+   fixed bottom bar slide with the content (founder, round 24: "the nav bar scrolls with
+   the body" on My Applications). 16px fields on phones and tablets stop the zoom. */
+@media (max-width: 1023px) {
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px;
+  }
+}
+
 .page-enter { animation: page-in 380ms var(--ease-out) both; }
 @keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 

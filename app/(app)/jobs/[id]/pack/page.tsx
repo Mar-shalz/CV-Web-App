@@ -43,7 +43,7 @@ export default async function PackPage({ params }: { params: Promise<{ id: strin
               : `This employer takes applications ${CHANNEL_LABELS[channel].toLowerCase()}. Here are the steps, and your CV ready to upload.`}
         </p>
       </header>
-      <SendPack pack={app.pack} applicationId={app.id} cvId={cv.id} jobId={job.id} alreadySent={app.status !== "draft" && app.status !== "packed"} />
+      <SendPack key={app.pack.id} pack={app.pack} applicationId={app.id} cvId={cv.id} jobId={job.id} alreadySent={app.status !== "draft" && app.status !== "packed"} />
     </div>
   );
 }

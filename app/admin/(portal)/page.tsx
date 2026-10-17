@@ -1,6 +1,8 @@
 import { requireAdmin } from "@/lib/admin/auth";
 import { getOverview } from "@/lib/admin/data";
 import { designUsage } from "@/lib/cv/design-usage";
+import { opsSummary } from "@/lib/ops";
+import { formatDate } from "@/lib/format";
 import { CV_STYLES, CV_STYLE_INFO } from "@/lib/cv/styles";
 import { can } from "@/lib/admin/permissions";
 import { KpiCard, PageHeader, Panel, StatusPill } from "@/components/admin/ui";
@@ -12,7 +14,7 @@ export const metadata = { title: { absolute: "Overview · Back Office" } };
 
 export default async function AdminOverview() {
   const staff = await requireAdmin("overview");
-  const [o, designs] = await Promise.all([getOverview(staff), designUsage()]);
+  const [o, designs, gmail] = await Promise.all([getOverview(staff), designUsage(), opsSummary("gmail_attach_failed")]);
   const designTotal = CV_STYLES.reduce((n, s) => n + designs.downloads[s], 0);
   // Same cards as the app's Home: label, icon, number, one line of context.
   const queue = [
@@ -68,6 +70,25 @@ export default async function AdminOverview() {
           </ul>
         </Panel>
       </div>
+
+      {/* Gmail changed its page and the extension couldn't attach CVs (D-181). */}
+      {gmail.count ? (
+        <Panel title="Needs a fix: Gmail attach" action={<span className="text-xs text-ink-500">last 7 days</span>}>
+          <div className="p-5 text-sm text-ink-700">
+            <p>
+              <span className="font-semibold text-flag-700">{gmail.count} {gmail.count === 1 ? "time" : "times"}</span> the extension couldn&apos;t attach a CV in Gmail
+              {gmail.last ? `, most recently ${formatDate(gmail.last)}` : ""}. People were told and their CV was saved to attach by hand. Check extension/gmail.js against Gmail&apos;s compose window.
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {gmail.reasons.map((r) => (
+                <li key={r.reason} className="rounded-full bg-ink-75 px-2.5 py-1 text-xs font-medium text-ink-700">
+                  {r.reason.replaceAll("_", " ")}: {r.count}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Panel>
+      ) : null}
 
       {/* Add CV designs when the numbers say so (D-148). */}
       <Panel title="CV designs, last 30 days" action={<span className="text-xs text-ink-500">{designTotal} downloads</span>}>

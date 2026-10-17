@@ -200,3 +200,15 @@ alter table public.profiles add column if not exists summary text check (summary
 alter table public.profiles add column if not exists skills text[] not null default '{}';
 alter table public.profiles add column if not exists referees jsonb not null default '[]'::jsonb;
 alter table public.profiles add column if not exists added_skills jsonb not null default '[]'::jsonb;
+
+-- 20. Problems the team must hear about (founder round 24, D-181), such as Gmail changing
+-- its page so the extension can't attach a CV. No user id, no personal data.
+create table if not exists public.ops_events (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  kind text not null check (char_length(kind) <= 40),
+  detail jsonb not null default '{}'::jsonb
+);
+create index if not exists ops_events_kind_at_idx on public.ops_events (kind, at desc);
+alter table public.ops_events enable row level security;
+revoke all on public.ops_events from anon, authenticated;

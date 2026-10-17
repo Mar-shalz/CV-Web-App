@@ -8,6 +8,8 @@ import { ArrowRight2, Lock1, Logout, ShieldTick, DocumentDownload, Mobile, Globa
 import { DataSaverSwitch } from "@/components/settings/settings-forms";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { marketsLabel } from "@/lib/markets";
+import { AccessCard } from "@/components/shell/access-card";
+import { accessState } from "@/lib/entitlements";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -34,6 +36,7 @@ export default async function SettingsPage() {
   const viewer = await requireReadyViewer();
   const stage = MARKETS.career_stages.find((s) => s.id === viewer.careerStage)?.label;
   const markets = marketsLabel(viewer.targetMarkets);
+  const access = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
 
   return (
     <div className="space-y-3">
@@ -76,6 +79,11 @@ export default async function SettingsPage() {
           <span className="sr-only sm:not-sr-only">Edit details</span>
         </Link>
       </section>
+
+      {/* Phones: the trial or pass card lives here, not on Home (founder, round 24). */}
+      <div className="lg:hidden">
+        <AccessCard state={access} />
+      </div>
 
       <div className="grid items-start gap-3 xl:grid-cols-2">
         <section aria-label="Your job search and plan" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-2 shadow-card">

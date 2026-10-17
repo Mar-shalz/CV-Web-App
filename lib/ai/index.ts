@@ -74,7 +74,20 @@ export function runTask<K extends TaskName>(
   // budget only. Quality gates are measured on the models each task names.
   const task = process.env.AI_BUDGET_MODE === "haiku" ? { ...base, model: "claude-haiku-5-5" as const } : base;
   // With more than one task the generic widens; the key above already pins the types.
-  return runAiTask(task, input, deps, {
-    userRef: options.userId ? pseudonymousId(options.userId) : null,
-  }) as Promise<AiResult<z.output<Output<K>>>>;
+  return (
+    runAiTask(task, input, deps, {
+      userRef: options.userId ? pseudonymousId(options.userId) : null,
+    }) as Promise<AiResult<z.output<Output<K>>>>
+  ).then((res) => (res.ok ? { ...res, data: noEmDashes(res.data) } : res));
+}
+
+/**
+ * Nothing a model writes reaches the app with an em dash (copy rule, founder round 24):
+ * every string in every task's output is cleaned in this one place.
+ */
+export function noEmDashes<T>(value: T): T {
+  if (typeof value === "string") return value.replace(/\s*\u2014\s*/g, ", ").replace(/,\s*,/g, ",") as T;
+  if (Array.isArray(value)) return value.map(noEmDashes) as T;
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, noEmDashes(v)])) as T;
+  return value;
 }

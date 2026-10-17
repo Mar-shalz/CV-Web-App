@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { VisitBeacon } from "@/components/shell/visit-beacon";
 import { Mark } from "@/components/brand/logo";
-import { Sidebar, BottomNav, TailorFab } from "@/components/shell/nav";
+import { Sidebar, BottomNav, TailorFab, CheckJobFab } from "@/components/shell/nav";
 import { AccessBadge, AccessCard } from "@/components/shell/access-card";
 import { Avatar } from "@/components/shell/user-chip";
 import { MessageQuestion } from "@/components/icons";
@@ -140,6 +140,7 @@ export default async function AppLayout({
 
       <BottomNav />
       <TailorFab />
+      <CheckJobFab />
       {modal}
     </div>
   );

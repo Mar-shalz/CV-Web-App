@@ -10,7 +10,6 @@ import { TailorHero } from "@/components/home/tailor-hero";
 import { RecentApplications } from "@/components/home/recent-applications";
 import { VaultCard } from "@/components/home/vault-card";
 import { GettingStarted } from "@/components/home/getting-started";
-import { AccessCard } from "@/components/shell/access-card";
 import { Send2, TickCircle, Clock, Briefcase, ShieldTick } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Home" };
@@ -72,7 +71,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </ul>
       )}
 
-      <div style={{ "--i": 3 } as CSSProperties}>
+      {/* Phones: My Experience sits right under the overview (founder, round 24). */}
+      <div style={{ "--i": 2 } as CSSProperties} className="lg:hidden">
+        <VaultCard confirmed={data.stats.vaultConfirmed} />
+      </div>
+
+      {/* Phones have Tailor CV in the bottom bar, so the big banner is for wider screens only. */}
+      <div style={{ "--i": 3 } as CSSProperties} className="hidden lg:block">
         <TailorHero trialReady={access.kind === "trial_ready"} />
       </div>
 
@@ -86,10 +91,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </div>
         )}
         <div className={data.recent.length === 0 ? "contents" : "flex flex-col gap-3"}>
-          <div className="lg:hidden">
-            <AccessCard state={access} />
+          {/* The plan card lives in the sidebar on wide screens and in Settings on phones (round 24). */}
+          <div className="hidden lg:block">
+            <VaultCard confirmed={data.stats.vaultConfirmed} />
           </div>
-          <VaultCard confirmed={data.stats.vaultConfirmed} />
           <section aria-labelledby="promise-title" className="flex-1 rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
             <h2 id="promise-title" className="flex items-center gap-3 font-display text-lg font-semibold tracking-[-0.01em] text-ink-900">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">

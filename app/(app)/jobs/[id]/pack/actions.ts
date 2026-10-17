@@ -1,6 +1,8 @@
 "use server";
 
 import { flash } from "@/lib/toast";
+import { reportOps } from "@/lib/ops";
+import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getViewer } from "@/lib/auth/viewer";
 import { markSent, ensurePack } from "@/lib/applications/pack";
@@ -32,5 +34,27 @@ export async function rewriteEmail(jobId: string): Promise<{ ok: boolean; error?
   if ("error" in res) return { ok: false, error: res.error };
   revalidatePath(`/jobs/${jobId}/pack`);
   return { ok: true };
+}
+
+/** The person's own edits to the application email (round 24). They're the author, so it's saved as written. */
+export async function saveEmailBody(packId: string, body: string): Promise<{ ok: boolean; error?: string }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  const text = body.replace(/\r\n?/g, "\n").trim();
+  if (text.length < 20) return { ok: false, error: "Write a little more before saving." };
+  if (text.length > 5000) return { ok: false, error: "That's very long. Keep the email under 5,000 characters." };
+  if (viewer.preview) return { ok: true };
+  if (!/^[0-9a-f-]{36}$/.test(packId)) return { ok: false, error: "We couldn't find this email." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("application_packs").update({ body: text }).eq("id", packId).eq("user_id", viewer.id);
+  return error ? { ok: false, error: "We couldn't save that. Try again." } : { ok: true };
+}
+
+/** The extension couldn't attach the CV in Gmail: our team hears about it (D-181). */
+export async function reportGmailIssue(reason: string, method: string | null): Promise<void> {
+  const viewer = await getViewer();
+  if (!viewer) return;
+  if (!/^[a-z_]{2,40}$/.test(reason)) return;
+  await reportOps("gmail_attach_failed", { reason, method: method && /^[a-z]{2,10}$/.test(method) ? method : null, from: "app" });
 }
 
