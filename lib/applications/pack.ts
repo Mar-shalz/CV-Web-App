@@ -117,18 +117,33 @@ async function draftPack(viewer: Viewer, job: JobView, cv: CvRecord, gapNote: st
   const problemsIn = (d: { body: string; cover_letter: string[] }) => [...new Set([...untraced(d.body), ...d.cover_letter.flatMap(untraced)])];
   // Craft: filler recruiters skim past. It goes back once with the truth problems.
   const fillerIn = (d: { body: string; cover_letter: string[] }) => [...new Set([d.body, ...d.cover_letter].flatMap((t) => [...t.matchAll(PACK_FILLER)].map((m) => m[0])))];
+  // Length: a thin email undersells the person (live test, round 26: 91 words from good proof).
+  const lengthIn = (d: { body: string; cover_letter: string[] }) => {
+    const n = words(d.body);
+    const [min, max] = wantsLetter ? [60, 140] : [150, 250];
+    return n < min ? [`The email is ${n} words. Write ${wantsLetter ? "70 to 120" : "170 to 230"}: use more of the proof, with its numbers and setting, and say why it matters for this job.`] : n > max ? [`The email is ${n} words. Cut it to ${wantsLetter ? "70 to 120" : "170 to 230"}.`] : [];
+  };
 
+  // What the employer asked for (light model) and the email itself (D-188) run side by side.
+  const extractP = runTask(
+    "build_pack",
+    {
+      person: { full_name: name, course: courseTitle },
+      job: { title: role, employer: employer ?? "the employer", channel, email: job.parsed.how_to_apply.email, url: job.parsed.how_to_apply.url, required_documents: job.parsed.how_to_apply.required_documents },
+      cv_file: cvFile,
+    },
+    { userId: viewer.id },
+  );
   const run = (previous: string[]) =>
     runTask(
-      "build_pack",
+      "write_email",
       {
-        person: { full_name: name, course: courseTitle, phone, email: contact.email, title_line: cv.doc.titleLine || null },
+        person: { full_name: name, course: courseTitle, title_line: cv.doc.titleLine || null },
         requirements,
         spelling: cv.doc.format === "us" ? "American English" : "British English",
-        job: { title: role, employer: employer ?? "the employer", channel, email: job.parsed.how_to_apply.email, subject_format: job.parsed.how_to_apply.subject_format, url: job.parsed.how_to_apply.url, required_documents: job.parsed.how_to_apply.required_documents },
+        job: { title: role, employer: employer ?? "the employer", level: job.parsed.experience_level === "unknown" ? null : job.parsed.experience_level.replace(/_/g, " "), summary: job.rawText ? job.rawText.replace(/\s+/g, " ").slice(0, 1200) : null },
         proof,
         gap_note: gapNote,
-        cv_file: cvFile,
         letter: wantsLetter,
         previous_problems: previous,
       },
@@ -136,19 +151,20 @@ async function draftPack(viewer: Viewer, job: JobView, cv: CvRecord, gapNote: st
     );
   let res = await run([]);
   let problems = res.ok ? problemsIn(res.data) : [];
-  const filler = res.ok ? fillerIn(res.data) : [];
+  const filler = res.ok ? [...fillerIn(res.data), ...lengthIn(res.data)] : [];
   if (res.ok && (problems.length || filler.length)) {
     const notes = [
       ...problems.map((t) => `"${t}" is not in their proof. Leave it out, or use the proof's own figure or verb.`),
-      ...filler.map((t) => `"${t}" is filler. Say something specific from the proof instead.`),
+      ...filler.map((t) => (t.startsWith("The email is") ? t : `"${t}" is filler. Say something specific from the proof instead.`)),
     ];
     const again = await run(notes.slice(0, 12));
-    const score = (d: { body: string; cover_letter: string[] }) => problemsIn(d).length * 3 + fillerIn(d).length;
+    const score = (d: { body: string; cover_letter: string[] }) => problemsIn(d).length * 3 + fillerIn(d).length + lengthIn(d).length;
     if (again.ok && score(again.data) < problems.length * 3 + filler.length) {
       res = again;
       problems = problemsIn(again.data);
     }
   }
+  const extract = await extractP;
 
   let body = res.ok ? dropSentencesWith(res.data.body.replace(/\s*\u2014\s*/g, ", "), problems) : templateBody(name, role, employer, phone, contact.email, proof);
   if (lintCopy(body).length || words(body) > 270 || words(body) < 30) body = templateBody(name, role, employer, phone, contact.email, proof);
@@ -162,7 +178,7 @@ async function draftPack(viewer: Viewer, job: JobView, cv: CvRecord, gapNote: st
   }
 
   const isLetter = (t: string) => /cover(ing)?\s+letter|application\s+letter/i.test(t);
-  const checklist = res.ok && res.data.checklist.length ? res.data.checklist : [{ item: "Your CV as a PDF", required: true }, ...job.parsed.how_to_apply.required_documents.filter((d) => !/^cv$|resume|curriculum/i.test(d)).map((d) => ({ item: d, required: true }))];
+  const checklist = extract.ok && extract.data.checklist.length ? extract.data.checklist : [{ item: "Your CV as a PDF", required: true }, ...job.parsed.how_to_apply.required_documents.filter((d) => !/^cv$|resume|curriculum/i.test(d)).map((d) => ({ item: d, required: true }))];
   if (coverLetter) {
     const at = checklist.findIndex((c) => /\bcv\b|resume|curriculum/i.test(c.item));
     const rest = checklist.filter((c) => !isLetter(c.item));
@@ -170,7 +186,7 @@ async function draftPack(viewer: Viewer, job: JobView, cv: CvRecord, gapNote: st
     checklist.splice(0, checklist.length, ...rest);
   }
   if (job.parsed.how_to_apply.subject_format) checklist.unshift({ item: "Use the exact subject line above", required: true });
-  const others = res.ok ? res.data.attachment_names.filter((a) => a !== cvFile && !(coverLetter && isLetter(a.replace(/_/g, " ")))) : [];
+  const others = extract.ok ? extract.data.attachment_names.filter((a) => a !== cvFile && !(coverLetter && isLetter(a.replace(/_/g, " ")))) : [];
   const attachments = [cvFile, ...(coverLetter ? [letterFile] : []), ...others];
 
   return {
@@ -179,8 +195,8 @@ async function draftPack(viewer: Viewer, job: JobView, cv: CvRecord, gapNote: st
     body,
     checklist: checklist.slice(0, 10),
     attachments: attachments.slice(0, 8),
-    formFields: res.ok ? res.data.form_fields : [],
-    portalSteps: res.ok ? res.data.portal_steps : [],
+    formFields: extract.ok ? extract.data.form_fields : [],
+    portalSteps: extract.ok ? extract.data.portal_steps : [],
     coverLetter,
   };
 }
@@ -188,7 +204,7 @@ async function draftPack(viewer: Viewer, job: JobView, cv: CvRecord, gapNote: st
 /**
  * The application pack for the job's channel (Build pack screen 16). The subject line
  * is filled by code from the post's own format, so it is exactly what they asked for.
- * A cover letter comes with it when the job asks for one, or when the person asks (D-186).
+ * A cover letter comes with it only when the job asks for one (D-186, D-190).
  */
 export async function ensurePack(viewer: Viewer, job: JobView, cv: CvRecord, gapNote: string | null, opts: { fresh?: boolean; letter?: boolean } = {}): Promise<{ applicationId: string } | { error: string }> {
   const supabase = await createClient();

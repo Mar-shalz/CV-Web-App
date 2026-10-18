@@ -8,7 +8,6 @@ import {
   rewriteEmail,
   saveEmailBody,
   reportGmailIssue,
-  addCoverLetter,
   saveCoverLetter,
 } from "@/app/(app)/jobs/[id]/pack/actions";
 import { letterText } from "@/lib/pack/letter";
@@ -79,12 +78,11 @@ export function SendPack({
       setBody(draft.trim());
       setDraft(null);
     });
-  // The cover letter (D-186): when the job asks for one, or the person adds one.
+  // The cover letter (D-186): only when the job asks for one (D-190).
   const [letter, setLetter] = useState(pack.coverLetter);
   const [letterDraft, setLetterDraft] = useState<string | null>(null);
   const [letterError, setLetterError] = useState<string | null>(null);
   const [savingLetter, startSaveLetter] = useTransition();
-  const [addingLetter, startAddLetter] = useTransition();
   const saveLetterText = () =>
     startSaveLetter(async () => {
       if (letterDraft === null || !letter) return;
@@ -93,13 +91,6 @@ export function SendPack({
       setLetterError(null);
       setLetter({ ...letter, paragraphs: letterDraft.split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean) });
       setLetterDraft(null);
-    });
-  const addLetter = () =>
-    startAddLetter(async () => {
-      if (!jobId) return;
-      const res = await addCoverLetter(jobId);
-      if (res.ok) router.refresh();
-      else setLetterError(res.error ?? "We couldn't write it just now.");
     });
   const cvName = pack.attachmentNames[0] ?? "CV.pdf";
   const letterName = pack.attachmentNames.find((a) => a.includes("_Cover_Letter")) ?? "Cover_Letter.pdf";
@@ -703,24 +694,6 @@ export function SendPack({
               )}
             </div>
           </div>
-        </section>
-      ) : jobId ? (
-        <section className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-dashed border-ink-200 bg-white p-5 sm:flex-row sm:items-center">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[0.9375rem] font-semibold text-ink-900">Add a Cover Letter?</h2>
-            <p className="mt-0.5 text-[0.8125rem] leading-5 text-ink-600">
-              This employer didn&apos;t ask for one, but a strong letter can help. We write it from your CV, and the email becomes a short covering note.
-            </p>
-            {letterError ? <p role="alert" className="mt-2 text-sm text-flag-700">{letterError}</p> : null}
-          </div>
-          <Button variant="outline" size="sm" onClick={addLetter} disabled={addingLetter} aria-busy={addingLetter || undefined} className="shrink-0">
-            {addingLetter ? (
-              <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />
-            ) : (
-              <DocumentText1 size={18} variant="bulk" />
-            )}
-            {addingLetter ? "Writing your letter" : "Write a cover letter"}
-          </Button>
         </section>
       ) : null}
       </div>

@@ -11,11 +11,14 @@ import { formatNaira } from "@/lib/format";
 import { InviteCard } from "@/components/shortlist/invite-card";
 import { Logistics } from "@/components/shortlist/logistics";
 import { Drill } from "@/components/shortlist/drill";
+import { MockInterview } from "@/components/shortlist/mock-interview";
 import { WebQuestions } from "@/components/shortlist/web-questions";
 import { ButtonLink } from "@/components/ui/button";
 import { ArrowLeft2, Teacher, TickCircle, Crown1, DocumentText } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Interview Prep" };
+// A mock interview turn reads the whole interview so far (D-189).
+export const maxDuration = 60;
 
 export default async function ShortlistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -47,7 +50,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
           </div>
           <div className="p-6">
             <ul className="space-y-2.5 text-[0.9375rem] text-ink-800">
-              {["Likely questions, each linked to a line on the CV you sent", "Practise out loud and get feedback that checks your answer against your CV", "A checklist for the day, by interview format"].map((t) => (
+              {["A mock interview, one question at a time: the next question builds on your answer", "Likely questions, each linked to a line on the CV you sent", "Feedback that checks every answer against your CV", "A checklist for the day, by interview format"].map((t) => (
                 <li key={t} className="flex gap-2.5">
                   <TickCircle size={20} variant="bulk" className="shrink-0 text-proof-600" />
                   {t}
@@ -87,8 +90,14 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
         <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Everything here comes from the job post you saved and the exact CV you sent. Nothing new to memorise, only your own proof to explain well.</p>
       </header>
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="order-2 min-w-0 xl:order-1">
+      {/* Phones: the invite, then the mock interview, then the rest. Wide screens: practice on the left, the invite and the day on the right. */}
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px] xl:grid-rows-[auto_1fr]">
+        <div className="xl:col-start-2 xl:row-start-1">
+          <InviteCard applicationId={app.id} invite={view.invite} days={days} />
+        </div>
+        <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-span-2 xl:row-start-1">
+          {/* One question at a time, building on each answer (founder round 26, D-189). */}
+          <MockInterview applicationId={app.id} initial={view.mock} voice={voiceEnabled()} />
           <Drill applicationId={app.id} initial={view.questions} attempts={view.attempts} voice={voiceEnabled()} />
           {!view.lines.length ? (
             <p className="mt-4 flex items-start gap-2 rounded-2xl bg-ink-50 p-4 text-sm text-ink-600">
@@ -97,8 +106,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
             </p>
           ) : null}
         </div>
-        <aside className="order-1 space-y-3 xl:order-2">
-          <InviteCard applicationId={app.id} invite={view.invite} days={days} />
+        <aside className="space-y-3 self-start xl:col-start-2 xl:row-start-2">
           <WebQuestions applicationId={app.id} employer={app.employer} initial={view.webQuestions} />
           <Logistics applicationId={app.id} items={logisticsFor(view.invite.format)} done={view.invite.logisticsDone} />
         </aside>

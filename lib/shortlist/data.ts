@@ -13,6 +13,7 @@ import type { InviteDetails } from "@/lib/applications/outcome";
 import { cvLines, linkQuestions, fallbackQuestions, completeQuestions, answerContradictions, type ShortlistQuestion, type CvLine } from "./questions";
 import { daysUntil } from "./logistics";
 import { runResearch } from "@/lib/ai/research";
+import type { MockState } from "./mock";
 
 export type DrillAttempt = {
   questionId: string;
@@ -34,6 +35,8 @@ export type ShortlistView = {
   attempts: DrillAttempt[];
   lines: CvLine[];
   webQuestions: WebQuestion[];
+  /** The mock interview in progress or finished (D-189); null before the first one. */
+  mock: MockState | null;
 };
 
 export type ShortlistAccess = "pass" | "trial" | "boost" | "locked";
@@ -53,10 +56,10 @@ export async function shortlistAccess(viewer: Viewer, applicationId: string): Pr
 
 function demo(lines: CvLine[]): ShortlistView {
   const day = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" });
-  return { id: "demo-shortlist", invite: { date: day, time: "10:00", placeOrLink: "Plot 12, Adeola Odeku Street, Victoria Island, Lagos", format: "in_person", logisticsDone: [0] }, questions: fallbackQuestions(lines), attempts: [], lines, webQuestions: [] };
+  return { id: "demo-shortlist", invite: { date: day, time: "10:00", placeOrLink: "Plot 12, Adeola Odeku Street, Victoria Island, Lagos", format: "in_person", logisticsDone: [0] }, questions: fallbackQuestions(lines), attempts: [], lines, webQuestions: [], mock: null };
 }
 
-type Row = { id: string; invite_details: Partial<ShortlistView["invite"]> | null; questions: ShortlistQuestion[] | null; drill_attempts: DrillAttempt[] | null; web_questions?: WebQuestion[] | null };
+type Row = { id: string; invite_details: Partial<ShortlistView["invite"]> | null; questions: ShortlistQuestion[] | null; drill_attempts: DrillAttempt[] | null; web_questions?: WebQuestion[] | null; mock_interview?: MockState | null };
 
 export async function getShortlist(viewer: Viewer, app: ApplicationView): Promise<ShortlistView> {
   const cv = app.cvId ? await getCvById(viewer, app.cvId) : null;
@@ -71,7 +74,7 @@ export async function getShortlist(viewer: Viewer, app: ApplicationView): Promis
     if (row) await track("shortlist_opened", { days_until_interview: -1 }, viewer.id);
   }
   if (!row) throw new Error("Could not open Shortlist mode");
-  return { id: row.id, invite: { ...EMPTY_INVITE, ...(row.invite_details ?? {}) }, questions: row.questions ?? [], attempts: row.drill_attempts ?? [], lines, webQuestions: row.web_questions ?? [] };
+  return { id: row.id, invite: { ...EMPTY_INVITE, ...(row.invite_details ?? {}) }, questions: row.questions ?? [], attempts: row.drill_attempts ?? [], lines, webQuestions: row.web_questions ?? [], mock: row.mock_interview && Array.isArray(row.mock_interview.turns) ? row.mock_interview : null };
 }
 
 /** Invite details from a pasted message or typed by hand. One Shortlist session per application. */
@@ -85,7 +88,7 @@ export async function saveInvite(viewer: Viewer, applicationId: string, invite: 
   await track("shortlist_opened", { days_until_interview: daysUntil(invite.date) ?? -1 }, viewer.id);
 }
 
-export async function updateShortlist(viewer: Viewer, sessionId: string, patch: { invite_details?: object; questions?: ShortlistQuestion[]; drill_attempts?: DrillAttempt[]; web_questions?: WebQuestion[] }): Promise<void> {
+export async function updateShortlist(viewer: Viewer, sessionId: string, patch: { invite_details?: object; questions?: ShortlistQuestion[]; drill_attempts?: DrillAttempt[]; web_questions?: WebQuestion[]; mock_interview?: MockState | null }): Promise<void> {
   if (viewer.preview) return;
   const supabase = await createClient();
   await supabase.from("shortlist_sessions").update(patch).eq("id", sessionId).eq("user_id", viewer.id);

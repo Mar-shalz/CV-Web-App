@@ -48,5 +48,9 @@
   "notifications": {
     "pass_ending_days": 3,
     "note": "Days before a pass ends that the reminder goes out."
+  },
+  "shortlist": {
+    "mock_questions": 7,
+    "note": "Questions in one mock interview, the opening and the closing question included (D-189)."
   }
 }

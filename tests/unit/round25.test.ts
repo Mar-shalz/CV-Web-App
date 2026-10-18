@@ -150,3 +150,35 @@ describe("Google sign in on our own address (D-187)", () => {
     expect(readPending(undefined, pending.state)).toBeNull();
   });
 });
+
+describe("mock interview (D-189)", async () => {
+  const { newMock, fallbackNext, cvChecks } = await import("@/lib/shortlist/mock");
+  const lines = [
+    { id: "b1", role: "SIWES Intern, Northline Bank", text: "Opened about 15 customer accounts a day", original: "opened about 15 accounts a day", sourceQuote: null },
+    { id: "b2", role: "NYSC, Ministry of Works", text: "Prepared monthly expense summaries matched to vouchers", original: "prepared summaries", sourceQuote: null },
+  ];
+
+  it("opens with Tell me about yourself and runs to the configured length", () => {
+    const m = newMock();
+    expect(m.turns).toHaveLength(1);
+    expect(m.turns[0]?.kind).toBe("intro");
+    expect(m.total).toBe(7);
+  });
+
+  it("falls back to the next likely question not yet asked, then CV lines", () => {
+    const m = newMock();
+    const questions = [
+      { id: "q0", question: "Tell me about yourself.", why: "", bulletId: null, bulletText: null, kind: "intro" as const },
+      { id: "q1", question: "Walk me through the 15 accounts a day.", why: "w", bulletId: "b1", bulletText: lines[0]!.text, kind: "defend_cv" as const },
+    ];
+    expect(fallbackNext(m, { questions, lines }).question).toBe("Walk me through the 15 accounts a day.");
+    const asked = { ...m, turns: [...m.turns, { ...m.turns[0]!, id: "m2", question: "Walk me through the 15 accounts a day.", bulletId: "b1" }] };
+    expect(fallbackNext(asked, { questions, lines }).bulletId).toBe("b2");
+  });
+
+  it("checks numbers in an answer against the CV", () => {
+    expect(cvChecks("I opened about 15 accounts a day", "b1", lines)).toEqual([]);
+    expect(cvChecks("I opened 40 accounts a day", "b1", lines)[0]).toMatch(/You said 40/);
+    expect(cvChecks("I handled 300 files", null, lines)[0]).toMatch(/You said 300/);
+  });
+});

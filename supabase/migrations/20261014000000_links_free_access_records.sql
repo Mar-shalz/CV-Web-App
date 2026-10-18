@@ -217,3 +217,8 @@ revoke all on public.ops_events from anon, authenticated;
 -- the person can edit, with the details code adds (date, heading, sign-off). Owner only,
 -- through the application_packs policies.
 alter table public.application_packs add column if not exists cover_letter jsonb;
+
+-- 22. The mock interview in interview prep (founder round 26, D-189): the questions asked,
+-- the person's answers and the feedback, one session per application. Owner only, through
+-- the shortlist_sessions policies.
+alter table public.shortlist_sessions add column if not exists mock_interview jsonb;

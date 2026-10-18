@@ -36,21 +36,6 @@ export async function rewriteEmail(jobId: string): Promise<{ ok: boolean; error?
   return { ok: true };
 }
 
-/** A cover letter for this application when the job didn't ask for one (D-186). The email becomes a short covering note. */
-export async function addCoverLetter(jobId: string): Promise<{ ok: boolean; error?: string }> {
-  const viewer = await getViewer();
-  if (!viewer) return { ok: false, error: "Please sign in again." };
-  if (viewer.preview) return { ok: true };
-  if (!(await allow("pack"))) return { ok: false, error: RATE_LIMITED_MESSAGE };
-  const job = await getJob(viewer, jobId);
-  const cv = await getLatestCv(viewer, job.id);
-  if (!cv) return { ok: false, error: "Make your CV for this job first." };
-  const res = await ensurePack(viewer, job, cv, null, { fresh: true, letter: true });
-  if ("error" in res) return { ok: false, error: res.error };
-  revalidatePath(`/jobs/${jobId}/pack`);
-  return { ok: true };
-}
-
 /** The person's own edits to the cover letter's paragraphs (D-186), one blank line between each. */
 export async function saveCoverLetter(packId: string, text: string): Promise<{ ok: boolean; error?: string }> {
   const viewer = await getViewer();

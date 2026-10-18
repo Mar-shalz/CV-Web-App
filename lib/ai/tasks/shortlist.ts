@@ -102,3 +102,56 @@ export const interviewResearch = defineTask({
   cache: null,
   manualStep: "none",
 });
+
+/**
+ * mock_interview (founder round 26, D-189): one turn of a mock interview. The interviewer
+ * reads the last answer, gives short feedback on it, and asks the next question, often a
+ * follow up on what the person just said, the way real panels probe. Questions never put
+ * a fact in the person's mouth; feedback checks the answer against the CV they sent.
+ */
+export const mockInterview = defineTask({
+  name: "mock_interview",
+  model: "claude-sonnet-5-5",
+  promptVersion: "v1",
+  input: z.object({
+    job: z.object({ title: z.string().max(200), employer: z.string().max(200), level: z.string().max(60).nullable(), requirements: z.array(z.string().max(300)).max(12), format: z.string().max(30) }),
+    cv_lines: z.array(z.object({ id: z.string(), role: z.string().max(200), text: z.string().max(400) })).max(30),
+    turns: z
+      .array(z.object({ question: z.string().max(400), kind: z.string().max(20), bullet_id: z.string().nullable(), answer: z.string().max(3000) }))
+      .min(1)
+      .max(12),
+    /** Questions asked so far, the one just answered included, and how many the interview has. */
+    asked: z.number().int().min(1),
+    total: z.number().int().min(2),
+    /** The last answer closes the interview: no next question, a wrap up instead. */
+    final: z.boolean(),
+  }),
+  output: z.object({
+    feedback: z.object({
+      matches_cv: z.enum(["yes", "partly", "no"]),
+      did_well: z.string().max(220).nullable(),
+      improve: z.array(z.string().max(220)).max(3),
+      new_claims: z.array(z.string().max(220)).max(3),
+    }),
+    next: z
+      .object({
+        question: z.string().min(8).max(300),
+        why: z.string().max(220),
+        kind: z.enum(["follow_up", "defend_cv", "job_fit", "situational", "technical", "standard"]),
+        bullet_id: z.string().nullable(),
+      })
+      .nullable(),
+    wrap_up: z.object({ strengths: z.array(z.string().max(220)).max(3), work_on: z.array(z.string().max(220)).max(3) }).nullable(),
+  }),
+  maxTokens: 3500,
+  timeoutMs: 40_000,
+  effort: "medium",
+  render: (i) => [
+    trusted(`Mock interview for ${i.job.title} at ${i.job.employer}. Level: ${i.job.level ?? "not stated"}. Format: ${i.job.format}. Question ${i.asked} of ${i.total} has just been answered.${i.final ? " That was the last question: give feedback and the wrap up, and no next question." : ""}`),
+    untrusted("cv_sent", i.cv_lines.map((l) => `[${l.id}] (${l.role}) ${l.text}`).join("\n") || "No CV lines."),
+    untrusted("what_the_job_asks_for", i.job.requirements.map((r) => `- ${r}`).join("\n") || "- not listed"),
+    untrusted("interview_so_far", i.turns.map((t, n) => `Q${n + 1} [${t.kind}${t.bullet_id ? `, line ${t.bullet_id}` : ""}]: ${t.question}\nA${n + 1}: ${t.answer}`).join("\n\n")),
+  ],
+  cache: null,
+  manualStep: "practise_from_cv",
+});

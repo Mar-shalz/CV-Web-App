@@ -5,9 +5,9 @@ import { parseJob } from "./parse-job";
 import { legitimacyLookup } from "./legitimacy";
 import { fitVerdict } from "./fit-verdict";
 import { tailorCv } from "./tailor-cv";
-import { buildPack } from "./build-pack";
+import { buildPack, writeEmail } from "./build-pack";
 import { classifyOutcome, extractDebrief } from "./outcomes";
-import { shortlistQuestions, drillFeedback, interviewResearch } from "./shortlist";
+import { shortlistQuestions, drillFeedback, interviewResearch, mockInterview } from "./shortlist";
 import { polishAchievement } from "./polish";
 import { cvTarget } from "./cv-target";
 import { cvSummary } from "./cv-summary";
@@ -29,11 +29,13 @@ export const TASKS = {
   fit_verdict: fitVerdict,
   tailor_cv: tailorCv,
   build_pack: buildPack,
+  write_email: writeEmail,
   classify_outcome: classifyOutcome,
   extract_debrief: extractDebrief,
   shortlist_questions: shortlistQuestions,
   drill_feedback: drillFeedback,
   interview_research: interviewResearch,
+  mock_interview: mockInterview,
   polish_achievement: polishAchievement,
   cv_target: cvTarget,
   cv_summary: cvSummary,
