@@ -7,9 +7,11 @@ const SIGN_OFF = /\n[ \t]*(kind regards|best regards|warm regards|regards|yours 
 export function formatEmailBody(raw: string, sign: { name: string; phone: string | null; email: string | null }): string {
   const text = raw.replace(/\r\n?/g, "\n").replace(/[ \t]+\n/g, "\n").trim();
   const main = text.replace(SIGN_OFF, "").trim();
-  // One blank line between paragraphs; lines inside a paragraph stay as written.
+  // One blank line between paragraphs; lines inside a paragraph stay as written. A model
+  // that put each paragraph on its own line with no blank lines (seen on live tests,
+  // round 25) gets one between each, so it never reaches Gmail as one block.
   const paragraphs = main
-    .split(/\n{2,}/)
+    .split(/\n{2,}/.test(main) ? /\n{2,}/ : /\n/)
     .map((p) => p.trim())
     .filter(Boolean);
   const signature = ["Kind regards,", sign.name, sign.phone, sign.email].filter((l): l is string => Boolean(l && l.trim()));

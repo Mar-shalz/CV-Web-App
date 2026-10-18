@@ -212,3 +212,8 @@ create table if not exists public.ops_events (
 create index if not exists ops_events_kind_at_idx on public.ops_events (kind, at desc);
 alter table public.ops_events enable row level security;
 revoke all on public.ops_events from anon, authenticated;
+
+-- 21. The cover letter in an application pack (founder round 25, D-186): the paragraphs
+-- the person can edit, with the details code adds (date, heading, sign-off). Owner only,
+-- through the application_packs policies.
+alter table public.application_packs add column if not exists cover_letter jsonb;

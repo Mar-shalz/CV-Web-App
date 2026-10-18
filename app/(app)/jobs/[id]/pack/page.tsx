@@ -10,6 +10,9 @@ import { FlowSteps } from "@/components/flow/flow-steps";
 import { SendPack } from "@/components/flow/send-pack";
 import { CHANNEL_LABELS } from "@/lib/jobs/labels";
 
+// The email and cover letter writer may run twice (D-186).
+export const maxDuration = 120;
+
 export const metadata: Metadata = { title: "Send your Application" };
 
 export default async function PackPage({ params }: { params: Promise<{ id: string }> }) {

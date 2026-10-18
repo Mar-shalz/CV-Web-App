@@ -4,6 +4,7 @@ import type { Viewer } from "@/lib/auth/viewer";
 import type { ParsedJob } from "@/lib/jobs/schema";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 import { DEMO_PACK, DEMO_PARSED } from "@/lib/demo/job";
+import type { CoverLetter } from "@/lib/pack/letter";
 
 export type PackView = {
   id: string;
@@ -16,6 +17,8 @@ export type PackView = {
   formFields: { label: string; hint: string }[];
   portalSteps: string[];
   applyUrl: string | null;
+  /** When the job asks for one, or the person added one (D-186). */
+  coverLetter: CoverLetter | null;
 };
 
 export type TimelineEvent = { from: ApplicationStatus | null; to: ApplicationStatus; source: string; at: string; evidence: string | null };
@@ -51,11 +54,12 @@ type Row = {
   jobs: { parsed: ParsedJob } | null;
   external_cv_path?: string | null;
   external_cv_name?: string | null;
-  application_packs: { id: string; channel: PackView["channel"]; to_email: string | null; subject: string | null; body: string | null; attachment_names: string[]; checklist: PackView["checklist"]; form_fields: PackView["formFields"] | null; portal_steps: string[]; apply_url: string | null } | null;
+  application_packs: { id: string; channel: PackView["channel"]; to_email: string | null; subject: string | null; body: string | null; attachment_names: string[]; checklist: PackView["checklist"]; form_fields: PackView["formFields"] | null; portal_steps: string[]; apply_url: string | null; cover_letter?: CoverLetter | null } | null;
 };
 
 // "*" so new columns (external CV) never break reads before their migration runs.
-const SELECT = "*, jobs(parsed), application_packs(id, channel, to_email, subject, body, attachment_names, checklist, form_fields, portal_steps, apply_url)";
+// The pack too, so its cover letter (round 25) reads before and after that update.
+const SELECT = "*, jobs(parsed), application_packs(*)";
 
 function toView(r: Row, timeline: TimelineEvent[] = []): ApplicationView {
   const parsed = r.job_snapshot?.parsed ?? r.jobs?.parsed ?? null;
@@ -73,11 +77,16 @@ function toView(r: Row, timeline: TimelineEvent[] = []): ApplicationView {
     employer: parsed?.employer_name ?? "Employer not named",
     snapshot: r.job_snapshot,
     pack: p
-      ? { id: p.id, channel: p.channel, toEmail: p.to_email, subject: p.subject ?? "", body: p.body ?? "", attachmentNames: p.attachment_names ?? [], checklist: p.checklist ?? [], formFields: p.form_fields ?? [], portalSteps: p.portal_steps ?? [], applyUrl: p.apply_url }
+      ? { id: p.id, channel: p.channel, toEmail: p.to_email, subject: p.subject ?? "", body: p.body ?? "", attachmentNames: p.attachment_names ?? [], checklist: p.checklist ?? [], formFields: p.form_fields ?? [], portalSteps: p.portal_steps ?? [], applyUrl: p.apply_url, coverLetter: readLetter(p.cover_letter) }
       : null,
     timeline,
     externalCv: r.external_cv_path ? { name: r.external_cv_name ?? "Your CV" } : null,
   };
+}
+
+function readLetter(v: unknown): CoverLetter | null {
+  const l = v as CoverLetter | null | undefined;
+  return l && Array.isArray(l.paragraphs) && l.paragraphs.length && typeof l.name === "string" ? l : null;
 }
 
 const DEMO_APP: ApplicationView = {
@@ -92,7 +101,7 @@ const DEMO_APP: ApplicationView = {
   title: DEMO_PARSED.title ?? "",
   employer: DEMO_PARSED.employer_name ?? "",
   snapshot: { parsed: DEMO_PARSED, rawText: "Graduate Trainee, Finance. Northbridge Bank is recruiting graduates... (sample)", sourceUrl: null, imagePath: null, capturedAt: new Date(Date.now() - 9 * 86_400_000).toISOString() },
-  pack: { id: "demo-pack", channel: "email", toEmail: DEMO_PACK.to, subject: DEMO_PACK.subject, body: DEMO_PACK.body, attachmentNames: [DEMO_PACK.attachment], checklist: DEMO_PACK.checklist.map((c) => ({ item: c.item, required: true })), formFields: [], portalSteps: [], applyUrl: null },
+  pack: { id: "demo-pack", channel: "email", toEmail: DEMO_PACK.to, subject: DEMO_PACK.subject, body: DEMO_PACK.body, attachmentNames: [DEMO_PACK.attachment, DEMO_PACK.letterFile], checklist: DEMO_PACK.checklist.map((c) => ({ item: c.item, required: true })), formFields: [], portalSteps: [], applyUrl: null, coverLetter: DEMO_PACK.letter },
   externalCv: null,
   timeline: [
     { from: null, to: "draft", source: "tap", at: new Date(Date.now() - 9 * 86_400_000).toISOString(), evidence: null },

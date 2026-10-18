@@ -97,8 +97,26 @@ Yours faithfully,
 Tolu Adebayo
 +234 803 000 0000`,
   attachment: "Tolu_Adebayo_CV_Graduate_Trainee.pdf",
+  letterFile: "Tolu_Adebayo_Cover_Letter_Graduate_Trainee.pdf",
+  // Sample cover letter (preview only, D-186), from the same sample facts as the CV.
+  letter: {
+    sender: ["Yaba, Lagos", "+234 803 000 0000", "tolu.adebayo@example.com"],
+    date: "18 October 2026",
+    recipient: ["The Hiring Manager", "Northbridge Bank"],
+    heading: "APPLICATION FOR THE POSITION OF GRADUATE TRAINEE (FINANCE)",
+    salutation: "Dear Hiring Manager,",
+    paragraphs: [
+      "I am applying for the Graduate Trainee (Finance) role at Northbridge Bank. I am an Accounting graduate (Second Class Upper) from the University of Lagos with hands-on banking experience from SIWES and a year of finance support at a state ministry during NYSC.",
+      "Your programme asks for graduates who are comfortable with reconciliations. At the Ministry of Works, I prepared the finance unit's monthly expense summaries and matched every one to its payment vouchers, so each month closed with figures the unit could rely on.",
+      "You also want people who serve customers well. During SIWES at a retail bank branch, I opened about 15 customer accounts a day and checked every customer's documents before an account was opened, which taught me to work quickly without cutting corners. I use Excel daily, including pivot tables, for this kind of work.",
+      "I would bring accuracy, steady customer service and a working grasp of banking procedures to your graduate finance team. My CV is enclosed, and I would welcome the chance to discuss how I can contribute at an interview.",
+    ],
+    closing: "Yours faithfully,",
+    name: "Tolu Adebayo",
+  },
   checklist: [
     { item: "Your CV as a PDF", done: true },
+    { item: "Your cover letter (ready below)", done: true },
     { item: "Use the exact subject line above", done: true },
     { item: "NYSC discharge certificate (they asked for it)", done: false },
   ],

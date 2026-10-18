@@ -11,7 +11,7 @@ const bullet = z.object({
 export const tailorCv = defineTask({
   name: "tailor_cv",
   model: "claude-sonnet-5-5",
-  promptVersion: "v3",
+  promptVersion: "v4",
   input: z.object({
     profile: z.object({ label: z.string(), spelling: z.string(), rules: z.array(z.string()).max(20) }),
     job: z.object({ title: z.string(), employer: z.string(), requirements: z.array(z.string()).max(20) }),
@@ -31,6 +31,8 @@ export const tailorCv = defineTask({
     vault_skills: z.array(z.string()).max(90),
     /** The person's own profile summary (D-162), the starting point for this job's summary. */
     own_summary: z.string().max(1500).nullable().default(null),
+    /** Skills the person has that the job names (D-185): hiring systems match these words. */
+    job_terms: z.array(z.string().max(60)).max(30).default([]),
     previous_violations: z.array(z.string()).max(30),
     cacheKey: z.string(),
   }),
@@ -54,7 +56,8 @@ export const tailorCv = defineTask({
   }),
   maxTokens: 14_000,
   timeoutMs: 60_000,
-  effort: "medium",
+  // More thinking for the CV (D-185): the rules are many and the quality bar is the point.
+  effort: "high",
   render: (i) => [
     trusted(`Format: ${i.profile.label} (${i.profile.spelling}).\nFormat rules:\n${i.profile.rules.map((r) => `- ${r}`).join("\n")}`),
     trusted(`Months of full time work: ${i.experience_months}.`),
@@ -70,9 +73,10 @@ export const tailorCv = defineTask({
     ),
     trusted(`Education: ${i.education.join("; ") || "none"}\nCertifications: ${i.certifications.join("; ") || "none"}\nSkills in the vault: ${i.vault_skills.join(", ") || "none listed"}`),
     ...(i.own_summary ? [untrusted("own_summary", i.own_summary)] : []),
+    ...(i.job_terms.length ? [trusted(`Job terms this person has (the job names them and they're in the person's skills). Use each one, in the job's exact words, in the skills section and in a line where a cited item shows it:\n${i.job_terms.join(", ")}`)] : []),
     untrusted("job_post", `${i.job.title} at ${i.job.employer}\nRequirements:\n${i.job.requirements.map((r) => `- ${r}`).join("\n")}`),
     ...(i.previous_violations.length
-      ? [trusted(`Your previous draft broke the fact lock. Fix every one of these and change nothing else:\n${i.previous_violations.map((v) => `- ${v}`).join("\n")}`)]
+      ? [trusted(`Your previous draft had these problems. Fix every one, and keep what was right:\n${i.previous_violations.map((v) => `- ${v}`).join("\n")}`)]
       : []),
   ],
   cache: null,

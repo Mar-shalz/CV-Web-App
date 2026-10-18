@@ -12,16 +12,16 @@ import type { CvStyle } from "./styles";
 // numbers. Each design embeds its own open licence typeface (D-157), cut down to the
 // letters used, with a text map so hiring software reads every word.
 
-const A4_SIZE = { w: 595.28, h: 841.89 };
+export const A4_SIZE = { w: 595.28, h: 841.89 };
 /** US resumes print on Letter paper (D-168). */
-const LETTER = { w: 612, h: 792 };
+export const LETTER = { w: 612, h: 792 };
 const MX = 50;
 const MT = 46;
 const MB = 52;
-const INK = rgb(0.07, 0.09, 0.15);
-const BODY = rgb(0.16, 0.19, 0.25);
-const MUTED = rgb(0.36, 0.41, 0.48);
-const RULE = rgb(0.78, 0.81, 0.86);
+export const INK = rgb(0.07, 0.09, 0.15);
+export const BODY = rgb(0.16, 0.19, 0.25);
+export const MUTED = rgb(0.36, 0.41, 0.48);
+export const RULE = rgb(0.78, 0.81, 0.86);
 
 // The designs (D-142, D-153): typeface, accent colour and header layout. Everything else is shared.
 // Typefaces (D-157), all SIL Open Font License, in lib/cv/fonts with their licences:
@@ -29,7 +29,7 @@ const RULE = rgb(0.78, 0.81, 0.86);
 //   Modern: Inter, made for reading on screens, where most CVs are now read first.
 //   Executive: Source Serif 4, a sturdy serif with a large x-height, readable at 10pt.
 //   Signature: Plus Jakarta Sans, a crisp modern sans for the teal band.
-const LOOK: Record<CvStyle, { accent: RGB; font: string; header: "center" | "left" | "band"; upperName: boolean; nameTracking: number; nameSize: number; headingCase: "upper" | "title" | "marker" }> = {
+export const LOOK: Record<CvStyle, { accent: RGB; font: string; header: "center" | "left" | "band"; upperName: boolean; nameTracking: number; nameSize: number; headingCase: "upper" | "title" | "marker" }> = {
   classic: { accent: rgb(0.08, 0.15, 0.37), font: "SourceSans3", header: "center", upperName: true, nameTracking: 1.6, nameSize: 22, headingCase: "upper" },
   modern: { accent: rgb(0.12, 0.33, 0.85), font: "Inter", header: "left", upperName: false, nameTracking: 0, nameSize: 24, headingCase: "title" },
   executive: { accent: rgb(0.1, 0.1, 0.12), font: "SourceSerif4", header: "center", upperName: true, nameTracking: 2.4, nameSize: 22, headingCase: "upper" },
@@ -40,15 +40,15 @@ const LOOK: Record<CvStyle, { accent: RGB; font: string; header: "center" | "lef
 
 const FONT_DIR = path.join(process.cwd(), "lib/cv/fonts");
 const fontFiles = new Map<string, Promise<Buffer>>();
-const fontBytes = (file: string) => {
+export const fontBytes = (file: string) => {
   if (!fontFiles.has(file)) fontFiles.set(file, readFile(path.join(FONT_DIR, file)));
   return fontFiles.get(file)!;
 };
 /** Ligatures off, so "fi" and "fl" stay two letters for hiring software. */
-const FEATURES = { liga: false, clig: false, dlig: false, calt: false };
-const BAND = rgb(0.04, 0.2, 0.25);
-const BAND_TEXT = rgb(0.74, 0.9, 0.9);
-const TINT = rgb(0.91, 0.96, 0.96);
+export const FEATURES = { liga: false, clig: false, dlig: false, calt: false };
+export const BAND = rgb(0.04, 0.2, 0.25);
+export const BAND_TEXT = rgb(0.74, 0.9, 0.9);
+export const TINT = rgb(0.91, 0.96, 0.96);
 
 /**
  * Text the embedded typefaces can draw: Latin letters with accents, ₦ and the usual
@@ -66,7 +66,7 @@ export function safe(text: string): string {
 }
 
 /** Word wrap, with a narrower first line when something sits before it (a bold label). */
-function wrap(text: string, font: PDFFont, size: number, width: number, firstWidth = width): string[] {
+export function wrap(text: string, font: PDFFont, size: number, width: number, firstWidth = width): string[] {
   const words = safe(text).split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";

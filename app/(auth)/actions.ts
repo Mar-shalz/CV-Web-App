@@ -11,6 +11,7 @@ import { marketsFor } from "@/lib/markets";
 import { getViewer, nextOnboardingPath } from "@/lib/auth/viewer";
 import { track } from "@/lib/analytics/server";
 import { NEXT_COOKIE, isReturnPath } from "@/lib/auth/next-path";
+import { GOOGLE_COOKIE, googleDirectFor, startGoogle } from "@/lib/auth/google";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string>; ok?: boolean } | undefined;
 
@@ -39,10 +40,17 @@ const GENERIC_AUTH_ERROR = "We couldn't sign you in just now. Check your connect
 export async function signInWithGoogle(_prev?: FormState, formData?: FormData): Promise<FormState> {
   const admin = isAdminDest(formData);
   if (isPreviewMode()) redirect(admin ? "/admin" : "/onboarding/consent");
+  const here = await origin();
+  // Our own address on Google's screen, not Supabase's (D-187), when the keys are set.
+  if (googleDirectFor(here)) {
+    const { url, cookie } = startGoogle(here, admin ? "admin" : "app");
+    (await cookies()).set(GOOGLE_COOKIE, cookie, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/auth/google", maxAge: 600 });
+    redirect(url);
+  }
   const supabase = await authClient(admin);
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${await origin()}${admin ? "/admin/auth/callback" : "/auth/callback"}`, queryParams: { prompt: "select_account" } },
+    options: { redirectTo: `${here}${admin ? "/admin/auth/callback" : "/auth/callback"}`, queryParams: { prompt: "select_account" } },
   });
   if (error || !data.url) return { error: GENERIC_AUTH_ERROR };
   redirect(data.url);

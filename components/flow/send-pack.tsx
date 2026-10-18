@@ -8,7 +8,10 @@ import {
   rewriteEmail,
   saveEmailBody,
   reportGmailIssue,
+  addCoverLetter,
+  saveCoverLetter,
 } from "@/app/(app)/jobs/[id]/pack/actions";
+import { letterText } from "@/lib/pack/letter";
 import { useRouter } from "next/navigation";
 import { CopyButton, CopyField } from "@/components/ui/copy-button";
 import { Button } from "@/components/ui/button";
@@ -25,6 +28,7 @@ import {
   DocumentDownload,
   Danger,
   Edit2,
+  DocumentText1,
 } from "@/components/icons";
 import { inputClass } from "@/components/ui/field";
 
@@ -75,7 +79,30 @@ export function SendPack({
       setBody(draft.trim());
       setDraft(null);
     });
+  // The cover letter (D-186): when the job asks for one, or the person adds one.
+  const [letter, setLetter] = useState(pack.coverLetter);
+  const [letterDraft, setLetterDraft] = useState<string | null>(null);
+  const [letterError, setLetterError] = useState<string | null>(null);
+  const [savingLetter, startSaveLetter] = useTransition();
+  const [addingLetter, startAddLetter] = useTransition();
+  const saveLetterText = () =>
+    startSaveLetter(async () => {
+      if (letterDraft === null || !letter) return;
+      const res = await saveCoverLetter(pack.id, letterDraft);
+      if (!res.ok) return setLetterError(res.error ?? "We couldn't save that.");
+      setLetterError(null);
+      setLetter({ ...letter, paragraphs: letterDraft.split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean) });
+      setLetterDraft(null);
+    });
+  const addLetter = () =>
+    startAddLetter(async () => {
+      if (!jobId) return;
+      const res = await addCoverLetter(jobId);
+      if (res.ok) router.refresh();
+      else setLetterError(res.error ?? "We couldn't write it just now.");
+    });
   const cvName = pack.attachmentNames[0] ?? "CV.pdf";
+  const letterName = pack.attachmentNames.find((a) => a.includes("_Cover_Letter")) ?? "Cover_Letter.pdf";
   // The design chosen on the CV screen (kept on this device), so the file matches it.
   const [style, setStyle] = useState("classic");
   useEffect(() => {
@@ -85,11 +112,14 @@ export function SendPack({
     } catch {}
   }, []);
   const cvUrl = `/api/cv/${cvId}/export?type=pdf&style=${encodeURIComponent(style)}`;
+  const letterUrl = (type: "pdf" | "docx") => `/api/applications/${applicationId}/letter?type=${type}&style=${encodeURIComponent(style)}`;
   // Phones and tablets with touch hand the CV file straight to the Gmail app. Laptops use
   // Gmail in the browser: desktop share sheets don't reach Gmail, and sharing needs the tap
   // itself, which a download in between used up (the "couldn't open Gmail" error, round 22).
   const [canShareFiles, setCanShareFiles] = useState(false);
   const cvFile = useRef<File | null>(null);
+  const letterFile = useRef<File | null>(null);
+  const hasLetter = Boolean(letter);
   useEffect(() => {
     try {
       const touch = window.matchMedia("(pointer: coarse)").matches;
@@ -113,8 +143,15 @@ export function SendPack({
               })),
           )
           .catch(() => {});
+      if (ok && hasLetter)
+        void fetch(letterUrl("pdf"))
+          .then((r) => r.blob())
+          .then((b) => (letterFile.current = new File([b], letterName, { type: "application/pdf" })))
+          .catch(() => {});
     } catch {}
-  }, [cvUrl, cvName]);
+    // letterUrl is rebuilt each render from the same values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cvUrl, cvName, hasLetter, letterName]);
   // Both come from the job post, so they're checked: a plain address only (no extra
   // headers like ?bcc= smuggled in), and only web links.
   const safeEmail =
@@ -127,14 +164,20 @@ export function SendPack({
     ? `mailto:${safeEmail}?subject=${encodeURIComponent(pack.subject)}&body=${encodeURIComponent(body)}`
     : null;
 
-  /** Saves the CV file to the device with an anchor, so the page stays open. */
-  function saveCv() {
+  /** Saves a file to the device with an anchor, so the page stays open. */
+  function saveFile(href: string, name: string) {
     const a = document.createElement("a");
-    a.href = cvUrl;
-    a.download = cvName;
+    a.href = href;
+    a.download = name;
     a.rel = "noopener";
     a.click();
   }
+  /** The CV, and the cover letter when there is one. */
+  function saveCv() {
+    saveFile(cvUrl, cvName);
+    if (letter) setTimeout(() => saveFile(letterUrl("pdf"), letterName), 400);
+  }
+  const files = letter ? "your CV and cover letter" : "your CV";
 
   /**
    * "Send via Gmail" (founder, rounds 21 and 23). Phones: the share sheet hands the CV file to
@@ -144,10 +187,13 @@ export function SendPack({
    */
   /** Asks the Chrome extension to open Gmail and attach the CV (D-181). */
   async function attachWithExtension(): Promise<{ ok: boolean; reason?: string; method?: string }> {
-    const blob = await (await fetch(cvUrl)).blob();
-    const bytes = new Uint8Array(await blob.arrayBuffer());
-    let bin = "";
-    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    const toBase64 = async (url: string) => {
+      const bytes = new Uint8Array(await (await (await fetch(url)).blob()).arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return btoa(bin);
+    };
+    const attachments = [{ name: cvName, base64: await toBase64(cvUrl) }, ...(letter ? [{ name: letterName, base64: await toBase64(letterUrl("pdf")) }] : [])];
     const id = crypto.randomUUID();
     return new Promise((resolve) => {
       const done = (r: { ok: boolean; reason?: string; method?: string }) => {
@@ -160,7 +206,7 @@ export function SendPack({
       };
       const timer = setTimeout(() => done({ ok: false, reason: "timeout" }), 75_000);
       window.addEventListener("message", onMessage);
-      window.postMessage({ type: "receipts:gmail-attach", id, email: { to: safeEmail ?? "", subject: pack.subject, body }, file: { name: cvName, base64: btoa(bin) } }, location.origin);
+      window.postMessage({ type: "receipts:gmail-attach", id, email: { to: safeEmail ?? "", subject: pack.subject, body }, file: attachments[0], files: attachments }, location.origin);
     });
   }
 
@@ -172,7 +218,7 @@ export function SendPack({
       if (canShareFiles && cvFile.current) {
         // Share first, while the tap still counts; then copy the words to paste.
         const shared = navigator.share({
-          files: [cvFile.current],
+          files: letterFile.current ? [cvFile.current, letterFile.current] : [cvFile.current],
           title: pack.subject,
           text: body,
         });
@@ -182,18 +228,18 @@ export function SendPack({
         await shared;
         setNote({
           tone: "ok",
-          text: "Shared to your email app with the CV attached. If the subject or message is empty, paste them: we copied them for you.",
+          text: `Shared to your email app with ${files} attached. If the subject or message is empty, paste them: we copied them for you.`,
         });
       } else if (document.documentElement.dataset.receiptsExtension === "1") {
         // Our Chrome extension is here: it opens Gmail and attaches the CV itself (D-181).
         const result = await attachWithExtension();
         if (result.ok) {
-          setNote({ tone: "ok", text: "Gmail is open with your CV attached and everything filled in. Check it, then press Send." });
+          setNote({ tone: "ok", text: `Gmail is open with ${files} attached and everything filled in. Check it, then press Send.` });
         } else if (result.reason === "signed_out") {
           setShareError("Sign in to Gmail in the tab we opened, then press Send via Gmail again.");
         } else {
           saveCv();
-          setShareError("Gmail has changed its page, so we couldn't attach your CV this time. Our team has been told and is fixing it. We saved your CV to Downloads: attach it in Gmail with the paperclip, then press Send.");
+          setShareError(`Gmail has changed its page, so we couldn't attach ${files} this time. Our team has been told and is fixing it. We saved ${files} to Downloads: attach ${letter ? "them" : "it"} in Gmail with the paperclip, then press Send.`);
           void reportGmailIssue(result.reason ?? "unknown", result.method ?? null);
         }
       } else {
@@ -205,7 +251,7 @@ export function SendPack({
         } else {
           setNote({
             tone: "ok",
-            text: "Gmail is open in a new tab with everything filled in. We saved your CV to Downloads: attach it there, then press Send. With our Chrome extension, your CV is attached for you.",
+            text: `Gmail is open in a new tab with everything filled in. We saved ${files} to Downloads: attach ${letter ? "them" : "it"} there, then press Send. With our Chrome extension, ${files} ${letter ? "are" : "is"} attached for you.`,
           });
         }
       }
@@ -213,7 +259,7 @@ export function SendPack({
       // Closing the share sheet isn't an error.
       if ((e as Error)?.name !== "AbortError")
         setShareError(
-          "We couldn't open Gmail from here. Use “Another email app”, or copy the parts above into Gmail and attach your CV.",
+          `We couldn't open Gmail from here. Use “Another email app”, or copy the parts above into Gmail and attach ${files}.`,
         );
     } finally {
       setTimeout(() => setOpening(false), 900);
@@ -314,14 +360,26 @@ export function SendPack({
         ))}
       </ul>
       {pack.channel === "email" ? (
-        <a
-          href={cvUrl}
-          download={cvName}
-          className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-brand-600 bg-white px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
-        >
-          <DocumentDownload size={18} variant="bulk" />
-          Download my CV
-        </a>
+        <div className={`mt-3 grid gap-2 ${letter ? "sm:grid-cols-2 xl:grid-cols-1" : ""}`}>
+          <a
+            href={cvUrl}
+            download={cvName}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-brand-600 bg-white px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+          >
+            <DocumentDownload size={18} variant="bulk" />
+            Download my CV
+          </a>
+          {letter ? (
+            <a
+              href={letterUrl("pdf")}
+              download={letterName}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-brand-600 bg-white px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+            >
+              <DocumentDownload size={18} variant="bulk" />
+              Download cover letter
+            </a>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );
@@ -329,6 +387,7 @@ export function SendPack({
   return (
     <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="xl:hidden">{checklistFor("top")}</div>
+      <div className="min-w-0 space-y-3">
       <section className="min-w-0 rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card">
         {pack.channel === "email" ? (
           <>
@@ -554,6 +613,117 @@ export function SendPack({
           </div>
         )}
       </section>
+      {letter ? (
+        <section aria-labelledby="letter-title" className="min-w-0 rounded-[var(--radius-card)] border border-ink-150 bg-white shadow-card">
+          <div className="flex items-center gap-3 border-b border-ink-100 px-5 py-4">
+            <span className="hidden size-11 place-items-center rounded-2xl bg-brand-50 text-brand-700 sm:grid">
+              <DocumentText1 size={22} variant="bulk" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 id="letter-title" className="text-[0.9375rem] font-semibold text-ink-900">
+                Your Cover Letter
+              </h2>
+              <p className="text-[0.8125rem] text-ink-500">One page, in the same design as your CV. It goes with your CV as its own file.</p>
+            </div>
+            <CopyButton value={letterText(letter)} label="cover letter" />
+          </div>
+          <div className="px-5 py-4">
+            {letterDraft === null ? (
+              <article className="max-h-[440px] overflow-y-auto rounded-2xl bg-paper p-5 text-[0.875rem] leading-6 text-ink-800 ring-1 ring-paper-edge">
+                <p className="font-semibold text-ink-900">{letter.name}</p>
+                <p className="text-[0.8125rem] text-ink-500">{letter.sender.join(" · ")}</p>
+                <p className="mt-4">{letter.date}</p>
+                <p className="mt-3">
+                  {letter.recipient.map((l) => (
+                    <span key={l} className="block">
+                      {l}
+                    </span>
+                  ))}
+                </p>
+                <p className="mt-3">{letter.salutation}</p>
+                <p className={`mt-3 font-semibold text-ink-900 ${letter.heading.startsWith("APPLICATION") ? "underline underline-offset-2" : ""}`}>{letter.heading}</p>
+                {letter.paragraphs.map((p) => (
+                  <p key={p} className="mt-3">
+                    {p}
+                  </p>
+                ))}
+                <p className="mt-4">{letter.closing}</p>
+                <p className="mt-6 font-semibold text-ink-900">{letter.name}</p>
+              </article>
+            ) : (
+              <div className="space-y-2">
+                <label htmlFor="letter-body" className="text-[0.8125rem] font-medium text-ink-600">
+                  The letter&apos;s paragraphs. Leave a blank line between each. Your details, the date and the sign-off stay as they are.
+                </label>
+                <textarea
+                  id="letter-body"
+                  value={letterDraft}
+                  onChange={(e) => setLetterDraft(e.target.value)}
+                  rows={Math.min(26, Math.max(12, letterDraft.split("\n").length + 4))}
+                  className={`${inputClass} py-3 text-sm leading-6`}
+                />
+              </div>
+            )}
+            {letterError ? (
+              <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-flag-700">
+                <Danger size={18} className="mt-px shrink-0" />
+                {letterError}
+              </p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {letterDraft === null ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setLetterDraft(letter.paragraphs.join("\n\n"))}
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-xl px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+                  >
+                    <Edit2 size={16} />
+                    Edit the letter
+                  </button>
+                  <span className="ml-auto flex flex-wrap gap-2">
+                    <a href={letterUrl("docx")} download className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-ink-150 px-3 text-sm font-semibold text-ink-700 hover:bg-ink-50">
+                      Word
+                    </a>
+                    <a href={letterUrl("pdf")} download={letterName} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border-[1.5px] border-brand-600 px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+                      <DocumentDownload size={16} variant="bulk" />
+                      Download PDF
+                    </a>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" onClick={saveLetterText} disabled={savingLetter || letterDraft.trim().length < 80}>
+                    {savingLetter ? "Saving" : "Save letter"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => (setLetterDraft(null), setLetterError(null))}>
+                    Cancel
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : jobId ? (
+        <section className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-dashed border-ink-200 bg-white p-5 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[0.9375rem] font-semibold text-ink-900">Add a Cover Letter?</h2>
+            <p className="mt-0.5 text-[0.8125rem] leading-5 text-ink-600">
+              This employer didn&apos;t ask for one, but a strong letter can help. We write it from your CV, and the email becomes a short covering note.
+            </p>
+            {letterError ? <p role="alert" className="mt-2 text-sm text-flag-700">{letterError}</p> : null}
+          </div>
+          <Button variant="outline" size="sm" onClick={addLetter} disabled={addingLetter} aria-busy={addingLetter || undefined} className="shrink-0">
+            {addingLetter ? (
+              <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />
+            ) : (
+              <DocumentText1 size={18} variant="bulk" />
+            )}
+            {addingLetter ? "Writing your letter" : "Write a cover letter"}
+          </Button>
+        </section>
+      ) : null}
+      </div>
 
       <aside className="space-y-3">
         <div className="hidden xl:block">{checklistFor("side")}</div>
@@ -610,8 +780,8 @@ export function SendPack({
             <ol className="mt-3 space-y-3">
               <Step
                 n={1}
-                title="Download your CV"
-                body="Use “Download my CV” above. It saves to your Downloads folder (Files on a phone)."
+                title={letter ? "Download your CV and cover letter" : "Download your CV"}
+                body={`Use “Download my CV”${letter ? " and “Download cover letter”" : ""} above. ${letter ? "They save" : "It saves"} to your Downloads folder (Files on a phone).`}
               />
               <Step
                 n={2}
@@ -625,13 +795,13 @@ export function SendPack({
               />
               <Step
                 n={4}
-                title="Attach your CV"
-                body="Press the paperclip and pick the CV you downloaded."
+                title={letter ? "Attach both files" : "Attach your CV"}
+                body={letter ? "Press the paperclip and pick the CV and the cover letter you downloaded." : "Press the paperclip and pick the CV you downloaded."}
               />
               <Step
                 n={5}
                 title="Press Send, then come back"
-                body="Tap “I've sent it” so we keep this application with the exact CV you sent."
+                body={`Tap “I've sent it” so we keep this application with the exact ${letter ? "CV and cover letter" : "CV"} you sent.`}
               />
             </ol>
           </section>

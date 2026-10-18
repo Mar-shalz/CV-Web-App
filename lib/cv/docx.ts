@@ -7,12 +7,12 @@ import type { CvStyle } from "./styles";
 // one line with a right tab, the employer in italics below, bullets, page numbers.
 
 // Page sizes in twips: A4, or Letter for US resumes (D-168); 1000 twip side margins.
-const PAGE = { a4: { width: 11906, height: 16838 }, letter: { width: 12240, height: 15840 } };
-const MUTED = "586679";
-const BODY = "283041";
+export const PAGE = { a4: { width: 11906, height: 16838 }, letter: { width: 12240, height: 15840 } };
+export const MUTED = "586679";
+export const BODY = "283041";
 
 // The three designs (D-142), matching the PDF.
-const LOOK: Record<CvStyle, { font: string; accent: string; header: "center" | "left"; upperName: boolean; nameSpacing: number; upperHeadings: boolean }> = {
+export const LOOK: Record<CvStyle, { font: string; accent: string; header: "center" | "left"; upperName: boolean; nameSpacing: number; upperHeadings: boolean }> = {
   classic: { font: "Calibri", accent: "14275F", header: "center", upperName: true, nameSpacing: 30, upperHeadings: true },
   modern: { font: "Arial", accent: "1F54D9", header: "left", upperName: false, nameSpacing: 0, upperHeadings: false },
   executive: { font: "Georgia", accent: "1A1A1F", header: "center", upperName: true, nameSpacing: 48, upperHeadings: true },

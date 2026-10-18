@@ -33,10 +33,11 @@ export default async function ExtensionPage() {
         <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">A panel that sits beside any job page, on LinkedIn, a company site or any job board, even ones that need you signed in. It finds the job on the page by itself, checks if it&apos;s real, shows how well you match, and can take you all the way to applying. Job in a picture? It reads that too. Everything saves to your account, so it&apos;s on your phone as well.</p>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2">
         {[
           { icon: ShieldSearch, title: "Is this job real?", body: "Checked in the panel, without leaving the page." },
           { icon: Magicpen, title: "Save or tailor", body: "Save it for later, or tailor your CV to it in one tap." },
+          { icon: Sms, title: "Attached in Gmail", body: "Send via Gmail opens Gmail with your CV, and your cover letter if you have one, already attached." },
           { icon: ShieldTick, title: "Private", body: "It reads a page only while the panel is open, and sends only the job." },
         ].map(({ icon: Icon, title, body }) => (
           <div key={title} className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card">

@@ -1,11 +1,15 @@
 import { z } from "zod";
 import { defineTask, trusted, untrusted } from "../types";
 
-/** build_pack (Build pack section 6): channel, recipient, subject, body, attachment names or form field list. */
+/**
+ * build_pack (Build pack section 6): channel, recipient, subject, body, attachment names or
+ * form field list, and the cover letter's paragraphs when the job asks for one (D-186).
+ * On the judgement class of model since D-186: this is the writing employers read first.
+ */
 export const buildPack = defineTask({
   name: "build_pack",
-  model: "claude-haiku-5-5",
-  promptVersion: "v3",
+  model: "claude-sonnet-5-5",
+  promptVersion: "v4",
   input: z.object({
     person: z.object({ full_name: z.string(), course: z.string().nullable(), phone: z.string().nullable(), email: z.string().nullable().default(null), title_line: z.string().nullable().default(null) }),
     /** What the job asks for most (D-170), so the proof answers it. */
@@ -15,6 +19,10 @@ export const buildPack = defineTask({
     proof: z.array(z.string()).max(6),
     gap_note: z.string().nullable(),
     cv_file: z.string(),
+    /** Write a cover letter too (the job asks for one, or the person asked). */
+    letter: z.boolean().default(false),
+    /** Problems code found in a previous draft (numbers or dates not in the proof). */
+    previous_problems: z.array(z.string().max(300)).max(12).default([]),
   }),
   output: z.object({
     subject: z.string().max(200),
@@ -23,15 +31,18 @@ export const buildPack = defineTask({
     checklist: z.array(z.object({ item: z.string().max(120), required: z.boolean() })).max(10),
     form_fields: z.array(z.object({ label: z.string().max(80), hint: z.string().max(160) })).max(20),
     portal_steps: z.array(z.string().max(200)).max(8),
+    cover_letter: z.array(z.string().max(1400)).max(6).default([]),
   }),
-  maxTokens: 3000,
-  timeoutMs: 25_000,
-  effort: "low",
+  maxTokens: 6000,
+  timeoutMs: 45_000,
+  effort: "medium",
   render: (i) => [
     trusted(`Applicant: ${i.person.full_name}${i.person.course ? `, ${i.person.course}` : ""}. Phone: ${i.person.phone ?? "not given"}. Email: ${i.person.email ?? "not given"}.${i.person.title_line ? `\nTheir CV title line: ${i.person.title_line}` : ""}\nSpelling: ${i.spelling}.`),
     trusted(`CV file name: ${i.cv_file}`),
     trusted(`Their strongest proof for this job (use only these facts):\n${i.proof.map((p) => `- ${p}`).join("\n")}`),
     ...(i.gap_note ? [trusted(`One gap to address honestly in a sentence: ${i.gap_note}`)] : []),
+    trusted(i.letter ? "Cover letter: yes. Write the cover letter paragraphs, and keep the email a short covering note." : "Cover letter: no. Return an empty cover_letter list."),
+    ...(i.previous_problems.length ? [trusted(`Your previous draft had these problems. Fix every one:\n${i.previous_problems.map((p) => `- ${p}`).join("\n")}`)] : []),
     untrusted(
       "how_to_apply",
       `Job: ${i.job.title} at ${i.job.employer}\nWhat they ask for most:\n${i.requirements.map((r) => `- ${r}`).join("\n") || "- not listed"}\nChannel: ${i.job.channel}\nEmail: ${i.job.email ?? "none"}\nSubject format: ${i.job.subject_format ?? "none stated"}\nLink: ${i.job.url ?? "none"}\nDocuments asked for: ${i.job.required_documents.join(", ") || "none listed"}`,

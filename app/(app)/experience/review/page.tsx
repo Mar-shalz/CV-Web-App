@@ -7,9 +7,10 @@ import { Lock1, TickCircle, ArrowRight } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Check What We Found" };
 
-export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ sensitive?: string }> }) {
+export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ sensitive?: string; cv?: string; merged?: string }> }) {
   const viewer = await requireReadyViewer();
-  const { sensitive } = await searchParams;
+  const { sensitive, cv, merged } = await searchParams;
+  const mergedRoles = Math.max(0, Number(merged) || 0);
   const vault = await getVault(viewer);
   // Every role stays on the page, in the same order, so confirming one never moves the
   // rest (D-103). The list only ends when nothing is left to check.
@@ -33,6 +34,17 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
           </div>
         </div>
       </header>
+
+      {cv === "replaced" || cv === "added" ? (
+        <p className="flex items-start gap-2.5 rounded-2xl bg-proof-50 p-4 text-sm leading-5 text-proof-800">
+          <TickCircle size={20} className="mt-px shrink-0" />
+          {cv === "replaced"
+            ? "Your new CV has replaced what was saved before. Check each role below."
+            : mergedRoles
+              ? `We added what's new from this CV. ${mergedRoles === 1 ? "One role was already saved, so we only added its" : `${mergedRoles} roles were already saved, so we only added their`} new achievements.`
+              : "We added what's new from this CV to what you had. Check the new ones below."}
+        </p>
+      ) : null}
 
       {sensitive ? (
         <p className="flex items-start gap-2.5 rounded-2xl bg-brand-50 p-4 text-sm leading-5 text-brand-800">

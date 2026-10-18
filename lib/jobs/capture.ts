@@ -10,6 +10,7 @@ import { detectDestination } from "@/lib/rules/destination";
 import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { APP } from "@/lib/config";
+import { pdfText } from "@/lib/uploads/pdf-text";
 
 export type CaptureInput =
   | { mode: "paste"; text: string; sourceUrl?: string }
@@ -101,7 +102,14 @@ export async function captureJob(supabase: SupabaseClient, userId: string, targe
     case "file": {
       postHash = hash(input.bytes);
       if (input.type === "application/pdf" || input.bytes.subarray(0, 4).toString() === "%PDF") {
-        parseInput = { kind: "pdf", base64: input.bytes.toString("base64"), postHash, today };
+        // The PDF's own text (D-183): exact emails and subject lines for the parser, and the
+        // post text the job check reads (payment requests, contacts), as with a paste.
+        const layer = await pdfText(input.bytes);
+        if (layer) {
+          rawText = layer.text.slice(0, 40_000);
+          postHash = hash(rawText);
+        }
+        parseInput = { kind: "pdf", base64: input.bytes.toString("base64"), textLayer: rawText, postHash, today };
       } else if (input.type === DOCX || input.name.toLowerCase().endsWith(".docx")) {
         const mammoth = await import("mammoth");
         rawText = (await mammoth.extractRawText({ buffer: input.bytes })).value.slice(0, 40_000);

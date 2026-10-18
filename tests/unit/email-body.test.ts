@@ -10,6 +10,10 @@ describe("application email layout (round 24)", () => {
   });
 
   it("adds a sign-off when there is none and skips missing details", () => {
-    expect(formatEmailBody("Dear Hiring Team,\r\nHello.", { name: "Ada", phone: null, email: "ada@example.com" })).toBe("Dear Hiring Team,\nHello.\n\nKind regards,\nAda\nada@example.com");
+    expect(formatEmailBody("Dear Hiring Team,\r\nHello.", { name: "Ada", phone: null, email: "ada@example.com" })).toBe("Dear Hiring Team,\n\nHello.\n\nKind regards,\nAda\nada@example.com");
+  });
+
+  it("spaces paragraphs a model put on single lines (round 25)", () => {
+    expect(formatEmailBody("Dear Hiring Team,\nI am applying.\nMy CV is attached.\nBest regards,", { name: "Ada", phone: null, email: null })).toBe("Dear Hiring Team,\n\nI am applying.\n\nMy CV is attached.\n\nKind regards,\nAda");
   });
 });

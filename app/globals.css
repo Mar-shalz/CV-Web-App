@@ -48,16 +48,23 @@
   /* Verdict and status colours. Always paired with an icon and a word. */
   --color-proof-50: #e7f6ee;
   --color-proof-100: #c9ecd9;
+  --color-proof-400: #3dbf8c;
   --color-proof-500: #12996a;
   --color-proof-600: #0b7a53;
   --color-proof-700: #08603f;
   --color-proof-800: #064a31;
   --color-care-50: #fff4e2;
   --color-care-100: #fde3b8;
+  /* Bar fills and light text on dark (match bar, job check score, toasts). */
+  --color-care-400: #f2a93b;
+  --color-care-500: #d9820f;
   --color-care-600: #a15c07;
   --color-care-700: #7f4805;
+  --color-care-800: #5f3604;
   --color-flag-50: #fdecec;
   --color-flag-100: #f9cfcf;
+  --color-flag-400: #f07575;
+  --color-flag-500: #dc3c3c;
   --color-flag-600: #c42b2b;
   --color-flag-700: #9f1f1f;
 

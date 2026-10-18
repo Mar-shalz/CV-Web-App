@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Receipts: check a job, tailor your CV",
   "short_name": "Receipts",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Check if the job you're looking at is real, save it, or tailor your CV to it, without leaving the page.",
   "action": {
     "default_title": "Open Receipts",

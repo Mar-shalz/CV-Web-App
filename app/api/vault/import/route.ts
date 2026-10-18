@@ -5,9 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { cleanSkills } from "@/lib/vault/extras";
 import { runTask } from "@/lib/ai";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
-import { saveDraftRoles } from "@/lib/vault/save";
+import { saveDraftRoles, type ExistingRole } from "@/lib/vault/save";
 import { track } from "@/lib/analytics/server";
 import { takeUpload } from "@/lib/uploads/take";
+import { pdfText } from "@/lib/uploads/pdf-text";
 import { INLINE_MAX_BYTES, UPLOAD_MAX_BYTES, tooBigMessage } from "@/lib/uploads/limits";
 
 // Files up to the inline limit come in the request (the host caps bodies near 4.5MB);
@@ -15,7 +16,7 @@ import { INLINE_MAX_BYTES, UPLOAD_MAX_BYTES, tooBigMessage } from "@/lib/uploads
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const IMAGES = ["image/jpeg", "image/png", "image/webp"] as const;
 
-type Reply = { ok: true; roles: number; items: number; sensitiveSkipped: boolean } | { ok: false; error: string; manual?: boolean };
+type Reply = { ok: true; roles: number; items: number; merged: number; replaced: boolean; sensitiveSkipped: boolean } | { ok: false; error: string; manual?: boolean };
 
 function fail(error: string, status = 400, manual = false) {
   return NextResponse.json<Reply>({ ok: false, error, manual }, { status });
@@ -28,7 +29,7 @@ function fail(error: string, status = 400, manual = false) {
 export async function POST(request: NextRequest) {
   const viewer = await getViewer();
   if (!viewer) return fail("Please sign in again.", 401);
-  if (viewer.preview) return NextResponse.json<Reply>({ ok: true, roles: 4, items: 6, sensitiveSkipped: true });
+  if (viewer.preview) return NextResponse.json<Reply>({ ok: true, roles: 4, items: 6, merged: 0, replaced: false, sensitiveSkipped: true });
   if (!(await allow("cv_import"))) return fail(RATE_LIMITED_MESSAGE, 429);
 
   const length = Number(request.headers.get("content-length") ?? 0);
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
   }
 
   const text = form.get("text");
+  const plan = form.get("plan") === "replace" ? "replace" : "add";
   let file = form.get("file");
   const uploadPath = form.get("upload_path");
   if (typeof uploadPath === "string" && uploadPath) {
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
   }
   let input:
     | { kind: "text"; text: string; fileHash: string }
-    | { kind: "pdf"; base64: string; fileHash: string }
+    | { kind: "pdf"; base64: string; textLayer: string | null; fileHash: string }
     | { kind: "image"; base64: string; mediaType: (typeof IMAGES)[number]; fileHash: string };
 
   if (typeof text === "string" && text.trim()) {
@@ -65,7 +67,9 @@ export async function POST(request: NextRequest) {
     const fileHash = createHash("sha256").update(bytes).digest("hex");
     const type = file.type || (file.name.toLowerCase().endsWith(".docx") ? DOCX : "");
     if (type === "application/pdf" || bytes.subarray(0, 4).toString() === "%PDF") {
-      input = { kind: "pdf", base64: bytes.toString("base64"), fileHash };
+      // The exact text goes with the file (D-183); a scanned PDF is read from the file alone.
+      const layer = await pdfText(bytes);
+      input = { kind: "pdf", base64: bytes.toString("base64"), textLayer: layer?.text ?? null, fileHash };
     } else if (type === DOCX || file.name.toLowerCase().endsWith(".docx")) {
       const mammoth = await import("mammoth");
       const { value } = await mammoth.extractRawText({ buffer: bytes });
@@ -89,38 +93,70 @@ export async function POST(request: NextRequest) {
   if (!result.data.is_cv) return fail("This doesn't look like a CV. Check the file, or add your roles by hand.", 422, true);
 
   const supabase = await createClient();
-  const { roleCount, itemCount } = await saveDraftRoles(supabase, viewer.id, result.data.roles, "cv_import");
+  // A second CV (D-184): the person chose to replace what's saved, or to add to it.
+  const { data: savedRows } = await supabase.from("vault_roles").select("id, kind, organisation, title, vault_items(text, source_quote)").eq("user_id", viewer.id);
+  const saved: ExistingRole[] = ((savedRows ?? []) as { id: string; kind: string; organisation: string | null; title: string | null; vault_items: ExistingRole["items"] | null }[]).map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    organisation: r.organisation,
+    title: r.title,
+    items: r.vault_items ?? [],
+  }));
+  const replace = plan === "replace" && saved.length > 0;
+  const { roleCount, itemCount, mergedCount } = await saveDraftRoles(supabase, viewer.id, result.data.roles, "cv_import", replace ? [] : saved);
+  if (replace) {
+    // Only once the new CV's roles are saved, so a failed save never leaves the person with nothing.
+    if (!roleCount && result.data.roles.length) return fail("We couldn't save this CV's roles, so nothing was replaced. Try again.", 500);
+    await supabase.from("vault_roles").delete().eq("user_id", viewer.id).in("id", saved.map((r) => r.id));
+    // Items saved without a role (from the story interview) go too.
+    await supabase.from("vault_items").delete().eq("user_id", viewer.id).is("role_id", null);
+  }
 
-  // Fill empty profile fields only; never overwrite what the user typed.
+  // Profile details: a replace takes this CV's details where it has them; otherwise only
+  // empty fields are filled, never overwriting what the user typed.
   const p = result.data.person;
   const { data: profileRow } = await supabase.from("profiles").select("*").eq("user_id", viewer.id).maybeSingle();
   const profile = (profileRow ?? {}) as Record<string, string | null>;
   const patch: Record<string, string> = {};
-  if (!profile?.full_name && p.full_name) patch.full_name = p.full_name;
-  if (!profile?.phone && p.phone) patch.phone = p.phone;
-  if (!profile?.city && p.city) patch.city = p.city;
-  if (!profile?.state && p.state) patch.state = p.state;
-  if (!profile?.linkedin_url && p.linkedin_url) patch.linkedin_url = p.linkedin_url;
+  const take = (key: string, value: string | null) => {
+    if (value && (replace || !profile[key]) && key in profile) patch[key] = value;
+  };
+  take("full_name", p.full_name);
+  take("phone", p.phone);
+  take("city", p.city);
+  take("state", p.state);
+  take("linkedin_url", p.linkedin_url);
   const web = (u: string | null) => (u && /^https?:\/\/\S+\.\S+$/i.test(u) ? u : null);
-  if ("portfolio_url" in profile && !profile.portfolio_url && web(p.portfolio_url)) patch.portfolio_url = web(p.portfolio_url)!;
-  if ("website_url" in profile && !profile.website_url && web(p.website_url)) patch.website_url = web(p.website_url)!;
+  take("portfolio_url", web(p.portfolio_url));
+  take("website_url", web(p.website_url));
   if (Object.keys(patch).length) await supabase.from("profiles").update(patch).eq("user_id", viewer.id);
 
-  // The CV's own summary, skills and referees (D-162), once the round 20 columns exist:
-  // a summary or referees only fill empty ones; skills are added to the list.
+  // The CV's own summary, skills and referees (D-162), once the round 20 columns exist.
+  // Replace: this CV's take their place (skills added while checking jobs stay, D-184).
+  // Add: a summary fills an empty one, skills join the list, new referees join up to four.
   const extra = (profileRow ?? {}) as Record<string, unknown>;
   if ("skills" in extra) {
     const d = result.data;
     const more: Record<string, unknown> = {};
-    if (!extra.summary && d.summary?.trim()) more.summary = d.summary.trim().slice(0, 1500);
-    const skills = cleanSkills([...((extra.skills as string[] | null) ?? []), ...d.skills]);
-    if (skills.length !== ((extra.skills as string[] | null) ?? []).length) more.skills = skills;
-    if (!((extra.referees as unknown[] | null) ?? []).length && d.referees.length) more.referees = d.referees;
+    const oldSkills = (extra.skills as string[] | null) ?? [];
+    const oldRefs = (extra.referees as { name?: string }[] | null) ?? [];
+    if (replace) {
+      more.summary = d.summary?.trim().slice(0, 1500) || null;
+      more.skills = cleanSkills(d.skills);
+      more.referees = d.referees.slice(0, 4);
+    } else {
+      if (!extra.summary && d.summary?.trim()) more.summary = d.summary.trim().slice(0, 1500);
+      const skills = cleanSkills([...oldSkills, ...d.skills]);
+      if (skills.length !== oldSkills.length) more.skills = skills;
+      const known = new Set(oldRefs.map((r) => (r.name ?? "").toLowerCase().trim()));
+      const newRefs = d.referees.filter((r) => !known.has(r.name.toLowerCase().trim()));
+      if (newRefs.length && oldRefs.length < 4) more.referees = [...oldRefs, ...newRefs].slice(0, 4);
+    }
     if (Object.keys(more).length) await supabase.from("profiles").update(more).eq("user_id", viewer.id);
   }
 
   await track("vault_import_completed", { source_type: input.kind, roles_count: roleCount, items_count: itemCount }, viewer.id);
   const s = result.data.sensitive_found;
   const sensitiveSkipped = Boolean(s.date_of_birth || s.gender || s.state_of_origin || s.marital_status_present || s.religion_present);
-  return NextResponse.json<Reply>({ ok: true, roles: roleCount, items: itemCount, sensitiveSkipped });
+  return NextResponse.json<Reply>({ ok: true, roles: roleCount, items: itemCount, merged: mergedCount, replaced: replace, sensitiveSkipped });
 }

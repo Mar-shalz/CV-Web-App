@@ -25,7 +25,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // "Send via Gmail" from the app's pages (D-181): open Gmail's compose window and attach the CV.
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg?.kind !== "gmail-attach" || !sender.tab) return false;
-  composeWithCv(msg.email, msg.file).then(reply, (e) => reply({ ok: false, reason: "extension_error", detail: String(e?.message || e).slice(0, 200) }));
+  composeWithCv(msg.email, msg.files || msg.file).then(reply, (e) => reply({ ok: false, reason: "extension_error", detail: String(e?.message || e).slice(0, 200) }));
   return true; // answered later
 });
 

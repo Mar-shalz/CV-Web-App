@@ -10,6 +10,7 @@ import { EMPLOYMENT_KINDS, EMPLOYMENT_ON_CV, withTerms } from "@/lib/vault/schem
 import { PROFILES, SECTION_HEADINGS, fileBase, profileRules } from "./profiles";
 import { allSkills, EMPTY_EXTRAS, type CvExtras } from "@/lib/vault/extras";
 import type { CvBullet, CvDoc, CvFlag, CvRoleBlock, CvSection } from "./types";
+import { jobTermsTheyHave, reviewDraft, reviewSummary } from "./quality";
 
 export type ContactDetails = { fullName: string | null; phone: string | null; email: string | null; city: string | null; state: string | null; linkedin: string | null; portfolio?: string | null; website?: string | null };
 
@@ -95,6 +96,7 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
       items: expRoles.flatMap((r) => r.items.filter((i) => i.confirmed).map((i) => ({ id: i.id, role: [r.title, r.organisation].filter(Boolean).join(", ").slice(0, 200), text: i.text.slice(0, 400), source_quote: i.sourceQuote?.slice(0, 600) ?? null }))).slice(0, 40),
       skills: vaultSkills.slice(0, 60),
       own_summary: extras.summary,
+      job_terms: jobTermsTheyHave(job.parsed.requirements.map((r) => r.text), vaultSkills).slice(0, 30),
       spelling: profile.spelling,
     },
     { userId: viewer.preview ? undefined : viewer.id },
@@ -103,6 +105,18 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
   let out: TailorOut | null = null;
   let violations: string[] = [];
   let generated = false;
+  // Two checks on every draft (D-185): the fact lock (truth) and the CV standard (craft).
+  // Problems go back once; the better draft is kept, truth weighing most.
+  const itemText = Object.fromEntries([...sources.values()].map((x) => [x.id, [x.text, x.sourceQuote, x.role.title, x.role.organisation, x.role.location, ...x.skills].filter(Boolean).join(" ")]));
+  const review = {
+    requirements: job.parsed.requirements.map((r) => r.text),
+    skills: vaultSkills,
+    itemsPerRole: Object.fromEntries(expRoles.map((r) => [r.id, r.items.filter((i) => i.confirmed).length])),
+    itemText,
+    evidence: [...Object.values(itemText), ...all.map((x) => x.text), extras.summary ?? "", vaultSkills.join(" ")].join(" "),
+  };
+  let best: { out: TailorOut; lock: string[]; score: number } | null = null;
+  let problems: string[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await runTask(
       "tailor_cv",
@@ -120,29 +134,34 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
         certifications: roles.filter((r) => r.kind === "certification" || r.kind === "licence").map((r) => [r.title, r.organisation, r.grade].filter(Boolean).join(", ")),
         vault_skills: vaultSkills.slice(0, 90),
         own_summary: extras.summary,
-        previous_violations: violations,
+        job_terms: jobTermsTheyHave(review.requirements, vaultSkills).slice(0, 30),
+        previous_violations: problems.slice(0, 30),
         cacheKey: `${job.id}:${attempt}`,
       },
       { userId: viewer.preview ? undefined : viewer.id },
     );
     if (!res.ok) break;
-    out = res.data;
+    const draft = res.data;
     generated = true;
-    // Check the draft. Violations go back once; after that, flags.
-    const bullets = out.experience.flatMap((e) => e.bullets.map((b, n) => ({ id: `${e.role_id}:${n}`, text: b.text, source_item_ids: b.source_item_ids })));
+    // Check the draft. Problems go back once; after that, flags.
+    const bullets = draft.experience.flatMap((e) => e.bullets.map((b, n) => ({ id: `${e.role_id}:${n}`, text: b.text, source_item_ids: b.source_item_ids })));
     const lock = factLock(bullets, sources);
     const next: string[] = [];
     for (const k of lock.kept) for (const f of k.flags) next.push(`Bullet "${k.text}": ${f.type} "${f.token}" is not in its cited items.`);
     for (const id of lock.dropped) next.push(`Bullet "${bullets.find((b) => b.id === id)?.text}" cites no valid item id.`);
-    const sumSources = [...out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s)), ...(ownSummary ? [ownSummary] : [])];
-    for (const f of lockLine(out.summary.text, sumSources.length ? sumSources : all)) next.push(`Summary: ${f.type} "${f.token}" is not supported.`);
-    for (const f of lockLine(out.title_line, all)) next.push(`Title line: ${f.type} "${f.token}" is not supported.`);
-    if (!next.length || attempt === 1) {
-      violations = next;
-      break;
-    }
-    violations = next;
+    const sumSources = [...draft.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s)), ...(ownSummary ? [ownSummary] : [])];
+    for (const f of lockLine(draft.summary.text, sumSources.length ? sumSources : all)) next.push(`Summary: ${f.type} "${f.token}" is not supported.`);
+    for (const f of lockLine(draft.title_line, all)) next.push(`Title line: ${f.type} "${f.token}" is not supported.`);
+    const craft = reviewDraft(draft, review);
+    const score = next.length * 3 + craft.length;
+    if (!best || score < best.score) best = { out: draft, lock: next, score };
+    // Truth problems always go back; craft ones when there are a few, or a job term is missing.
+    const retry = next.length > 0 || craft.length >= 2 || craft.some((c) => c.startsWith("The job asks for"));
+    if (!retry || attempt === 1) break;
+    problems = [...next, ...craft];
   }
+  out = best?.out ?? null;
+  violations = best?.lock ?? [];
 
   // Manual path: the model step failed, so the CV uses the person's confirmed items as they are.
   if (!out) {
@@ -163,7 +182,9 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     const flagsNew = lockLine(text, srcs.length ? srcs : all).length;
     const oldSrcs = [...out.summary.source_item_ids.map((id) => sources.get(id)).filter((x): x is LockSource => Boolean(x)), ...(ownSummary ? [ownSummary] : [])];
     const flagsOld = out.summary.text ? lockLine(out.summary.text, oldSrcs.length ? oldSrcs : all).length : Infinity;
-    if (!lintCopy(text).some((i) => i.kind === "phrase") && flagsNew <= flagsOld) out = { ...out, summary: { text, source_item_ids: ids } };
+    // Truth first, then the CV standard (D-185): the better traced and better written one wins.
+    const better = flagsNew < flagsOld || (flagsNew === flagsOld && reviewSummary(text, review.evidence).length <= reviewSummary(out.summary.text, review.evidence).length);
+    if (!lintCopy(text).some((i) => i.kind === "phrase") && better) out = { ...out, summary: { text, source_item_ids: ids } };
   }
 
   // Assemble, with flags attached to every untraced line.

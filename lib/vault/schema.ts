@@ -38,6 +38,7 @@ export const draftRoleSchema = z.object({
   is_current: z.boolean(),
   grade: z.string().max(80).nullable(),
   employment_type: z.enum(EMPLOYMENT_TYPES).nullable().optional(),
-  items: z.array(draftItemSchema).max(12),
+  // Up to 20: long CVs list more than 12 bullets for one role, and a capped list failed the whole read (D-183).
+  items: z.array(draftItemSchema).max(20),
 });
 export type DraftRole = z.infer<typeof draftRoleSchema>;

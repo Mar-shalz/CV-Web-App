@@ -36,6 +36,42 @@ export async function rewriteEmail(jobId: string): Promise<{ ok: boolean; error?
   return { ok: true };
 }
 
+/** A cover letter for this application when the job didn't ask for one (D-186). The email becomes a short covering note. */
+export async function addCoverLetter(jobId: string): Promise<{ ok: boolean; error?: string }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  if (viewer.preview) return { ok: true };
+  if (!(await allow("pack"))) return { ok: false, error: RATE_LIMITED_MESSAGE };
+  const job = await getJob(viewer, jobId);
+  const cv = await getLatestCv(viewer, job.id);
+  if (!cv) return { ok: false, error: "Make your CV for this job first." };
+  const res = await ensurePack(viewer, job, cv, null, { fresh: true, letter: true });
+  if ("error" in res) return { ok: false, error: res.error };
+  revalidatePath(`/jobs/${jobId}/pack`);
+  return { ok: true };
+}
+
+/** The person's own edits to the cover letter's paragraphs (D-186), one blank line between each. */
+export async function saveCoverLetter(packId: string, text: string): Promise<{ ok: boolean; error?: string }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  const paragraphs = text
+    .replace(/\r\n?/g, "\n")
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
+    .filter(Boolean);
+  if (!paragraphs.length || text.trim().length < 80) return { ok: false, error: "Write a little more before saving." };
+  if (paragraphs.length > 8 || text.length > 6000) return { ok: false, error: "That's long for a cover letter. Keep it to one page, about four paragraphs." };
+  if (viewer.preview) return { ok: true };
+  if (!/^[0-9a-f-]{36}$/.test(packId)) return { ok: false, error: "We couldn't find this letter." };
+  const supabase = await createClient();
+  const { data } = await supabase.from("application_packs").select("*").eq("id", packId).eq("user_id", viewer.id).maybeSingle();
+  const letter = (data as { cover_letter?: Record<string, unknown> | null } | null)?.cover_letter;
+  if (!letter) return { ok: false, error: "We couldn't find this letter." };
+  const { error } = await supabase.from("application_packs").update({ cover_letter: { ...letter, paragraphs } }).eq("id", packId).eq("user_id", viewer.id);
+  return error ? { ok: false, error: "We couldn't save that. Try again." } : { ok: true };
+}
+
 /** The person's own edits to the application email (round 24). They're the author, so it's saved as written. */
 export async function saveEmailBody(packId: string, body: string): Promise<{ ok: boolean; error?: string }> {
   const viewer = await getViewer();
