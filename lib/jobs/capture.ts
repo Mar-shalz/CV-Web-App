@@ -109,7 +109,8 @@ export async function captureJob(supabase: SupabaseClient, userId: string, targe
           rawText = layer.text.slice(0, 40_000);
           postHash = hash(rawText);
         }
-        parseInput = { kind: "pdf", base64: input.bytes.toString("base64"), textLayer: rawText, postHash, today };
+        // With real text, the post is read as text, like a paste: quicker (round 27).
+        parseInput = rawText ? { kind: "text", text: rawText, postHash, today } : { kind: "pdf", base64: input.bytes.toString("base64"), textLayer: null, postHash, today };
       } else if (input.type === DOCX || input.name.toLowerCase().endsWith(".docx")) {
         const mammoth = await import("mammoth");
         rawText = (await mammoth.extractRawText({ buffer: input.bytes })).value.slice(0, 40_000);

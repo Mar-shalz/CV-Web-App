@@ -134,6 +134,9 @@ describe("Google sign in on our own address (D-187)", () => {
     expect(googleDirectFor("https://app.example.com")).toBe(true);
     expect(googleDirectFor("http://localhost:3000")).toBe(true);
     expect(googleDirectFor("https://preview-123.vercel.app")).toBe(false);
+    delete process.env.APP_URL;
+    expect(googleDirectFor("https://app.example.com")).toBe(false);
+    process.env.APP_URL = "https://app.example.com";
     delete process.env.GOOGLE_CLIENT_SECRET;
     expect(googleDirectFor("https://app.example.com")).toBe(false);
   });

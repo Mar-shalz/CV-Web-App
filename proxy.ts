@@ -32,6 +32,12 @@ export async function proxy(incoming: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
+  // One public address (founder round 27): on the live site, Vercel's other addresses for
+  // this project send pages to APP_URL, so sign in, Google and the extension all meet on
+  // the same one. API calls aren't redirected, so an older extension keeps working.
+  const canonical = canonicalRedirect(request);
+  if (canonical) return canonical;
+
   // The back office keeps its own session (D-136): only its cookie counts on /admin pages.
   if (path === "/admin" || path.startsWith("/admin/")) {
     const { response, user } = await updateAdminSession(request);
@@ -70,6 +76,20 @@ export async function proxy(incoming: NextRequest) {
     return NextResponse.redirect(url);
   }
   return withCsp(response);
+}
+
+function canonicalRedirect(request: NextRequest): NextResponse | null {
+  if (process.env.VERCEL_ENV !== "production" || !process.env.APP_URL || request.nextUrl.pathname.startsWith("/api/")) return null;
+  let target: URL;
+  try {
+    target = new URL(process.env.APP_URL);
+  } catch {
+    return null;
+  }
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
+  if (!host || host === target.host || !host.endsWith(".vercel.app")) return null;
+  const url = new URL(request.nextUrl.pathname + request.nextUrl.search, target.origin);
+  return NextResponse.redirect(url, 308);
 }
 
 export const config = {

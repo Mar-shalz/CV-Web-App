@@ -44,6 +44,11 @@ export function ImportPanel({ savedRoles = 0 }: { savedRoles?: number }) {
     const timer = setInterval(() => setPhase({ kind: "working", step: (step = Math.min(step + 1, STEPS.length - 1)) }), 4500);
     try {
       const res = await fetch("/api/vault/import", { method: "POST", body });
+      // A reply that isn't ours (the server ran out of time) is said plainly, not as "offline".
+      if (!(res.headers.get("content-type") ?? "").includes("json")) {
+        setPhase({ kind: "error", message: "That took longer than it should. Try again: your file is still here.", manual: true });
+        return;
+      }
       const data = (await res.json()) as { ok: boolean; error?: string; manual?: boolean; sensitiveSkipped?: boolean; replaced?: boolean; merged?: number };
       if (!data.ok) {
         setPhase({ kind: "error", message: data.error ?? "That didn't work on our side. Try again in a moment.", manual: Boolean(data.manual) });

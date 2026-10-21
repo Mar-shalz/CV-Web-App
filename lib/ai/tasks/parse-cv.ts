@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { defineTask, trusted, untrusted, untrustedFile } from "../types";
 import { draftRoleSchema } from "@/lib/vault/schema";
+import { repairCvRead } from "@/lib/vault/repair";
 
 const input = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string().min(40).max(60_000), fileHash: z.string() }),
@@ -66,4 +67,5 @@ export const parseCv = defineTask({
   ],
   cache: { key: (i) => i.fileHash, ttlSeconds: 30 * 24 * 3600 },
   manualStep: "add_roles_by_hand",
+  repair: repairCvRead,
 });

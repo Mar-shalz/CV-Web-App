@@ -44,6 +44,11 @@ export type AiTask<I extends z.ZodType = z.ZodType, O extends z.ZodType = z.ZodT
   cache: { key: (input: z.output<I>) => string; ttlSeconds: number } | null;
   /** The manual step the screen falls back to when this task fails, for example "type_job_details". */
   manualStep: string;
+  /**
+   * Fixes small slips in the model's reply before it is checked (a year without a month, a
+   * line a little too long), so a good read isn't thrown away for them. Never adds content.
+   */
+  repair?: (raw: unknown) => unknown;
 };
 
 /** Identity helper that keeps the input and output types attached to a task definition. */

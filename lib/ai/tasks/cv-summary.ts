@@ -30,8 +30,9 @@ export const cvSummary = defineTask({
     source_item_ids: z.array(z.string()).max(8),
   }),
   maxTokens: 3000,
-  timeoutMs: 40_000,
-  effort: "high",
+  timeoutMs: 45_000,
+  // Medium (round 27): high thinking timed out at 40 seconds on Gemini's free tier.
+  effort: "medium",
   render: (i) => [
     trusted(`Job: ${i.job.title} at ${i.job.employer}. Spelling: ${i.spelling}. Person's level: ${i.level}, about ${Math.round(i.experience_months / 12)} years of full time work.${i.title_line ? `\nTheir CV title line: ${i.title_line}` : ""}`),
     trusted(`Education: ${i.education.join("; ") || "none"}\nCertifications: ${i.certifications.join("; ") || "none"}\nSkills: ${i.skills.join(", ") || "none listed"}`),

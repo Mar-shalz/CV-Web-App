@@ -52,6 +52,7 @@ function check<O extends z.ZodType>(
   schema: O,
   text: string,
   cutOff: boolean,
+  repair?: (raw: unknown) => unknown,
 ): { ok: true; data: z.output<O> } | { ok: false; problems: string[] } {
   let parsed: unknown;
   try {
@@ -66,7 +67,14 @@ function check<O extends z.ZodType>(
       ],
     };
   }
-  const result = schema.safeParse(parsed);
+  let result = schema.safeParse(parsed);
+  if (!result.success && repair) {
+    try {
+      result = schema.safeParse(repair(parsed));
+    } catch {
+      // A repair that throws changes nothing: the first result stands.
+    }
+  }
   if (result.success) return { ok: true, data: result.data };
   return {
     ok: false,
@@ -234,7 +242,7 @@ export async function runAiTask<I extends z.ZodType, O extends z.ZodType>(
       return fallback("too_long");
     }
 
-    const checked = check(task.output, response.text, response.stopReason === "max_tokens");
+    const checked = check(task.output, response.text, response.stopReason === "max_tokens", task.repair);
     if (checked.ok) {
       record(attempts, "ok", latency, response.usage, cost, response.requestId);
       if (key && deps.cache && task.cache) {

@@ -1,11 +1,13 @@
 {
-  "version": "2026-10-14",
+  "version": "2026-10-21",
   "APP_NAME": "Receipts",
   "tagline": "Apply with proof.",
   "promise": "Find the jobs worth your time, send a CV that is true to you, and walk into interviews ready.",
   "support_email": "help@receipts.ng",
+  "app_url": "https://applywithproof.vercel.app",
   "timezone": "Africa/Lagos",
   "locale": "en-NG",
   "name_is_placeholder": true,
-  "chrome_extension_store_url": ""
+  "chrome_extension_store_url": "",
+  "app_url_note": "The app's one public address (founder round 27). The Chrome extension is built for it; Vercel's other addresses for this project redirect here when APP_URL is set to the same."
 }

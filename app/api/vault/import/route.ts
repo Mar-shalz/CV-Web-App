@@ -16,6 +16,9 @@ import { INLINE_MAX_BYTES, UPLOAD_MAX_BYTES, tooBigMessage } from "@/lib/uploads
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const IMAGES = ["image/jpeg", "image/png", "image/webp"] as const;
 
+// Reading a long CV can take a minute on a busy day (round 27).
+export const maxDuration = 120;
+
 type Reply = { ok: true; roles: number; items: number; merged: number; replaced: boolean; sensitiveSkipped: boolean } | { ok: false; error: string; manual?: boolean };
 
 function fail(error: string, status = 400, manual = false) {
@@ -67,9 +70,10 @@ export async function POST(request: NextRequest) {
     const fileHash = createHash("sha256").update(bytes).digest("hex");
     const type = file.type || (file.name.toLowerCase().endsWith(".docx") ? DOCX : "");
     if (type === "application/pdf" || bytes.subarray(0, 4).toString() === "%PDF") {
-      // The exact text goes with the file (D-183); a scanned PDF is read from the file alone.
+      // A PDF with real text is read as that text (D-183, round 27): exact characters, a far
+      // smaller request and a quicker read. A scanned PDF is read from the file itself.
       const layer = await pdfText(bytes);
-      input = { kind: "pdf", base64: bytes.toString("base64"), textLayer: layer?.text ?? null, fileHash };
+      input = layer ? { kind: "text", text: layer.text, fileHash } : { kind: "pdf", base64: bytes.toString("base64"), textLayer: null, fileHash };
     } else if (type === DOCX || file.name.toLowerCase().endsWith(".docx")) {
       const mammoth = await import("mammoth");
       const { value } = await mammoth.extractRawText({ buffer: bytes });
@@ -88,7 +92,13 @@ export async function POST(request: NextRequest) {
 
   const result = await runTask("parse_cv", input, { userId: viewer.id });
   if (!result.ok) {
-    return fail("We couldn't read your CV this time. You can add your roles by hand instead, it only takes a few minutes.", 422, true);
+    return fail(
+      result.fallback.reason === "timeout" || result.fallback.reason === "provider_error"
+        ? "Our reading service is busy right now. Try again in a minute, or add your roles by hand."
+        : "We couldn't read your CV this time. Try again, or add your roles by hand: it only takes a few minutes.",
+      422,
+      true,
+    );
   }
   if (!result.data.is_cv) return fail("This doesn't look like a CV. Check the file, or add your roles by hand.", 422, true);
 

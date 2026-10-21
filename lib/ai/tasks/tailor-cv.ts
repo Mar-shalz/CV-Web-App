@@ -56,8 +56,9 @@ export const tailorCv = defineTask({
   }),
   maxTokens: 14_000,
   timeoutMs: 60_000,
-  // More thinking for the CV (D-185): the rules are many and the quality bar is the point.
-  effort: "high",
+  // Medium (round 27): high thinking took 22 to 48 seconds a call on Gemini's free tier, and
+  // code checks the draft for craft and truth either way (D-185).
+  effort: "medium",
   render: (i) => [
     trusted(`Format: ${i.profile.label} (${i.profile.spelling}).\nFormat rules:\n${i.profile.rules.map((r) => `- ${r}`).join("\n")}`),
     trusted(`Months of full time work: ${i.experience_months}.`),

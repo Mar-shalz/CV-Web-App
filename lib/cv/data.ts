@@ -13,7 +13,8 @@ import { demoCvDoc } from "@/lib/demo/cv-doc";
 import type { CvDoc } from "./types";
 import { startTrialIfNeeded } from "@/lib/entitlements-server";
 import { passCvUsage } from "@/lib/payments/pass-usage";
-import { PRICES } from "@/lib/config";
+import { APP, LIMITS, PRICES } from "@/lib/config";
+import { TASKS } from "@/lib/ai/tasks";
 import { formatNaira } from "@/lib/format";
 
 export type CvRecord = { id: string; doc: CvDoc; locked: boolean; createdAt: string };
@@ -64,10 +65,15 @@ export async function generateForJob(viewer: Viewer, job: JobView): Promise<Gene
 
   const vault = await getVault(viewer);
   if (vault.confirmedItems === 0) return { ok: false, reason: "no_items", error: "Confirm a few achievements in My experience first. Your CV is written only from them." };
+  // Fair use (D-192): a daily ceiling on tailored CVs for any plan, set in config.
+  const supabase = await createClient();
+  const dayStart = new Date(`${new Intl.DateTimeFormat("en-CA", { timeZone: APP.timezone }).format(new Date())}T00:00:00+01:00`).toISOString();
+  const { count: today } = await supabase.from("cv_versions").select("id", { count: "exact", head: true }).eq("user_id", viewer.id).gte("created_at", dayStart);
+  const cap = LIMITS.ai.fair_use_cvs_per_day;
+  if (cap && (today ?? 0) >= cap) return { ok: false, reason: "error", error: `You've made ${cap} tailored CVs today, the most we allow in a day. You can make more tomorrow.` };
   const [contact, extras] = await Promise.all([getContact(viewer), getExtras(viewer)]);
   const { doc, generated, violations } = await buildCv(viewer, job, vault, contact, { extras });
 
-  const supabase = await createClient();
   const { data, error } = await supabase.from("cv_versions").insert({ user_id: viewer.id, job_id: job.id, format_profile: doc.format, content: doc }).select("id").single();
   if (error || !data) return { ok: false, reason: "error", error: "We couldn't save your CV. Try again." };
 
@@ -78,7 +84,7 @@ export async function generateForJob(viewer: Viewer, job: JobView): Promise<Gene
   }
   const bullets = doc.sections.flatMap((s) => (s.kind === "roles" ? s.roles.flatMap((r) => r.bullets) : []));
   await track("cv_generated", { format: doc.format, bullets_changed: bullets.filter((b) => b.rewriteType !== "kept").length }, viewer.id);
-  for (const v of violations) await track("fact_lock_violation", { type: v.split(":")[1]?.trim().split(" ")[0] ?? "unknown", prompt_version: "tailor_cv/v3" }, viewer.id);
+  for (const v of violations) await track("fact_lock_violation", { type: v.split(":")[1]?.trim().split(" ")[0] ?? "unknown", prompt_version: `tailor_cv/${TASKS.tailor_cv.promptVersion}` }, viewer.id);
   for (const f of bullets.flatMap((b) => b.flags)) await track("flag_shown", { type: f.type }, viewer.id);
   void generated;
   return { ok: true, cvId: data.id };

@@ -33,7 +33,8 @@
   },
   "ai": {
     "budget_usd_per_active_user_month": 0.5,
-    "note": "Hypothesis. Alert when cost per active user passes this."
+    "note": "Hypothesis. Alert when cost per active user passes this. fair_use_cvs_per_day: tailored CVs one person can make in a day (Lagos time), any plan; set it lower if cost per active user goes over budget (D-192).",
+    "fair_use_cvs_per_day": 25
   },
   "back_office": {
     "truth_report_sla_hours": 48,

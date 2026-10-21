@@ -1,4 +1,5 @@
 import "server-only";
+import { TASKS } from "@/lib/ai/tasks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LIMITS } from "@/lib/config";
 import banned from "@/config/lists/banned_phrases.json";
@@ -298,7 +299,19 @@ export async function getRules(staff: Staff): Promise<{ rules: RuleRow[]; lists:
 export type AiTaskRow = { task: string; model: string; calls: number; failed: number; avgLatencyMs: number; costUsd: number };
 export type AiProviderStatus = { name: string; ready: boolean; position: number | null };
 export type AiProblem = { at: string; task: string; model: string; outcome: string };
-export type AiData = { rows: AiTaskRow[]; totalUsd: number; activeUsers: number; perActiveUsd: number; budgetUsd: number; providers: AiProviderStatus[]; problems: AiProblem[] };
+export type AiData = {
+  rows: AiTaskRow[];
+  totalUsd: number;
+  activeUsers: number;
+  perActiveUsd: number;
+  budgetUsd: number;
+  providers: AiProviderStatus[];
+  problems: AiProblem[];
+  /** Typical wait for one model call, and the share of judgement tasks a lighter backup model answered (round 27). */
+  medianLatencyMs: number;
+  backupShare: number;
+  geminiTier: "free" | "paid";
+};
 
 /** Which AI keys this server has (never the keys themselves), in the order they're tried. */
 function providerStatus(): AiProviderStatus[] {
@@ -311,6 +324,8 @@ function providerStatus(): AiProviderStatus[] {
   ];
 }
 
+const geminiTier = (): "free" | "paid" => (process.env.GEMINI_TIER === "paid" ? "paid" : "free");
+
 export async function getAi(staff: Staff): Promise<AiData> {
   const budgetUsd = LIMITS.ai.budget_usd_per_active_user_month;
   if (staff.preview) {
@@ -322,7 +337,7 @@ export async function getAi(staff: Staff): Promise<AiData> {
       { task: "build_pack", model: "claude-haiku-5-5", calls: 655, failed: 2, avgLatencyMs: 1700, costUsd: 2.4 },
     ];
     const totalUsd = rows.reduce((s, r) => s + r.costUsd, 0);
-    return { rows, totalUsd, activeUsers: 430, perActiveUsd: totalUsd / 430, budgetUsd, providers: providerStatus(), problems: [{ at: ago(0, 2), task: "parse_cv", model: "gemini-3.8-flash", outcome: "provider_error" }] };
+    return { rows, totalUsd, activeUsers: 430, perActiveUsd: totalUsd / 430, budgetUsd, providers: providerStatus(), problems: [{ at: ago(0, 2), task: "parse_cv", model: "gemini-3.8-flash", outcome: "provider_error" }], medianLatencyMs: 6200, backupShare: 0.08, geminiTier: geminiTier() };
   }
   const db = createAdminClient();
   const [{ data }, { data: bad }] = await Promise.all([
@@ -343,7 +358,23 @@ export async function getAi(staff: Staff): Promise<AiData> {
   }
   const rows = [...by.values()].map(({ latencyTotal, ...r }) => ({ ...r, avgLatencyMs: r.calls ? latencyTotal / r.calls : 0 }));
   const totalUsd = rows.reduce((s, r) => s + r.costUsd, 0);
-  return { rows, totalUsd, activeUsers: users.size, perActiveUsd: users.size ? totalUsd / users.size : 0, budgetUsd, providers: providerStatus(), problems: (bad ?? []) as AiProblem[] };
+  // Speed: the median wait, and how often a judgement task (CV, email, interview) was answered
+  // by a lighter model because the main one was busy, common on Gemini's free tier.
+  const latencies = (data ?? []).filter((r) => r.outcome === "ok").map((r) => r.latency_ms).sort((a, b) => a - b);
+  const strong = (data ?? []).filter((r) => r.outcome === "ok" && TASKS[r.task as keyof typeof TASKS]?.model === "claude-sonnet-5-5");
+  const backup = strong.filter((r) => /lite|haiku/.test(r.model)).length;
+  return {
+    rows,
+    totalUsd,
+    activeUsers: users.size,
+    perActiveUsd: users.size ? totalUsd / users.size : 0,
+    budgetUsd,
+    providers: providerStatus(),
+    problems: (bad ?? []) as AiProblem[],
+    medianLatencyMs: latencies[Math.floor(latencies.length / 2)] ?? 0,
+    backupShare: strong.length ? backup / strong.length : 0,
+    geminiTier: geminiTier(),
+  };
 }
 
 // ---------------------------------------------------------------------------

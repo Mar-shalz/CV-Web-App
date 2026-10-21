@@ -14,12 +14,17 @@ export const GOOGLE_CALLBACK = "/auth/google";
 
 type Pending = { state: string; nonce: string; verifier: string; dest: "app" | "admin" };
 
-/** On when the keys are set, and only on the app's own address: preview copies use Supabase's flow. */
+/**
+ * On when the keys are set, and only on the app's own address (APP_URL), whose callback is
+ * the one registered with Google. Any other address (an old one, a preview copy) uses
+ * Supabase's flow: Google refuses a callback it doesn't know ("redirect_uri_mismatch",
+ * founder round 27, when the extension still opened the old address).
+ */
 export function googleDirectFor(origin: string): boolean {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) return false;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   try {
-    return !process.env.APP_URL || new URL(process.env.APP_URL).origin === origin;
+    return Boolean(process.env.APP_URL) && new URL(process.env.APP_URL as string).origin === origin;
   } catch {
     return false;
   }
