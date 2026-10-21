@@ -58,10 +58,10 @@ export const writeEmail = defineTask({
     body: z.string().max(1800),
     cover_letter: z.array(z.string().max(1400)).max(6).default([]),
   }),
-  maxTokens: 6000,
-  timeoutMs: 45_000,
-  // Medium, not high: on live tests high took about 16 seconds for no better email (round 26).
-  effort: "medium",
+  // Quality first (founder, round 28): the most thinking, and the time it needs.
+  maxTokens: 10_000,
+  timeoutMs: 90_000,
+  effort: "high",
   render: (i) => [
     trusted(`Applicant: ${i.person.full_name}${i.person.course ? `, ${i.person.course}` : ""}.${i.person.title_line ? `\nTheir CV title line: ${i.person.title_line}` : ""}\nSpelling: ${i.spelling}.`),
     trusted(`Their strongest proof for this job (use only these facts):\n${i.proof.map((p) => `- ${p}`).join("\n")}`),

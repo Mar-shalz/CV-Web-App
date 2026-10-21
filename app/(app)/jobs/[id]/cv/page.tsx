@@ -8,8 +8,8 @@ import { FlowSteps } from "@/components/flow/flow-steps";
 import { CvEditor } from "@/components/flow/cv-editor";
 import { GenerateCv } from "@/components/flow/generate-cv";
 
-// Writing a CV can take two writer passes plus the summary writer (D-185).
-export const maxDuration = 120;
+// Writing a CV can take two writer passes plus the summary writer, with the most thinking (D-185, round 28).
+export const maxDuration = 300;
 
 export const metadata: Metadata = { title: "Your Tailored CV" };
 

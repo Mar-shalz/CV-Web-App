@@ -32,15 +32,22 @@ export function thinkingFor(model: string, effort: AiEffort | undefined): Record
 
 /**
  * The model to try first, then others of the class when Google is busy (429 or 5xx) or
- * a model name is retired (404). Free tier capacity spikes are common.
+ * a model name is retired (404). Free tier capacity spikes are common. Judgement tasks
+ * (the CV, the email, the verdict, the interview) wait and ask the main model again,
+ * twice, before a lighter one answers: the founder chose quality over speed (round 28).
  */
 export function geminiModelsFor(model: AiModel): string[] {
   const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.5-flash,gemini-3.5-flash-lite")
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
-  return [...new Set([geminiModelFor(model), ...fallbacks])];
+  const first = geminiModelFor(model);
+  const strong = !model.includes("haiku");
+  return strong ? [first, first, first, ...fallbacks.filter((m) => m !== first)] : [...new Set([first, ...fallbacks])];
 }
+
+/** Waits before asking a busy model again: 2.5 seconds, then 6. */
+const BACKOFF_MS = [2_500, 6_000];
 
 export function geminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
@@ -104,10 +111,21 @@ async function call(model: string, body: unknown, timeoutMs: number): Promise<Ge
 async function callAny(models: string[], build: (model: string, withThinking: boolean) => unknown, timeoutMs: number): Promise<{ r: GeminiResponse; model: string }> {
   let last: unknown = new ProviderError("fatal");
   const started = Date.now();
-  for (const model of models) {
+  let repeats = 0;
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i]!;
+    const again = i > 0 && models[i - 1] === model;
+    if (again) {
+      // Asking the same model again only helps when it was busy, and only with time to spare.
+      const wait = BACKOFF_MS[Math.min(repeats, BACKOFF_MS.length - 1)]!;
+      const busy = last instanceof ProviderError && last.kind === "transient";
+      if (!busy || timeoutMs - (Date.now() - started) < wait + 15_000) continue;
+      repeats++;
+      await new Promise((r) => setTimeout(r, wait));
+    }
     // Don't start another model when too little of the time budget is left.
     const left = timeoutMs - (Date.now() - started);
-    if (model !== models[0] && left < Math.min(10_000, timeoutMs / 3)) break;
+    if (i > 0 && left < Math.min(10_000, timeoutMs / 3)) break;
     try {
       try {
         return { r: await call(model, build(model, true), left), model };

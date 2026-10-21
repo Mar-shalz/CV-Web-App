@@ -10,7 +10,7 @@ import { getExtras } from "@/lib/vault/extras";
 import { getVerdict, runEligibility } from "@/lib/jobs/check";
 import { matchPercent, requirementKey } from "@/lib/rules/match-score";
 
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 const LABEL = { apply: "Apply", apply_with_care: "Apply with care", skip: "Skip this one" } as const;
 

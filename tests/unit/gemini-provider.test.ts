@@ -61,6 +61,20 @@ describe("Gemini provider", () => {
     expect(res.servedModel).toBe("gemini-3.5-flash-lite");
   });
 
+  it("asks the main model again, after a wait, before a lighter one for judgement tasks (round 28)", async () => {
+    const seen: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      seen.push(String(url));
+      return seen.length === 1
+        ? new Response("{}", { status: 429 })
+        : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] }, finishReason: "STOP" }] }), { status: 200 });
+    });
+    const res = await geminiProvider.complete({ model: "claude-sonnet-5-5", system: "", user: "x", maxTokens: 10, timeoutMs: 60_000, jsonSchema: {} });
+    expect(seen).toHaveLength(2);
+    expect(seen[1]).toContain("gemini-3.5-flash:");
+    expect(res.servedModel).toBe("gemini-3.5-flash");
+  }, 10_000);
+
   it("keeps only grounded sources from web research", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       ok({ candidates: [{ content: { parts: [{ text: "notes" }] }, finishReason: "STOP", groundingMetadata: { groundingChunks: [{ web: { uri: "https://a.example", title: "A" } }, { web: { uri: "https://a.example", title: "A again" } }], webSearchQueries: ["q1", "q2"] } }] }),

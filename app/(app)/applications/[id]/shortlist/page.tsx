@@ -18,7 +18,7 @@ import { ArrowLeft2, Teacher, TickCircle, Crown1, DocumentText } from "@/compone
 
 export const metadata: Metadata = { title: "Interview Prep" };
 // A mock interview turn reads the whole interview so far (D-189).
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export default async function ShortlistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

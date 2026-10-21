@@ -26,9 +26,10 @@ export const fitVerdict = defineTask({
       .max(20),
     gaps: z.array(z.object({ gap: z.string().max(160), address_in: z.enum(["cv", "email", "interview"]), how: z.string().max(240) })).max(3),
   }),
-  maxTokens: 6000,
-  timeoutMs: 45_000,
-  effort: "medium",
+  // Quality first (founder, round 28): the advice on whether to apply gets the most thinking.
+  maxTokens: 10_000,
+  timeoutMs: 90_000,
+  effort: "high",
   render: (i) => [
     trusted(`Hard requirement checks, already decided by code (do not change them):\n${i.eligibility.map((e) => `- ${e.rule}: ${e.result}. ${e.reason}`).join("\n") || "- none stated"}`),
     trusted(`The person's confirmed evidence (cite by id):\n${i.items.map((it) => `- [${it.id}] (${it.role}) ${it.text}`).join("\n") || "- none yet"}`),

@@ -76,5 +76,5 @@ export function GenerateCv({ jobId }: { jobId: string }) {
       </section>
     );
   }
-  return <WorkingNotice title="Writing your CV for This Job" steps={STEPS} estimate="Usually 20 to 60 seconds. Only things you confirmed go on it" stepSeconds={10} />;
+  return <WorkingNotice title="Writing your CV for This Job" steps={STEPS} estimate="Usually 1 to 2 minutes. We take the time to get every line right, and only things you confirmed go on it" stepSeconds={10} />;
 }

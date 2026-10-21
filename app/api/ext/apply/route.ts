@@ -11,7 +11,7 @@ import { getApplicationForJob } from "@/lib/applications/data";
 import { openFlags, pendingSuggestions, type CvDoc } from "@/lib/cv/types";
 import { DEMO_CV } from "@/lib/demo/job";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const body = z.discriminatedUnion("step", [
   z.object({ step: z.literal("cv"), jobId: z.string() }),

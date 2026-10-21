@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "My Experience" };
 // Only the empty state uses the upload panel, so its code loads only then.
 const ImportPanel = lazy(() => import("@/components/vault/import-panel").then((m) => m.ImportPanel));
 // Writing a CV from the whole experience can take up to a minute.
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const GROUPS = [
   { title: "Work and Experience", kinds: ["job", "nysc_ppa", "internship_siwes", "volunteer", "project"] },

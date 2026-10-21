@@ -36,7 +36,7 @@ export function CvPanel({ ready, onBusy, onClose }: { ready: boolean; onBusy: (b
           Confirm a few achievements first. Your CV is written only from what you&apos;ve confirmed.
         </p>
       ) : busy ? (
-        <WorkingNotice compact title="Writing Your CV" steps={STEPS} estimate="Usually 20 to 60 seconds" stepSeconds={9} />
+        <WorkingNotice compact title="Writing Your CV" steps={STEPS} estimate="Usually 1 to 2 minutes" stepSeconds={9} />
       ) : result?.ok ? (
         <>
           <div className="rounded-2xl bg-proof-50 p-4 text-sm leading-6 text-proof-700">

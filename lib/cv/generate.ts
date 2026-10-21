@@ -155,9 +155,8 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     const craft = reviewDraft(draft, review);
     const score = next.length * 3 + craft.length;
     if (!best || score < best.score) best = { out: draft, lock: next, score };
-    // Truth problems always go back; craft ones when a job term is missing, an added claim was
-    // found, or there are several (round 27: each rewrite is another 10 to 40 seconds).
-    const retry = next.length > 0 || craft.length >= 3 || craft.some((c) => c.startsWith("The job asks for") || / adds (?:a purpose|words)/.test(c));
+    // Quality first (founder, round 28): any problem, truth or craft, goes back once.
+    const retry = next.length > 0 || craft.length > 0;
     if (!retry || attempt === 1) break;
     problems = [...next, ...craft];
   }

@@ -28,9 +28,10 @@ export const shortlistQuestions = defineTask({
       .min(1)
       .max(20),
   }),
-  maxTokens: 6000,
-  timeoutMs: 45_000,
-  effort: "low",
+  // Quality first (founder, round 28).
+  maxTokens: 9000,
+  timeoutMs: 75_000,
+  effort: "medium",
   render: (i) => [
     trusted(`Interview for ${i.job.title} at ${i.job.employer}. Level: ${i.job.level ?? "not stated"}. Format: ${i.format}.`),
     untrusted("cv_sent", i.bullets.map((b) => `[${b.id}] (${b.role}) ${b.text}`).join("\n")),

@@ -54,11 +54,11 @@ export const tailorCv = defineTask({
     }),
     key_terms_used: z.array(z.string().max(40)).max(8),
   }),
-  maxTokens: 14_000,
-  timeoutMs: 60_000,
-  // Medium (round 27): high thinking took 22 to 48 seconds a call on Gemini's free tier, and
-  // code checks the draft for craft and truth either way (D-185).
-  effort: "medium",
+  // Quality first (founder, round 28): the most thinking, and the time it needs. Thinking
+  // counts toward the token ceiling on Gemini, so the ceiling leaves room for it.
+  maxTokens: 24_000,
+  timeoutMs: 120_000,
+  effort: "high",
   render: (i) => [
     trusted(`Format: ${i.profile.label} (${i.profile.spelling}).\nFormat rules:\n${i.profile.rules.map((r) => `- ${r}`).join("\n")}`),
     trusted(`Months of full time work: ${i.experience_months}.`),

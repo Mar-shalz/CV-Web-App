@@ -30,6 +30,9 @@ import { StickyTop, SeeMore, MatchItem, MatchBar } from "@/components/flow/fit-p
 import { getExtras, type CvExtras } from "@/lib/vault/extras";
 import { matchPercent, requirementKey } from "@/lib/rules/match-score";
 
+// The fit verdict gets the most thinking (founder, round 28).
+export const maxDuration = 300;
+
 export const metadata: Metadata = { title: "Job Check" };
 
 const VERDICT = {
@@ -125,7 +128,7 @@ function VerdictSkeleton() {
     <WorkingNotice
       title="Checking your CV Against This Job"
       steps={["Reading what the job asks for", "Matching it with your experience", "Checking the rules for this kind of job", "Writing our advice"]}
-      estimate="Usually 10 to 40 seconds"
+      estimate="Usually 30 to 90 seconds"
       stepSeconds={7}
     />
   );
