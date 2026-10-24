@@ -248,7 +248,7 @@ async function scanFresh() {
     current = null;
   }
   if (!current) return emptyCard("We can't read this page", "Some pages block extensions. Scan what's on your screen instead, or highlight the job's text and read again.", true);
-  if (current.jobLike || current.source === "selection" || current.source === "structured") return jobCard();
+  if (current.jobLike || current.source === "selection" || current.source === "structured" || current.source === "linkedin") return jobCard();
   return noJobCard();
 }
 
@@ -282,7 +282,7 @@ function offline(message) {
   );
 }
 
-const SOURCE_LABEL = { structured: "Found the job details on this page", site: "Found the job description", page: "Found what looks like the job description", selection: "Using the text you highlighted", image: "Read from the image" };
+const SOURCE_LABEL = { linkedin: "Read the job you opened on LinkedIn", structured: "Found the job details on this page", site: "Found the job description", page: "Found what looks like the job description", selection: "Using the text you highlighted", image: "Read from the image" };
 
 function jobCard(note) {
   const c = captured.get(keyOf(current));
