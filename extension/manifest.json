@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Receipts: check a job, tailor your CV",
-  "short_name": "Receipts",
-  "version": "0.4.2",
+  "name": "__APP_NAME__: check a job, tailor your CV",
+  "short_name": "__APP_NAME__",
+  "version": "0.5.0",
   "description": "Check if the job you're looking at is real, save it, or tailor your CV to it, without leaving the page.",
   "action": {
-    "default_title": "Open Receipts",
+    "default_title": "Open __APP_NAME__",
     "default_icon": {
       "128": "icon.png"
     }

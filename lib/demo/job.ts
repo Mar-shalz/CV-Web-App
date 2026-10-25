@@ -6,12 +6,15 @@ import type { ParsedJob } from "@/lib/jobs/schema";
 export type ReqStatus = "met" | "partly" | "missing";
 export type RuleResult = "pass" | "fail" | "unknown";
 
+/** Ten days ahead, Lagos time, so the sample job never closes (it was a fixed date, and expired). */
+const inTenDays = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lagos" }).format(new Date(Date.now() + 10 * 86_400_000));
+
 export const DEMO_JOB = {
   id: "demo",
   title: "Graduate Trainee, Finance",
   employer: "Northbridge Bank",
   location: "Victoria Island, Lagos",
-  deadline: "2026-10-24",
+  deadline: inTenDays(),
   apply: { channel: "email" as const, to: "graduatetrainee@northbridgebank.example", subjectFormat: "GTP2026: [Full Name], [Course]" },
   destination: { country: "Nigeria", format: "Nigerian graduate programme" },
   capturedVia: "Pasted text",

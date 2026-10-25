@@ -70,7 +70,7 @@ async function api(path, body) {
   });
   const isJson = (res.headers.get("content-type") || "").includes("application/json");
   // A protected deployment answers with its own sign in page, not our JSON: don't sign out for that.
-  if (!isJson) throw new Error(`Receipts at ${new URL(APP_URL).host} isn't answering the extension. If the site is protected (Vercel Deployment Protection), turn that off, or rebuild the extension for your live address.`);
+  if (!isJson) throw new Error(`__APP_NAME__ at ${new URL(APP_URL).host} isn't answering the extension. If the site is protected (Vercel Deployment Protection), turn that off, or rebuild the extension for your live address.`);
   if (res.status === 401) {
     await signOutLocal();
     throw new Error("signin");
@@ -121,7 +121,7 @@ function signedOut() {
       "section",
       { class: "card hero" },
       h("div", { class: "art" }, icon("key", 30)),
-      h("h1", {}, "Sign in to Receipts"),
+      h("h1", {}, "Sign in to __APP_NAME__"),
       h("p", {}, "Sign in once, and the panel can check jobs and save them to your account while you browse."),
       h(
         "ul",
@@ -129,7 +129,7 @@ function signedOut() {
         ["Is this job real? Checked right here", "Save any job for later", "Tailor your CV to it in one tap"].map((t) => h("li", {}, icon("tick", 18), t)),
       ),
       h("button", { class: "btn primary", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/extension/connect` }) }, icon("user", 18), "Sign in"),
-      h("p", { class: "small" }, "We open Receipts in a tab. Sign in there, and this panel signs in by itself."),
+      h("p", { class: "small" }, "We open __APP_NAME__ in a tab. Sign in there, and this panel signs in by itself."),
     ),
   );
 }
@@ -151,8 +151,8 @@ function allowCard() {
       "section",
       { class: "card hero" },
       h("div", { class: "art" }, icon("scan", 30)),
-      h("h1", {}, "Let Receipts read job pages"),
-      h("p", {}, "Chrome asks once. Receipts reads a page only when this panel is open on it, and only sends the job advert."),
+      h("h1", {}, "Let __APP_NAME__ read job pages"),
+      h("p", {}, "Chrome asks once. __APP_NAME__ reads a page only when this panel is open on it, and only sends the job advert."),
       h(
         "button",
         {
@@ -237,9 +237,9 @@ async function scanFresh() {
   // check on the address would wrongly say "no job here" (founder, round 17).
   if (!(await hasAllSites())) return allowCard();
   const tab = await activeTab();
-  if (!tab?.id) return emptyCard("Open a job advert", "Go to a job on LinkedIn, a company's careers page or any job site, and Receipts reads it here.");
-  if (tab.url && tab.url.startsWith(APP_URL)) return emptyCard("You're on Receipts", "Open a job advert on another site, and this panel reads it.");
-  if (tab.url && !/^https?:/.test(tab.url)) return emptyCard("Open a job advert", "This is one of Chrome's own pages. Go to a job advert on any website, and Receipts reads it here.");
+  if (!tab?.id) return emptyCard("Open a job advert", "Go to a job on LinkedIn, a company's careers page or any job site, and __APP_NAME__ reads it here.");
+  if (tab.url && tab.url.startsWith(APP_URL)) return emptyCard("You're on __APP_NAME__", "Open a job advert on another site, and this panel reads it.");
+  if (tab.url && !/^https?:/.test(tab.url)) return emptyCard("Open a job advert", "This is one of Chrome's own pages. Go to a job advert on any website, and __APP_NAME__ reads it here.");
   scanning();
   try {
     const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: detectJob });
@@ -274,7 +274,7 @@ function offline(message) {
       "section",
       { class: "card hero" },
       h("div", { class: "art" }, icon("warn", 30)),
-      h("h1", {}, "Can't reach Receipts"),
+      h("h1", {}, "Can't reach __APP_NAME__"),
       h("p", {}, message || "Check your connection, then try again."),
       h("p", { class: "small" }, `The extension talks to ${new URL(APP_URL).host}.`),
       h("button", { class: "btn primary", type: "button", onclick: start }, "Try again"),
@@ -384,12 +384,12 @@ async function checkReal() {
 }
 
 async function tailor() {
-  const stop = busy("Sending the job to Receipts", ["Reading the advert", "Opening Receipts"]);
+  const stop = busy("Sending the job to __APP_NAME__", ["Reading the advert", "Opening __APP_NAME__"]);
   try {
     const c = await ensureCaptured();
     stop();
     chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}` });
-    jobCard("Opened in Receipts: check the details there, then tailor your CV.");
+    jobCard("Opened in __APP_NAME__: check the details there, then tailor your CV.");
   } catch (e) {
     stop();
     if (e.message !== "signin") failed(e.message, tailor);
@@ -410,7 +410,7 @@ async function save() {
         h("div", { class: "art", style: "color:var(--proof)" }, icon("bookmark", 30)),
         h("h1", {}, "Saved for later"),
         h("p", {}, `${c.title || "This job"}${c.employer ? ` at ${c.employer}` : ""} is in your Applications, under Saved for later.`),
-        h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/applications?status=saved` }) }, icon("external", 18), "See it in Receipts"),
+        h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/applications?status=saved` }) }, icon("external", 18), "See it in __APP_NAME__"),
         h("button", { class: "btn ghost", type: "button", onclick: () => (openJob?.view ? results(openJob.captured, openJob.view) : jobCard()) }, "Back to the job"),
       ),
     );
@@ -675,7 +675,7 @@ function packScreen(c, pack) {
           { class: "card" },
           h("div", { class: "banner good" }, icon("tick", 20), h("span", {}, "Application saved")),
           h("p", { class: "small", style: "margin-top:10px;color:var(--ink-2)" }, "We kept the job post and the exact CV you sent. We'll check in with you about it."),
-          h("button", { class: "btn outline", type: "button", style: "margin-top:12px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/applications/${pack.applicationId}` }) }, icon("external", 16), "See it in Receipts"),
+          h("button", { class: "btn outline", type: "button", style: "margin-top:12px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/applications/${pack.applicationId}` }) }, icon("external", 16), "See it in __APP_NAME__"),
         ),
       );
     } catch (e) {
@@ -805,7 +805,7 @@ function results(c, v) {
     c.jobId ? fitBox(c) : null,
     shareBox(c, v),
     h("section", { class: "row" }, h("button", { class: "btn outline", type: "button", onclick: save }, icon("bookmark", 18), "Save"), h("button", { class: "btn primary", type: "button", onclick: tailor }, icon("magic", 18), "Tailor my CV")),
-    h("button", { class: "btn ghost", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/real` }) }, icon("external", 16), "Open the full check in Receipts"),
+    h("button", { class: "btn ghost", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/real` }) }, icon("external", 16), "Open the full check in __APP_NAME__"),
   );
 }
 

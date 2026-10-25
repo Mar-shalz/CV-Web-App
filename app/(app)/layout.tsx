@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { VisitBeacon } from "@/components/shell/visit-beacon";
@@ -13,6 +14,9 @@ import { getInbox } from "@/lib/notifications/data";
 import { UpdatesDrawer } from "@/components/shell/updates-drawer";
 import { CheckInItem } from "@/components/home/check-in-item";
 import { APP, APP_NAME, MARKETS } from "@/lib/config";
+
+// Signed-in screens are private: never in search results (founder round 31).
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AppLayout({
   children,

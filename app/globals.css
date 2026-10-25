@@ -434,3 +434,136 @@ html[data-navigating] { cursor: progress; }
 .toast { animation: toast-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-14px) scale(0.97); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+
+/* ---------------------------------------------------------------------------
+ * Landing page (founder round 31): a deep night sky with drifting light, glass
+ * panels, floating cards and sections that rise into view. CSS only, no script,
+ * and all of it stops for people who ask for less motion or save data.
+ * ------------------------------------------------------------------------- */
+.lp-night {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #10236b 0%, #0a1648 45%, #050b24 100%);
+  color: #fff;
+}
+.lp-blob {
+  position: absolute;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(72px);
+  opacity: 0.6;
+  pointer-events: none;
+  animation: lp-drift 22s ease-in-out infinite alternate;
+}
+@keyframes lp-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(7%, -5%, 0) scale(1.08); }
+  100% { transform: translate3d(-5%, 6%, 0) scale(0.95); }
+}
+.lp-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(70% 60% at 50% 30%, #000 0%, transparent 100%);
+  pointer-events: none;
+}
+.lp-glass {
+  background: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.2);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 24px 60px -28px rgb(2 6 23 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+.lp-glass-light {
+  background: rgb(255 255 255 / 0.9);
+  border: 1px solid rgb(255 255 255 / 0.9);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: 0 30px 70px -36px rgb(30 71 217 / 0.45), inset 0 1px 0 #fff;
+}
+.lp-gradient-text {
+  background: linear-gradient(100deg, #ffffff 0%, #c7d8ff 40%, #7dd3fc 75%, #a5b4fc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lp-ink-gradient {
+  background: linear-gradient(100deg, #1e47d9 0%, #3b82f6 55%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lp-float { animation: lp-float 7s ease-in-out infinite; animation-delay: var(--d, 0s); }
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.lp-phone {
+  position: relative;
+  border-radius: 44px;
+  padding: 10px;
+  background: linear-gradient(160deg, #1f2a52, #0b1020);
+  box-shadow: 0 50px 100px -40px rgb(2 6 23 / 0.8), 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+.lp-phone img { border-radius: 34px; display: block; width: 100%; height: auto; }
+.lp-phone::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 84px;
+  height: 22px;
+  translate: -50% 0;
+  border-radius: 9999px;
+  background: #0b1020;
+  z-index: 2;
+}
+.lp-marquee { mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.lp-marquee-track { display: flex; width: max-content; animation: lp-marquee 45s linear infinite; }
+@keyframes lp-marquee { to { transform: translateX(-50%); } }
+.lp-dash {
+  background-image: linear-gradient(90deg, rgb(30 71 217 / 0.55) 50%, transparent 50%);
+  background-size: 14px 2px;
+  animation: lp-dash 1.4s linear infinite;
+}
+@keyframes lp-dash { to { background-position: 28px 0; } }
+.lp-halo {
+  position: absolute;
+  z-index: -1;
+  inset: 10% 5%;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* Sections rise into view as they scroll in (browsers without it simply show them). */
+@supports (animation-timeline: view()) {
+  .lp-reveal {
+    animation: lp-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 24%;
+  }
+}
+@keyframes lp-in {
+  from { opacity: 0; transform: translateY(32px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.lp-faq summary::-webkit-details-marker { display: none; }
+.lp-faq[open] .lp-faq-icon { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) {
+  .lp-blob, .lp-float, .lp-marquee-track, .lp-dash { animation: none !important; }
+  .lp-reveal { animation: none !important; }
+}
+[data-low-data] .lp-blob, [data-low-data] .lp-float, [data-low-data] .lp-marquee-track { animation: none !important; }
+/* Deeper glass for cards that float over a light screenshot: the words stay readable. */
+.lp-glass-deep {
+  background: rgb(8 18 60 / 0.78);
+  border: 1px solid rgb(255 255 255 / 0.18);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: 0 24px 50px -20px rgb(2 6 23 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.16);
+  color: #fff;
+}

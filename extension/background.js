@@ -4,8 +4,8 @@ import { composeWithCv } from "./gmail.js";
 // sends it to the panel to read.
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
-  chrome.contextMenus.create({ id: "image", title: "Read this job image with Receipts", contexts: ["image"] });
-  chrome.contextMenus.create({ id: "text", title: "Send this job to Receipts", contexts: ["selection"] });
+  chrome.contextMenus.create({ id: "image", title: "Read this job image with __APP_NAME__", contexts: ["image"] });
+  chrome.contextMenus.create({ id: "text", title: "Send this job to __APP_NAME__", contexts: ["selection"] });
 });
 chrome.runtime.onStartup.addListener(() => chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {}));
 

@@ -32,10 +32,42 @@ const urbanist = Urbanist({
   display: "swap",
 });
 
+// Search and sharing (founder round 31): one public address, a description in plain
+// words, a share card, and private screens kept out of search (their layouts say noindex).
+const SITE = (APP as { app_url?: string }).app_url ?? "https://applywithproof.vercel.app";
+const DESCRIPTION =
+  "Check if a job is real, see how well you match, and send a CV built only from what you've actually done. Then practise for the interview one question at a time. Made for job seekers in Nigeria and beyond.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE),
   title: { default: `${APP_NAME}: ${APP.tagline}`, template: `%s · ${APP_NAME}` },
-  description: APP.promise,
+  description: DESCRIPTION,
   applicationName: APP_NAME,
+  keywords: [
+    "CV builder Nigeria",
+    "tailor CV to job",
+    "fake job checker",
+    "job scam check Nigeria",
+    "graduate trainee programme CV",
+    "NYSC CV",
+    "ATS friendly CV",
+    "cover letter",
+    "mock interview practice",
+    "job application email",
+    "UK CV format",
+    "US resume",
+  ],
+  category: "careers",
+  openGraph: {
+    type: "website",
+    url: SITE,
+    siteName: APP_NAME,
+    title: `${APP_NAME}: ${APP.tagline}`,
+    description: DESCRIPTION,
+    locale: "en_NG",
+  },
+  twitter: { card: "summary_large_image", title: `${APP_NAME}: ${APP.tagline}`, description: DESCRIPTION },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
   appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
   formatDetection: { telephone: false },
 };
