@@ -337,7 +337,7 @@ export function CaptureForm({ initialMode = "paste", initialError, purpose = "ta
       {busy ? <WorkingNotice compact title="Reading the Job" steps={["Opening the job", "Finding what they ask for", "Checking how to apply"]} estimate="Usually 5 to 30 seconds. Links from sites like LinkedIn take longer" stepSeconds={6} /> : null}
       <div className="rounded-2xl bg-ink-50 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
         <p className="text-[0.8125rem] leading-5 text-ink-600">
-          {purpose === "real" ? "Next, we check the company, its website and email, and where this job was posted." : "Next, we check if you qualify and if the job looks genuine."} <span className="font-semibold text-ink-900">Free, even after your trial.</span>
+          {purpose === "real" ? "Next, we check the company, its website and email, and where this job was posted." : "Next, we check if you qualify and if the job looks genuine."} <span className="font-semibold text-ink-900">Always free.</span>
         </p>
         <Button type="submit" size="lg" className="mt-3 w-full shrink-0 sm:mt-0 sm:w-auto" aria-disabled={!ready || busy || undefined} aria-busy={busy || undefined}>
           {busy ? (

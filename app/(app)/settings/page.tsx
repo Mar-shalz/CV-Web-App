@@ -9,7 +9,7 @@ import { DataSaverSwitch } from "@/components/settings/settings-forms";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { marketsLabel } from "@/lib/markets";
 import { AccessCard } from "@/components/shell/access-card";
-import { accessState } from "@/lib/entitlements";
+import { accessOf } from "@/lib/entitlements";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -36,7 +36,7 @@ export default async function SettingsPage() {
   const viewer = await requireReadyViewer();
   const stage = MARKETS.career_stages.find((s) => s.id === viewer.careerStage)?.label;
   const markets = marketsLabel(viewer.targetMarkets);
-  const access = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
+  const access = accessOf(viewer);
 
   return (
     <div className="space-y-3">
@@ -82,7 +82,7 @@ export default async function SettingsPage() {
 
       {/* Phones: the trial or pass card lives here, not on Home (founder, round 24). */}
       <div className="lg:hidden">
-        <AccessCard state={access} />
+        <AccessCard state={access} pass={{ amountKobo: viewer.pricing.pass.amountKobo, days: viewer.pricing.pass.days }} />
       </div>
 
       <div className="grid items-start gap-3 xl:grid-cols-2">
@@ -92,7 +92,8 @@ export default async function SettingsPage() {
             <li>
               <DataSaverSwitch initial={viewer.lowDataMode} icon={<Mobile size={20} />} />
             </li>
-            <Row href="/pass" icon={<Crown1 size={20} />} title="Pass and payments" body="Your pass, receipts and the refund rule." />
+            {/* Nothing to buy while the app is open (D-196). */}
+            {access.kind !== "open" ? <Row href="/pass" icon={<Crown1 size={20} />} title="Pass and payments" body="Your pass, receipts and the refund rule." /> : null}
             <Row className="lg:hidden" href="/extension" icon={<Global size={20} />} title="Chrome extension" body="On a laptop or tablet: send any job you're looking at here in one click." />
           </ul>
         </section>

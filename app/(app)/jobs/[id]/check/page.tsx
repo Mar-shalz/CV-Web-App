@@ -9,7 +9,7 @@ import { getVerdict, runEligibility } from "@/lib/jobs/check";
 import { quickCheck, savedCheck } from "@/lib/legitimacy";
 import { createClient } from "@/lib/supabase/server";
 import { startTrialIfNeeded } from "@/lib/entitlements-server";
-import { accessState, canUse } from "@/lib/entitlements";
+import { accessOf, canUse } from "@/lib/entitlements";
 import type { FinalVerdict } from "@/lib/rules/verdict";
 import type { EligibilityResult } from "@/lib/rules/eligibility/types";
 import { FILTER_LABELS, CHANNEL_LABELS } from "@/lib/jobs/labels";
@@ -141,7 +141,7 @@ function addedForJob(extras: CvExtras, jobId: string): Map<string, string> {
 
 /** Save for later and Tailor my CV, side by side: under the advice and again under the match list. */
 function JobActions({ viewer, job, compact = false }: { viewer: Viewer; job: JobView; compact?: boolean }) {
-  const access = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
+  const access = accessOf(viewer);
   const canTailor = canUse("tailored_cv", access);
   const size = compact ? "md" : "lg";
   const tailor = canTailor ? (
@@ -185,7 +185,7 @@ async function VerdictHero({ promise, viewer, job, extras }: { promise: Promise<
   const v = await promise;
   const t = VERDICT[v.verdict];
   const Icon = t.icon;
-  const access = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
+  const access = accessOf(viewer);
   const canTailor = canUse("tailored_cv", access);
   const pct = matchPercent(v.requirements, job.parsed.requirements, new Set(addedForJob(extras, job.id).keys()));
 

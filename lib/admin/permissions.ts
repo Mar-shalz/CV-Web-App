@@ -10,6 +10,8 @@ export const PERMISSIONS = [
   "waitlist",
   "payments",
   "payments.refund",
+  // Charging on or off, and the amounts (D-196). Owner only: it is a money decision.
+  "payments.pricing",
   "reviews",
   "reviews.resolve",
   "rules",

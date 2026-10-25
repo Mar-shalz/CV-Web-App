@@ -3,7 +3,7 @@ import { searchProvider } from "@/lib/search";
 import { searchNotes } from "@/lib/legitimacy/search-research";
 import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
-import { accessState, canUse } from "@/lib/entitlements";
+import { accessOf, canUse } from "@/lib/entitlements";
 import { runTask } from "@/lib/ai";
 import { lintCopy } from "@/lib/copy-lint";
 import { getCvById } from "@/lib/cv/data";
@@ -39,13 +39,14 @@ export type ShortlistView = {
   mock: MockState | null;
 };
 
-export type ShortlistAccess = "pass" | "trial" | "boost" | "locked";
+export type ShortlistAccess = "open" | "pass" | "trial" | "boost" | "locked";
 
 const EMPTY_INVITE: ShortlistView["invite"] = { date: null, time: null, placeOrLink: null, format: "unknown", logisticsDone: [] };
 
 /** Shortlist mode is part of the trial and the pass; without either, the interview boost unlocks it for one invite. */
 export async function shortlistAccess(viewer: Viewer, applicationId: string): Promise<ShortlistAccess> {
-  const state = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
+  const state = accessOf(viewer);
+  if (state.kind === "open") return "open";
   if (state.kind === "pass") return "pass";
   if (canUse("shortlist", state)) return "trial";
   if (viewer.preview) return "locked";

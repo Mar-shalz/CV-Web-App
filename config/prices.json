@@ -1,6 +1,7 @@
 {
-  "version": "2026-10-14",
+  "version": "2026-10-25",
   "currency": "NGN",
+  "charging_default": false,
   "products": {
     "job_hunt_30d": {
       "label": "Job hunt pass",
@@ -27,5 +28,5 @@
     "within_days": 7,
     "max_packed_applications": 2
   },
-  "note": "Founder to confirm: 30 tailored CVs per pass and a 10 CV top-up for N1,500 (D-114). Free features stay unlimited."
+  "note": "Defaults only. The back office (Payments, Charging) turns charging on and sets the amounts (D-196); while charging is off the app is open to everyone with no prices or trial. 30 tailored CVs per pass and a 10 CV top-up (D-114)."
 }

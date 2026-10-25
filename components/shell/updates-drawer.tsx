@@ -275,8 +275,8 @@ export function UpdatesDrawer({
                   No updates yet
                 </p>
                 <p className="mt-1 max-w-[280px] text-sm leading-5 text-ink-600">
-                  Messages from us, payment receipts and reminders about your
-                  pass or trial will show here.
+                  Messages from us, check-ins on your applications and
+                  reminders will show here.
                 </p>
               </div>
             ) : null}

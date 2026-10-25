@@ -4,9 +4,13 @@ import { formatNaira } from "@/lib/format";
 import { PRICES } from "@/lib/config";
 import { Crown1, Timer1 } from "@/components/icons";
 
-function describe(state: AccessState) {
-  const price = formatNaira(PRICES.products.job_hunt_30d.amount_kobo);
-  const days = PRICES.products.job_hunt_30d.days;
+/** The pass as sold right now (D-196); the config defaults when not given. */
+type PassPrice = { amountKobo: number; days: number };
+const DEFAULT_PASS: PassPrice = { amountKobo: PRICES.products.job_hunt_30d.amount_kobo, days: PRICES.products.job_hunt_30d.days };
+
+function describe(state: Exclude<AccessState, { kind: "open" }>, pass: PassPrice) {
+  const price = formatNaira(pass.amountKobo);
+  const days = pass.days;
   switch (state.kind) {
     case "pass":
       if (state.passType === "free_access")
@@ -33,9 +37,10 @@ function describe(state: AccessState) {
   }
 }
 
-/** Trial or pass status with days left (sidebar and Home on phones). */
-export function AccessCard({ state }: { state: AccessState }) {
-  const d = describe(state);
+/** Trial or pass status with days left (sidebar and Settings on phones). Nothing while the app is open (D-196). */
+export function AccessCard({ state, pass = DEFAULT_PASS }: { state: AccessState; pass?: PassPrice }) {
+  if (state.kind === "open") return null;
+  const d = describe(state, pass);
   return (
     <section aria-label="Your plan" className="brand-gradient relative overflow-hidden rounded-[20px] p-4 text-white">
       <div className="absolute -right-6 -top-6 size-24 rounded-full bg-white/10" aria-hidden="true" />
@@ -66,8 +71,9 @@ export function AccessCard({ state }: { state: AccessState }) {
   );
 }
 
-export function AccessBadge({ state }: { state: AccessState }) {
-  const d = describe(state);
+export function AccessBadge({ state, pass = DEFAULT_PASS }: { state: AccessState; pass?: PassPrice }) {
+  if (state.kind === "open") return null;
+  const d = describe(state, pass);
   return (
     <Link href="/pass" className="brand-gradient mx-auto grid size-12 place-items-center rounded-2xl text-white" title={`${d.title}: ${d.line}`}>
       {state.kind === "pass" ? <Crown1 size={22} variant="bulk" /> : <Timer1 size={22} variant="bulk" />}

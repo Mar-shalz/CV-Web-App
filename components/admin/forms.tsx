@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { MessageDraft } from "@/lib/admin/messages";
-import { addMember, grantFreeAccess, markRefunded, sendUpdate, type AdminActionState } from "@/app/admin/actions";
+import { addMember, grantFreeAccess, markRefunded, savePricing, sendUpdate, type AdminActionState } from "@/app/admin/actions";
+import type { Pricing } from "@/lib/pricing/settings";
 import type { UserHit } from "@/app/admin/api/find-users/route";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { inputClass, outlinedInputClass } from "@/components/ui/field";
@@ -372,6 +373,65 @@ export function FreeAccessForm() {
       <div className="md:col-span-4">
         <Result state={state} />
       </div>
+    </form>
+  );
+}
+
+/** Charging on or off, with every amount (D-196). Off = the app is open to everyone. */
+export function PricingForm({ initial, canEdit }: { initial: Pricing; canEdit: boolean }) {
+  const [state, action] = useActionState<AdminActionState, FormData>(savePricing, undefined);
+  const [on, setOn] = useState(initial.charging);
+  const field = (name: string, label: string, value: number, prefix?: string) => (
+    <div>
+      <label htmlFor={`pr-${name}`} className="text-[0.8125rem] font-semibold text-ink-900">
+        {label}
+      </label>
+      <div className="relative mt-1.5">
+        {prefix ? <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-ink-500">{prefix}</span> : null}
+        <input id={`pr-${name}`} name={name} inputMode="numeric" defaultValue={value} disabled={!canEdit} className={`${inputClass} ${prefix ? "pl-8" : ""}`} />
+      </div>
+    </div>
+  );
+  return (
+    <form action={action} className="space-y-5 p-5">
+      <label className={`flex cursor-pointer items-start gap-4 rounded-2xl p-4 ring-1 ${on ? "bg-care-50 ring-care-100" : "bg-proof-50 ring-proof-100"}`}>
+        <input type="checkbox" name="charging" checked={on} onChange={(e) => setOn(e.target.checked)} disabled={!canEdit} className="peer sr-only" />
+        <span aria-hidden="true" className={`mt-0.5 flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors ${on ? "bg-care-600" : "bg-ink-300"} peer-focus-visible:outline-3 peer-focus-visible:outline-brand-500`}>
+          <span className={`size-5 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : ""}`} />
+        </span>
+        <span>
+          <span className="block text-[0.9375rem] font-semibold text-ink-900">{on ? "Charging is on" : "Charging is off: everything is open"}</span>
+          <span className="mt-0.5 block text-[0.8125rem] leading-5 text-ink-600">
+            {on ? "People get the free trial below, then pay for the pass, top-ups and interview boosts." : "No prices, no trial, no limits beyond fair use, for everyone. Turn it on when you're ready to charge."}
+          </span>
+        </span>
+      </label>
+      <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Free trial</legend>
+        {field("trial_days", "Days", initial.trial.days)}
+        {field("trial_cvs", "Tailored CVs", initial.trial.cvs)}
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Job hunt pass</legend>
+        {field("pass_naira", "Price", initial.pass.amountKobo / 100, "₦")}
+        {field("pass_days", "Days", initial.pass.days)}
+        {field("pass_cvs", "Tailored CVs", initial.pass.cvs)}
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Top-up and interview boost</legend>
+        {field("topup_naira", "Top-up price", initial.topup.amountKobo / 100, "₦")}
+        {field("topup_cvs", "CVs a top-up adds", initial.topup.cvs)}
+        {field("boost_naira", "Interview boost price", initial.boost.amountKobo / 100, "₦")}
+      </fieldset>
+      <p className="text-xs leading-5 text-ink-500">New amounts apply to new payments only. Anything already paid for is kept.</p>
+      {canEdit ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <SubmitButton pendingLabel="Saving">Save pricing</SubmitButton>
+          <Result state={state} />
+        </div>
+      ) : (
+        <p className="text-sm text-ink-600">Only the owner can change pricing.</p>
+      )}
     </form>
   );
 }

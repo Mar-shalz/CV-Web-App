@@ -7,7 +7,7 @@ import { AccessBadge, AccessCard } from "@/components/shell/access-card";
 import { Avatar } from "@/components/shell/user-chip";
 import { MessageQuestion } from "@/components/icons";
 import { requireReadyViewer } from "@/lib/auth/viewer";
-import { accessState } from "@/lib/entitlements";
+import { accessOf } from "@/lib/entitlements";
 import { getCheckIns } from "@/lib/home-data";
 import { getInbox } from "@/lib/notifications/data";
 import { UpdatesDrawer } from "@/components/shell/updates-drawer";
@@ -27,12 +27,7 @@ export default async function AppLayout({
     getCheckIns(viewer),
     getInbox(viewer),
   ]);
-  const access = accessState({
-    trialStartedAt: viewer.trial.startedAt,
-    trialEndsAt: viewer.trial.endsAt,
-    trialCvsUsed: viewer.trial.cvsUsed,
-    activePass: viewer.activePass,
-  });
+  const access = accessOf(viewer);
   const stageLabel =
     MARKETS.career_stages.find((s) => s.id === viewer.careerStage)?.label ??
     null;
@@ -58,8 +53,8 @@ export default async function AppLayout({
       <VisitBeacon />
       <Sidebar
         initialCollapsed={jar.get("sb_collapsed")?.value === "1"}
-        footer={<AccessCard state={access} />}
-        footerCollapsed={<AccessBadge state={access} />}
+        footer={<AccessCard state={access} pass={{ amountKobo: viewer.pricing.pass.amountKobo, days: viewer.pricing.pass.days }} />}
+        footerCollapsed={<AccessBadge state={access} pass={{ amountKobo: viewer.pricing.pass.amountKobo, days: viewer.pricing.pass.days }} />}
         updates={{
           checkInCount: checkIns.length,
           items: inbox.items,

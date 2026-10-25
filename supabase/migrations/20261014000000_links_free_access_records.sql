@@ -222,3 +222,15 @@ alter table public.application_packs add column if not exists cover_letter jsonb
 -- the person's answers and the feedback, one session per application. Owner only, through
 -- the shortlist_sessions policies.
 alter table public.shortlist_sessions add column if not exists mock_interview jsonb;
+
+-- 23. App settings the back office changes without a deploy (founder round 30, D-196):
+-- "pricing" holds charging on or off and the amounts. Read and written by the server with
+-- the secret key only; no app user can read or change it.
+create table if not exists public.app_settings (
+  key text primary key check (char_length(key) <= 40),
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users (id) on delete set null
+);
+alter table public.app_settings enable row level security;
+revoke all on public.app_settings from anon, authenticated;

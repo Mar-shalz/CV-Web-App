@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { getHomeData } from "@/lib/home-data";
-import { accessState } from "@/lib/entitlements";
+import { accessOf } from "@/lib/entitlements";
 import { firstName, formatDate, greeting } from "@/lib/format";
 import { LIMITS } from "@/lib/config";
 import { StatCard } from "@/components/home/stat-card";
@@ -25,12 +25,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const viewer = await requireReadyViewer();
   const { preview } = await searchParams;
   const data = await getHomeData(viewer, { previewEmpty: preview === "new" });
-  const access = accessState({
-    trialStartedAt: viewer.trial.startedAt,
-    trialEndsAt: viewer.trial.endsAt,
-    trialCvsUsed: viewer.trial.cvsUsed,
-    activePass: viewer.activePass,
-  });
+  const access = accessOf(viewer);
 
   // Setup shows until the first application is sent. Step 2 is done once a CV has been
   // tailored to a job (D-104), not just when a job was added.

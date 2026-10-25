@@ -35,8 +35,8 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   );
 
   if (access === "locked") {
-    const boost = PRICES.products.interview_boost;
-    const pass = PRICES.products.job_hunt_30d;
+    const boost = { ...PRICES.products.interview_boost, amount_kobo: viewer.pricing.boost.amountKobo };
+    const pass = { ...PRICES.products.job_hunt_30d, amount_kobo: viewer.pricing.pass.amountKobo, days: viewer.pricing.pass.days };
     return (
       <div className="mx-auto max-w-2xl space-y-3">
         {back}

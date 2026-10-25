@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isPreviewMode } from "@/lib/env";
 import { LEGAL } from "@/lib/config";
+import { DEFAULT_PRICING, getPricing, type Pricing } from "@/lib/pricing/settings";
 
 export type Viewer = {
   id: string;
@@ -18,6 +19,8 @@ export type Viewer = {
   activePass: { type: string; endsAt: string | null } | null;
   /** Paused by the back office. Every app screen sends them to /suspended. */
   suspended: boolean;
+  /** Charging on or off, and the amounts (D-196). */
+  pricing: Pricing;
   preview: boolean;
 };
 
@@ -33,6 +36,7 @@ const PREVIEW_VIEWER: Viewer = {
   trial: { startedAt: null, endsAt: null, cvsUsed: 0 },
   activePass: null,
   suspended: false,
+  pricing: DEFAULT_PRICING,
   preview: true,
 };
 
@@ -46,7 +50,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [{ data: row }, { data: profile }, { data: consents }, { data: usage }, { data: passes }, { data: free }] = await Promise.all([
+  const [{ data: row }, { data: profile }, { data: consents }, { data: usage }, { data: passes }, { data: free }, pricing] = await Promise.all([
     // "*" so new columns (suspended_at) never break sign in before their migration runs.
     supabase.from("users").select("*").eq("id", user.id).maybeSingle(),
     supabase.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
@@ -55,6 +59,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     supabase.from("passes").select("type, ends_at").eq("user_id", user.id).eq("status", "active").neq("type", "interview_boost").gt("ends_at", new Date().toISOString()).order("ends_at", { ascending: false }).limit(1),
     // Free access from the back office, matched on the sign in email (RLS shows only their own).
     supabase.from("free_access").select("ends_at").is("revoked_at", null).limit(1).maybeSingle(),
+    getPricing(),
   ]);
   const freeLive = free && (!free.ends_at || new Date(free.ends_at) > new Date());
 
@@ -82,6 +87,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     },
     activePass: passes?.[0] ? { type: passes[0].type, endsAt: passes[0].ends_at } : freeLive ? { type: "free_access", endsAt: free?.ends_at ?? "2099-12-31T00:00:00.000Z" } : null,
     suspended: Boolean((row as { suspended_at?: string | null } | null)?.suspended_at),
+    pricing,
     preview: false,
   };
 });

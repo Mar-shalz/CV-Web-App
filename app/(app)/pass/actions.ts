@@ -7,6 +7,7 @@ import { getViewer } from "@/lib/auth/viewer";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productFor, newReference } from "@/lib/payments/rules";
+import { productsFrom } from "@/lib/pricing/settings";
 import { initializeCharge, paystackConfigured } from "@/lib/payments/paystack";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 import { track } from "@/lib/analytics/server";
@@ -30,8 +31,12 @@ export async function startPayment(_prev: PayState, formData: FormData): Promise
   if (!viewer) redirect("/sign-in");
   const parsed = schema.safeParse({ product: formData.get("product"), application: formData.get("application") || null });
   if (!parsed.success) return { error: "Choose what you'd like to buy." };
-  const product = productFor(parsed.data.product);
-  if (!product) return { error: "That product isn't available." };
+  // Nothing is sold while the app is open (D-196); amounts come from the back office.
+  if (!viewer.pricing.charging) return { error: "Everything is open right now, so there's nothing to pay for." };
+  const base = productFor(parsed.data.product);
+  if (!base) return { error: "That product isn't available." };
+  const live = productsFrom(viewer.pricing)[base.id];
+  const product = { ...base, amountKobo: live.amountKobo, days: live.days };
   if (viewer.preview) redirect(`/pass/result?reference=preview_${product.id}`);
   if (product.id === "interview_boost" && !parsed.data.application) return { error: "Open the boost from the application you were invited for." };
   // A top-up adds CVs to a pass you have now (D-114).

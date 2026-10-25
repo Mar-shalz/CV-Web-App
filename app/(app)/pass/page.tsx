@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { requireReadyViewer } from "@/lib/auth/viewer";
-import { accessState } from "@/lib/entitlements";
+import { accessOf } from "@/lib/entitlements";
 import { createClient } from "@/lib/supabase/server";
-import { PRICES, LIMITS } from "@/lib/config";
+import { PRICES } from "@/lib/config";
 import { formatDate, formatNaira } from "@/lib/format";
 import { track } from "@/lib/analytics/server";
 import { PayButton } from "@/components/pass/pay-button";
@@ -12,8 +13,8 @@ import { Crown1, TickCircle, ShieldTick, Card, Bank, Mobile, Teacher, Receipt21,
 
 export const metadata: Metadata = { title: "Job Hunt Pass" };
 
-const ADDS = [
-  `Up to ${PRICES.products.job_hunt_30d.tailored_cvs} tailored CVs, one for each job you apply to`,
+const adds = (cvs: number) => [
+  `Up to ${cvs} tailored CVs, one for each job you apply to`,
   "The exact email, subject line and documents each employer asks for",
   "Interview prep for every invite: likely questions and practice with feedback",
 ];
@@ -24,9 +25,13 @@ type Search = { product?: string; application?: string; reason?: string };
 export default async function PassPage({ searchParams }: { searchParams: Promise<Search> }) {
   const viewer = await requireReadyViewer();
   const { product, application, reason } = await searchParams;
-  const pass = PRICES.products.job_hunt_30d;
-  const boost = PRICES.products.interview_boost;
-  const state = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
+  // The amounts in force (D-196), on the config's labels.
+  const pass = { ...PRICES.products.job_hunt_30d, amount_kobo: viewer.pricing.pass.amountKobo, days: viewer.pricing.pass.days, tailored_cvs: viewer.pricing.pass.cvs };
+  const boost = { ...PRICES.products.interview_boost, amount_kobo: viewer.pricing.boost.amountKobo };
+  const state = accessOf(viewer);
+  // While the app is open there is nothing to buy (D-196).
+  if (state.kind === "open") redirect("/home");
+  const ADDS = adds(pass.tailored_cvs);
   const appId = application && /^[0-9a-f-]{36}$/.test(application) ? application : null;
   const wantsBoost = product === "interview_boost" && Boolean(appId || viewer.preview);
 
@@ -38,7 +43,7 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
   }
   if (state.kind !== "pass") await track("paywall_shown", { trigger: reason ?? (wantsBoost ? "shortlist" : state.kind) }, viewer.id);
   const usage = state.kind === "pass" ? await passCvUsage(viewer) : null;
-  const topup = PRICES.products.cv_topup;
+  const topup = { ...PRICES.products.cv_topup, amount_kobo: viewer.pricing.topup.amountKobo, adds_cvs: viewer.pricing.topup.cvs };
 
   const headline =
     state.kind === "pass"
@@ -46,7 +51,7 @@ export default async function PassPage({ searchParams }: { searchParams: Promise
         ? "You have free access"
         : "Your pass is on"
       : reason === "cv_cap" || (state.kind === "trial_ended" && state.reason === "cv_cap")
-        ? `You've used your ${LIMITS.trial.tailored_cv_cap} free tailored CVs`
+        ? `You've used your ${viewer.pricing.trial.cvs} free tailored CVs`
         : state.kind === "trial_ended"
           ? "Your free trial has ended"
           : "Keep your job hunt moving";

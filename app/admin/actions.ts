@@ -12,6 +12,7 @@ import { removeUserFiles } from "@/lib/account/files";
 import { logAdminAction, requireAdmin } from "@/lib/admin/auth";
 import { ADMIN_ROLES } from "@/lib/admin/permissions";
 import { notify } from "@/lib/notifications/data";
+import { forgetPricing, getPricing, pricingSchema } from "@/lib/pricing/settings";
 
 export type AdminActionState = { ok?: string; error?: string; field?: string } | undefined;
 
@@ -371,4 +372,43 @@ export async function deleteUserAccount(_prev: AdminActionState, formData: FormD
   await logAdminAction(staff, "delete_account", "users", id.data);
   revalidatePath("/admin/users");
   redirect("/admin/users?deleted=1");
+}
+
+/**
+ * Charging on or off, and the amounts (founder round 30, D-196). Off: the app is open to
+ * everyone, with no prices or trial. On: the trial, pass, top-up and boost below. New
+ * amounts apply to new payments only; what people already paid for is kept.
+ */
+export async function savePricing(_prev: AdminActionState, formData: FormData): Promise<AdminActionState> {
+  const staff = await requireAdmin("payments.pricing");
+  const num = (k: string) => Number(String(formData.get(k) ?? "").replace(/[^\d.]/g, ""));
+  const kobo = (k: string) => Math.round(num(k) * 100);
+  const parsed = pricingSchema.safeParse({
+    charging: formData.get("charging") === "on",
+    trial: { days: num("trial_days"), cvs: num("trial_cvs") },
+    pass: { amountKobo: kobo("pass_naira"), days: num("pass_days"), cvs: num("pass_cvs") },
+    topup: { amountKobo: kobo("topup_naira"), cvs: num("topup_cvs") },
+    boost: { amountKobo: kobo("boost_naira") },
+  });
+  if (!parsed.success) {
+    const where = parsed.error.issues[0]?.path.join(" ") ?? "";
+    return { error: `Check the ${where.replace("amountKobo", "price").replace("cvs", "CVs")}: prices from ₦100, days from 1.` };
+  }
+  if (staff.preview) return { ok: "Preview: nothing changed." };
+  const before = await getPricing();
+  const { error } = await createAdminClient()
+    .from("app_settings")
+    .upsert({ key: "pricing", value: parsed.data, updated_at: new Date().toISOString(), updated_by: staff.id }, { onConflict: "key" });
+  if (error) return { error: "Couldn't save that. Run the latest database file (section 23) first." };
+  forgetPricing();
+  const turned = before.charging === parsed.data.charging ? "pricing_update" : parsed.data.charging ? "charging_on" : "charging_off";
+  await logAdminAction(staff, turned, "app_settings", null, { key: "pricing", charging: parsed.data.charging, pass_kobo: parsed.data.pass.amountKobo, pass_days: parsed.data.pass.days });
+  revalidatePath("/", "layout");
+  return {
+    ok: parsed.data.charging
+      ? before.charging
+        ? "Saved. New payments use these amounts. It can take a minute to reach everyone."
+        : "Charging is on. People see the trial and prices from their next page. It can take a minute to reach everyone."
+      : "Saved. Everything is open: no prices or trial anywhere. It can take a minute to reach everyone.",
+  };
 }

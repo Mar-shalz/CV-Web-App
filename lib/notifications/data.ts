@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Viewer } from "@/lib/auth/viewer";
-import { accessState } from "@/lib/entitlements";
+import { accessOf } from "@/lib/entitlements";
 
 export type InboxKind = "message" | "payment" | "pass" | "trial" | "application" | "system" | "announcement";
 export type InboxItem = { id: string; kind: InboxKind; title: string; body: string | null; link: string | null; at: string; unread: boolean };
@@ -29,7 +29,7 @@ export async function getInbox(viewer: Viewer): Promise<Inbox> {
     supabase.from("announcements").select("id, title, body, link, audience, starts_at").order("starts_at", { ascending: false }).limit(10),
     supabase.from("announcement_reads").select("announcement_id").eq("user_id", viewer.id),
   ]);
-  const access = accessState({ trialStartedAt: viewer.trial.startedAt, trialEndsAt: viewer.trial.endsAt, trialCvsUsed: viewer.trial.cvsUsed, activePass: viewer.activePass });
+  const access = accessOf(viewer);
   const fits = (audience: string) =>
     audience === "everyone" || (audience === "pass" && access.kind === "pass") || (audience === "no_pass" && access.kind !== "pass") || (audience === "trial" && (access.kind === "trial" || access.kind === "trial_ready"));
   const read = new Set((reads ?? []).map((r) => r.announcement_id));

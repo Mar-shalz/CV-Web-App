@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signatureValid, decideGrant, productFor, type PaystackEvent } from "@/lib/payments/rules";
+import { getPricing } from "@/lib/pricing/settings";
 import { verifyCharge } from "@/lib/payments/paystack";
 import { PRICES } from "@/lib/config";
 import { track } from "@/lib/analytics/server";
@@ -53,7 +54,8 @@ export async function POST(request: NextRequest) {
   try {
     const charge = await verifyCharge(reference);
     if (charge.status !== "success" || charge.amount !== p.amount_kobo || charge.currency !== PRICES.currency) return NextResponse.json({ ok: true });
-    const days = productFor(p.type)?.days ?? 0;
+    // The pass length in force when it was bought (D-196); the config's for the rest.
+    const days = p.type === "job_hunt_30d" ? (await getPricing()).pass.days : (productFor(p.type)?.days ?? 0);
     const { data: activated, error } = await db.rpc("activate_pass", { p_reference: reference, p_amount_kobo: p.amount_kobo, p_channel: charge.channel ?? "unknown", p_days: days });
     if (error) throw error;
     if (activated) {

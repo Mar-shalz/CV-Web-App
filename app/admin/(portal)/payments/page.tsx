@@ -3,7 +3,8 @@ import { requireAdmin, logAdminAction } from "@/lib/admin/auth";
 import { listPayments } from "@/lib/admin/data";
 import { can } from "@/lib/admin/permissions";
 import { PageHeader, Panel, StatusPill, Table, Td } from "@/components/admin/ui";
-import { RefundForm, FreeAccessForm } from "@/components/admin/forms";
+import { RefundForm, FreeAccessForm, PricingForm } from "@/components/admin/forms";
+import { getPricing } from "@/lib/pricing/settings";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revokeFreeAccess } from "@/app/admin/actions";
 import { formatDate, formatNaira } from "@/lib/format";
@@ -48,6 +49,9 @@ export default async function AdminPayments() {
           </div>
         ))}
       </section>
+      <Panel title="Charging">
+        <PricingForm initial={await getPricing()} canEdit={can(staff.role, "payments.pricing")} />
+      </Panel>
       <Panel title="Free access for family and testers">
         <p className="px-5 pt-4 text-sm text-ink-600">They get everything a pass gives, without paying. It switches on when they sign in with this email, and ends on the date you choose.</p>
         <FreeAccessForm />
