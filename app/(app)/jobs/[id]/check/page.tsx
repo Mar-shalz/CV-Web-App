@@ -13,7 +13,6 @@ import { accessOf, canUse } from "@/lib/entitlements";
 import type { FinalVerdict } from "@/lib/rules/verdict";
 import type { EligibilityResult } from "@/lib/rules/eligibility/types";
 import { FILTER_LABELS, CHANNEL_LABELS } from "@/lib/jobs/labels";
-import { PROFILE_LABELS } from "@/lib/rules/destination";
 import { formatDate } from "@/lib/format";
 import { setJobState } from "./actions";
 import { FlowSteps } from "@/components/flow/flow-steps";
@@ -64,7 +63,7 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
       <FlowSteps current="check" hrefs={{ add: `/jobs/${job.id}` }} back={`/jobs/${job.id}`} />
 
       <StickyTop>
-      <section className="animate-rise rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:px-6 lg:py-4">
+      <section className="relative z-10 animate-rise rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:px-6 lg:py-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="font-display text-[1.5rem] font-semibold leading-8 tracking-[-0.02em] text-ink-900 lg:text-[1.625rem] lg:leading-9">
@@ -94,7 +93,7 @@ export default async function JobCheckPage({ params }: { params: Promise<{ id: s
               </li>
             </ul>
           </div>
-          <FormatChip initial={PROFILE_LABELS[job.destination.profile]} />
+          <FormatChip jobId={job.id} initial={job.destination.profile} />
         </div>
         {job.destination.fallbackNote ? <p className="mt-3 text-xs text-ink-500">{job.destination.fallbackNote}</p> : null}
       </section>

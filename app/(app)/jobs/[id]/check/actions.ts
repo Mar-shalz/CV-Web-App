@@ -8,6 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth/viewer";
 import { writeSensitive } from "@/lib/sensitive";
 import { track } from "@/lib/analytics/server";
+import { detectDestination, PROFILE_IDS, type ProfileId } from "@/lib/rules/destination";
+import { EMPTY_JOB } from "@/lib/jobs/schema";
+import { missingColumn } from "@/lib/jobs/data";
 
 export type DetailState = { error?: string; ok?: boolean } | undefined;
 
@@ -137,4 +140,37 @@ export async function answerSurvey(input: z.input<typeof surveySchema>): Promise
   const job = parsed.data.job_id && /^[0-9a-f-]{36}$/.test(parsed.data.job_id) ? parsed.data.job_id : null;
   await supabase.from("survey_answers").insert({ user_id: viewer.id, survey: parsed.data.survey, answer: parsed.data.answer, job_id: job });
   await track("survey_answered", { survey: parsed.data.survey, answer: parsed.data.answer }, viewer.id);
+}
+
+/** The country each format stands for, when the person picks a format (D-198). */
+const FORMAT_COUNTRY: Record<ProfileId, string> = { ng_private: "NG", ng_graduate: "NG", uk: "GB", us: "US", ca: "CA", gulf: "AE" };
+
+/**
+ * The CV format for this job, chosen by the person (D-198). Kept for the job and never
+ * overwritten by detection. A CV already made stays as it is; the CV page offers a new one.
+ */
+export async function chooseFormat(rawJobId: string, rawProfile: string): Promise<{ ok: boolean; error?: string }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  const id = z.string().uuid().safeParse(rawJobId);
+  const profile = z.enum(PROFILE_IDS as [ProfileId, ...ProfileId[]]).safeParse(rawProfile);
+  if (!profile.success) return { ok: false, error: "Pick one of the formats." };
+  if (viewer.preview) return { ok: true };
+  if (!id.success) return { ok: false, error: "We couldn't find this job." };
+  const supabase = await createClient();
+  const { data: job } = await supabase.from("jobs").select("destination_country").eq("id", id.data).eq("user_id", viewer.id).maybeSingle();
+  if (!job) return { ok: false, error: "We couldn't find this job." };
+  // Keep the job's own country when it already fits the format (Ireland for UK, Qatar for Gulf).
+  const current = job.destination_country ?? "";
+  const keep = detectDestination({ ...EMPTY_JOB, location: { ...EMPTY_JOB.location, country_code: current } }, []).profile;
+  const country = current && (keep === profile.data || (profile.data.startsWith("ng") && current === "NG")) ? current : FORMAT_COUNTRY[profile.data];
+  const row = { destination_country: country, destination_set_by_user: true };
+  let { error } = await supabase.from("jobs").update({ ...row, destination_profile: profile.data }).eq("id", id.data).eq("user_id", viewer.id);
+  // Before migration section 24, the country alone is saved.
+  if (error && missingColumn(error)) ({ error } = await supabase.from("jobs").update(row).eq("id", id.data).eq("user_id", viewer.id));
+  if (error) return { ok: false, error: "We couldn't save that. Try again." };
+  await track("format_chosen", { format: profile.data }, viewer.id);
+  revalidatePath(`/jobs/${id.data}/check`);
+  revalidatePath(`/jobs/${id.data}/cv`);
+  return { ok: true };
 }

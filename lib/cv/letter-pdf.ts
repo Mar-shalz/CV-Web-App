@@ -3,6 +3,7 @@ import { PDFDocument, rgb, pushGraphicsState, popGraphicsState, setCharacterSpac
 import fontkit from "@pdf-lib/fontkit";
 import type { CoverLetter } from "@/lib/pack/letter";
 import type { CvStyle } from "./styles";
+import { onLetterPaper } from "./format";
 import { A4_SIZE, BAND, BODY, FEATURES, INK, LETTER, LOOK, MUTED, RULE, TINT, fontBytes, safe, wrap } from "./pdf";
 
 // The cover letter in the same design as the CV (D-186): the CV's typeface, accent and
@@ -14,7 +15,7 @@ const MT = 50;
 const MB = 56;
 
 export async function renderLetterPdf(letter: CoverLetter, format: string, style: CvStyle = "classic"): Promise<Uint8Array> {
-  const SIZE = format === "us" ? LETTER : A4_SIZE;
+  const SIZE = onLetterPaper(format) ? LETTER : A4_SIZE;
   const W = SIZE.w - MX * 2;
   const look = LOOK[style];
   const ACCENT = look.accent;

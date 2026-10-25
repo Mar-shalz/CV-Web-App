@@ -4,7 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
 import { jobSchema, EMPTY_JOB, type ParsedJob } from "./schema";
 import { DEMO_PARSED } from "@/lib/demo/job";
-import { detectDestination, type Destination } from "@/lib/rules/destination";
+import { detectDestination, PROFILE_IDS, type Destination, type ProfileId } from "@/lib/rules/destination";
+
+/** A column a migration hasn't added yet (PostgREST and Postgres codes). */
+export const missingColumn = (e: { code?: string } | null) => Boolean(e && (e.code === "PGRST204" || e.code === "42703"));
 
 export type JobView = {
   id: string;
@@ -42,12 +45,10 @@ export async function getJob(viewer: Viewer, id: string): Promise<JobView> {
   }
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const supabase = await createClient();
-  const { data: job } = await supabase
-    .from("jobs")
-    .select("id, parsed, parse_status, source_type, source_url, raw_text, raw_image_path, destination_country, destination_confidence, destination_signals, destination_set_by_user, captured_at, state, reviewed_at, post_hash")
-    .eq("id", id)
-    .eq("user_id", viewer.id)
-    .maybeSingle();
+  const columns = "id, parsed, parse_status, source_type, source_url, raw_text, raw_image_path, destination_country, destination_confidence, destination_signals, destination_set_by_user, captured_at, state, reviewed_at, post_hash";
+  // The chosen CV format (D-198) needs migration section 24; until it runs, read without it.
+  const first = await supabase.from("jobs").select(`${columns}, destination_profile`).eq("id", id).eq("user_id", viewer.id).maybeSingle();
+  const job = first.error && missingColumn(first.error) ? (await supabase.from("jobs").select(columns).eq("id", id).eq("user_id", viewer.id).maybeSingle()).data : first.data;
   if (!job) notFound();
   const parsed = jobSchema.safeParse(job.parsed);
   const p = parsed.success ? parsed.data : EMPTY_JOB;
@@ -61,6 +62,8 @@ export async function getJob(viewer: Viewer, id: string): Promise<JobView> {
     setByUser: Boolean(job.destination_set_by_user),
   };
   if (job.destination_set_by_user) destination.ask = false;
+  const chosen = (job as { destination_profile?: string | null }).destination_profile;
+  if (chosen && (PROFILE_IDS as string[]).includes(chosen)) Object.assign(destination, { profile: chosen as ProfileId, fallbackNote: null, ask: false });
   let imageUrl: string | null = null;
   if (job.raw_image_path) {
     const { data } = await supabase.storage.from("job-uploads").createSignedUrl(job.raw_image_path, 600);

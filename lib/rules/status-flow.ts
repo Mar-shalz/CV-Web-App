@@ -18,7 +18,8 @@ export type ApplicationStatus = (typeof STATUSES)[number];
 const AFTER_SENT: ApplicationStatus[] = ["no_response", "rejected", "assessment", "interview", "offer", "withdrawn"];
 
 const TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
-  draft: ["packed"],
+  // Sent another way (WhatsApp, a job site, by hand) straight from the CV, no pack needed (D-199).
+  draft: ["packed", "sent"],
   packed: ["sent"],
   sent: AFTER_SENT,
   // A late employer reply can still move a silent application forward,

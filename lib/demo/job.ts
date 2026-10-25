@@ -55,7 +55,7 @@ export type CvBullet = { id: string; text: string; change: "kept" | "reworded" |
 export const DEMO_CV = {
   name: "Tolu Adebayo",
   contact: "+234 803 000 0000 · tolu.adebayo@gmail.com · Yaba, Lagos",
-  title: "Accounting graduate, ICAN Skills level",
+  title: "Finance Assistant | Reconciliation and Banking Operations",
   summary:
     "Accounting graduate (Second Class Upper) with retail banking experience from SIWES, opening about 15 customer accounts a day, and a year of NYSC finance support at a state ministry.",
   sections: [

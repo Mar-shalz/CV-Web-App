@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SENT_VIA_PHRASE } from "@/lib/applications/sent-via";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireReadyViewer } from "@/lib/auth/viewer";
@@ -55,8 +56,8 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
             <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">{app.title}</h1>
             <p className="mt-1 text-[0.9375rem] text-ink-600">
               {app.employer}
-              {app.sentAt ? ` · Sent ${formatDate(app.sentAt)}` : " · Not sent yet"}
-              {app.pack ? ` · ${CHANNEL_LABELS[app.pack.channel]}` : ""}
+              {app.sentAt ? ` · Sent${app.sentVia ? ` ${SENT_VIA_PHRASE[app.sentVia]},` : ""} ${formatDate(app.sentAt)}` : " · Not sent yet"}
+              {app.pack && !app.sentVia ? ` · ${CHANNEL_LABELS[app.pack.channel]}` : ""}
             </p>
           </div>
           <DeleteApplication applicationId={app.id} title={app.title} />

@@ -2,13 +2,14 @@ import "server-only";
 import { AlignmentType, BorderStyle, Document, Packer, Paragraph, TextRun } from "docx";
 import type { CoverLetter } from "@/lib/pack/letter";
 import type { CvStyle } from "./styles";
+import { onLetterPaper } from "./format";
 import { BODY, LOOK, MUTED, PAGE } from "./docx";
 
 // The cover letter as a Word file, in the CV design's standard font and accent (D-186), so
 // the person can change a word before sending if they want to.
 
 export async function renderLetterDocx(letter: CoverLetter, format: string, style: CvStyle = "classic"): Promise<Buffer> {
-  const paper = format === "us" ? PAGE.letter : PAGE.a4;
+  const paper = onLetterPaper(format) ? PAGE.letter : PAGE.a4;
   const look = LOOK[style];
   const FONT = look.font;
   const run = (text: string, o: { bold?: boolean; size?: number; color?: string; spacing?: number; underline?: boolean } = {}) =>

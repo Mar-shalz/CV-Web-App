@@ -11,6 +11,7 @@ import { track } from "@/lib/analytics/server";
 import { buildCv, type ContactDetails } from "./generate";
 import { demoCvDoc } from "@/lib/demo/cv-doc";
 import type { CvDoc } from "./types";
+import { withCleanHeadline } from "./headline";
 import { startTrialIfNeeded } from "@/lib/entitlements-server";
 import { passCvUsage } from "@/lib/payments/pass-usage";
 import { APP, LIMITS, PRICES } from "@/lib/config";
@@ -19,19 +20,22 @@ import { formatNaira } from "@/lib/format";
 
 export type CvRecord = { id: string; doc: CvDoc; locked: boolean; createdAt: string };
 
+/** A sent CV stays exactly as sent; an unsent one drops the course from its headline (D-198). */
+const docOf = (doc: CvDoc, locked: boolean): CvDoc => (locked ? doc : withCleanHeadline(doc));
+
 export async function getLatestCv(viewer: Viewer, jobId: string): Promise<CvRecord | null> {
-  if (viewer.preview) return jobId === "demo" ? { id: "demo-cv", doc: demoCvDoc(), locked: false, createdAt: new Date().toISOString() } : null;
+  if (viewer.preview) return jobId === "demo" ? { id: "demo-cv", doc: withCleanHeadline(demoCvDoc()), locked: false, createdAt: new Date().toISOString() } : null;
   const supabase = await createClient();
   const { data } = await supabase.from("cv_versions").select("id, content, locked_at, created_at").eq("job_id", jobId).eq("user_id", viewer.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  return data ? { id: data.id, doc: data.content as CvDoc, locked: Boolean(data.locked_at), createdAt: data.created_at } : null;
+  return data ? { id: data.id, doc: docOf(data.content as CvDoc, Boolean(data.locked_at)), locked: Boolean(data.locked_at), createdAt: data.created_at } : null;
 }
 
 export async function getCvById(viewer: Viewer, cvId: string): Promise<CvRecord | null> {
-  if (viewer.preview) return cvId === "demo-cv" ? { id: "demo-cv", doc: demoCvDoc(), locked: false, createdAt: new Date().toISOString() } : null;
+  if (viewer.preview) return cvId === "demo-cv" ? { id: "demo-cv", doc: withCleanHeadline(demoCvDoc()), locked: false, createdAt: new Date().toISOString() } : null;
   if (!/^[0-9a-f-]{36}$/.test(cvId)) return null;
   const supabase = await createClient();
   const { data } = await supabase.from("cv_versions").select("id, content, locked_at, created_at").eq("id", cvId).eq("user_id", viewer.id).maybeSingle();
-  return data ? { id: data.id, doc: data.content as CvDoc, locked: Boolean(data.locked_at), createdAt: data.created_at } : null;
+  return data ? { id: data.id, doc: docOf(data.content as CvDoc, Boolean(data.locked_at)), locked: Boolean(data.locked_at), createdAt: data.created_at } : null;
 }
 
 export const getContact = cache(async (viewer: Viewer): Promise<ContactDetails> => {

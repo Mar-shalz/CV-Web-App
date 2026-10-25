@@ -18,6 +18,7 @@ export type AnalyticsEvents = {
   verdict_shown: { verdict: string };
   verdict_overridden: { verdict: string };
   cv_generated: { format: string; bullets_changed: number };
+  format_chosen: { format: string };
   fact_lock_violation: { type: string; prompt_version: string };
   claim_review_completed: { confirmed: number; edited: number; reverted: number };
   cv_exported: { format: string; file_type: "pdf" | "docx"; style?: string };
@@ -64,6 +65,7 @@ const ALLOWED_KEYS: { [K in EventName]: (keyof AnalyticsEvents[K])[] } = {
   verdict_shown: ["verdict"],
   verdict_overridden: ["verdict"],
   cv_generated: ["format", "bullets_changed"],
+  format_chosen: ["format"],
   fact_lock_violation: ["type", "prompt_version"],
   claim_review_completed: ["confirmed", "edited", "reverted"],
   cv_exported: ["format", "file_type", "style"],

@@ -5,6 +5,7 @@ import { PDFDocument, rgb, pushGraphicsState, popGraphicsState, setCharacterSpac
 import fontkit from "@pdf-lib/fontkit";
 import type { CvDoc, CvEntry, CvRoleBlock } from "./types";
 import type { CvStyle } from "./styles";
+import { onLetterPaper, summaryHeading } from "./format";
 
 // A standard professional CV (CV writing standard): A4, one column, real selectable text
 // that applicant tracking systems read, name and contact at the top, clear section rules,
@@ -83,7 +84,7 @@ export function wrap(text: string, font: PDFFont, size: number, width: number, f
 }
 
 export async function renderPdf(doc: CvDoc, personal: { dateOfBirth?: string | null }, style: CvStyle = "classic"): Promise<Uint8Array> {
-  const A4 = doc.format === "us" ? LETTER : A4_SIZE;
+  const A4 = onLetterPaper(doc.format) ? LETTER : A4_SIZE;
   const W = A4.w - MX * 2;
   const look = LOOK[style];
   const ACCENT = look.accent;
@@ -229,7 +230,7 @@ export async function renderPdf(doc: CvDoc, personal: { dateOfBirth?: string | n
   }
 
   if (doc.summary.text) {
-    heading(doc.format === "uk" ? "Profile" : doc.format === "us" ? "Summary" : "Profile summary");
+    heading(summaryHeading(doc.format));
     paragraph(doc.summary.text, 10, regular, BODY, 14.4);
   }
 

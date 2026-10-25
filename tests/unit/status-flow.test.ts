@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { canTransition, nextStatuses, opensShortlist, STATUSES } from "@/lib/rules/status-flow";
 
 describe("application status flow (Build pack section 4)", () => {
-  it("draft only becomes packed, packed only becomes sent", () => {
-    expect(nextStatuses("draft")).toEqual(["packed"]);
+  it("draft becomes packed, or sent when the CV went another way (D-199); packed only becomes sent", () => {
+    expect(nextStatuses("draft")).toEqual(["packed", "sent"]);
     expect(nextStatuses("packed")).toEqual(["sent"]);
   });
 
@@ -32,8 +32,8 @@ describe("application status flow (Build pack section 4)", () => {
     for (const s of ["rejected", "accepted", "withdrawn"] as const) expect(nextStatuses(s)).toHaveLength(0);
   });
 
-  it("never allows skipping straight from draft to sent", () => {
-    expect(canTransition("draft", "sent")).toBe(false);
+  it("a draft never jumps past sent", () => {
+    for (const to of ["no_response", "interview", "offer", "accepted"] as const) expect(canTransition("draft", to)).toBe(false);
   });
 
   it("only interview opens Shortlist mode", () => {

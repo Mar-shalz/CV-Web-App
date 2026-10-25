@@ -5,6 +5,7 @@ import type { ParsedJob } from "@/lib/jobs/schema";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 import { DEMO_PACK, DEMO_PARSED } from "@/lib/demo/job";
 import type { CoverLetter } from "@/lib/pack/letter";
+import { isSentVia, type SentVia } from "./sent-via";
 
 export type PackView = {
   id: string;
@@ -39,6 +40,8 @@ export type ApplicationView = {
   timeline: TimelineEvent[];
   /** Applications logged with a CV made elsewhere: the file they sent. */
   externalCv: { name: string } | null;
+  /** How they sent it, when they said (D-199). */
+  sentVia: SentVia | null;
 };
 
 type Row = {
@@ -54,6 +57,7 @@ type Row = {
   jobs: { parsed: ParsedJob } | null;
   external_cv_path?: string | null;
   external_cv_name?: string | null;
+  sent_via?: string | null;
   application_packs: { id: string; channel: PackView["channel"]; to_email: string | null; subject: string | null; body: string | null; attachment_names: string[]; checklist: PackView["checklist"]; form_fields: PackView["formFields"] | null; portal_steps: string[]; apply_url: string | null; cover_letter?: CoverLetter | null } | null;
 };
 
@@ -81,6 +85,7 @@ function toView(r: Row, timeline: TimelineEvent[] = []): ApplicationView {
       : null,
     timeline,
     externalCv: r.external_cv_path ? { name: r.external_cv_name ?? "Your CV" } : null,
+    sentVia: isSentVia(r.sent_via) ? r.sent_via : null,
   };
 }
 
@@ -103,6 +108,7 @@ const DEMO_APP: ApplicationView = {
   snapshot: { parsed: DEMO_PARSED, rawText: "Graduate Trainee, Finance. Northbridge Bank is recruiting graduates... (sample)", sourceUrl: null, imagePath: null, capturedAt: new Date(Date.now() - 9 * 86_400_000).toISOString() },
   pack: { id: "demo-pack", channel: "email", toEmail: DEMO_PACK.to, subject: DEMO_PACK.subject, body: DEMO_PACK.body, attachmentNames: [DEMO_PACK.attachment, DEMO_PACK.letterFile], checklist: DEMO_PACK.checklist.map((c) => ({ item: c.item, required: true })), formFields: [], portalSteps: [], applyUrl: null, coverLetter: DEMO_PACK.letter },
   externalCv: null,
+  sentVia: null,
   timeline: [
     { from: null, to: "draft", source: "tap", at: new Date(Date.now() - 9 * 86_400_000).toISOString(), evidence: null },
     { from: "draft", to: "packed", source: "tap", at: new Date(Date.now() - 9 * 86_400_000).toISOString(), evidence: null },

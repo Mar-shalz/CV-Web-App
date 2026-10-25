@@ -234,3 +234,14 @@ create table if not exists public.app_settings (
 );
 alter table public.app_settings enable row level security;
 revoke all on public.app_settings from anon, authenticated;
+
+-- 24. CV format per country and how an application went out (founder round 32, D-198, D-199).
+-- jobs.destination_profile keeps the CV format the person chose for a job (the country alone
+-- can't tell a Nigerian graduate programme CV from a private sector one). applications.sent_via
+-- records how the person sent it themselves, when not by the email we prepared (WhatsApp, a job
+-- site such as Indeed or Jobberman, the company's website, by hand). Owner only, through the
+-- jobs and applications policies.
+alter table public.jobs add column if not exists destination_profile text
+  check (destination_profile is null or destination_profile in ('ng_private', 'ng_graduate', 'uk', 'us', 'ca', 'gulf'));
+alter table public.applications add column if not exists sent_via text
+  check (sent_via is null or sent_via in ('email', 'whatsapp', 'job_site', 'website', 'in_person', 'other'));

@@ -6,7 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth/viewer";
 import { getJob } from "@/lib/jobs/data";
 import { generateForJob, getCvById, type GenerateResult } from "@/lib/cv/data";
-import { ensureDraftApplication } from "@/lib/applications/pack";
+import { ensureDraftApplication, markSent } from "@/lib/applications/pack";
+import { getApplicationForJob } from "@/lib/applications/data";
+import { isSentVia } from "@/lib/applications/sent-via";
+import { flash } from "@/lib/toast";
 import { getVault } from "@/lib/vault/data";
 import { lockLine, type LockSource } from "@/lib/rules/fact-lock";
 import { findBullet, mergeFlags, removeSkill, updateBullet } from "@/lib/cv/ops";
@@ -130,4 +133,31 @@ export async function editCv(cvId: string, rawOp: CvOp): Promise<EditResult> {
   const { error } = await supabase.from("cv_versions").update({ content: doc }).eq("id", cvId).eq("user_id", viewer.id);
   if (error) return { ok: false, error: "We couldn't save that change." };
   return { ok: true, doc, cvId, newFacts };
+}
+
+/**
+ * Sent another way, straight from the CV (founder round 32, D-199): WhatsApp, a job site
+ * like Indeed or Jobberman, the company's website, or by hand. The CV on screen becomes the
+ * application's record, exactly as it is, and the check-ins start as for any sent application.
+ */
+export async function sentFromCv(jobId: string, cvId: string, rawVia: string): Promise<{ ok: true; applicationId: string } | { ok: false; error: string }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  if (!isSentVia(rawVia)) return { ok: false, error: "Tell us how you sent it." };
+  if (viewer.preview) return { ok: true, applicationId: "demo-app" };
+  const job = await getJob(viewer, jobId);
+  let app = await getApplicationForJob(viewer, job.id);
+  if (!app) {
+    await ensureDraftApplication(viewer, job, cvId);
+    app = await getApplicationForJob(viewer, job.id);
+  }
+  if (!app) return { ok: false, error: "We couldn't save that. Try again." };
+  const res = await markSent(viewer, app.id, { via: rawVia, cvId });
+  if ("error" in res) return { ok: false, error: res.error };
+  revalidatePath(`/jobs/${job.id}/cv`);
+  revalidatePath(`/applications/${app.id}`);
+  revalidatePath("/applications");
+  revalidatePath("/home");
+  await flash("Marked as sent. We'll check in with you about it.");
+  return { ok: true, applicationId: app.id };
 }

@@ -6,6 +6,7 @@ import type { CvRecord } from "@/lib/cv/data";
 import { getContact } from "@/lib/cv/data";
 import { finalDoc } from "@/lib/cv/types";
 import { formatPhone } from "@/lib/cv/generate";
+import { PROFILES } from "@/lib/cv/profiles";
 import { runTask } from "@/lib/ai";
 import { fillSubject } from "@/lib/pack/subject";
 import { formatEmailBody } from "@/lib/pack/body";
@@ -14,6 +15,8 @@ import { matchAgency } from "@/lib/rules/scam/layer1";
 import { canTransition } from "@/lib/rules/status-flow";
 import { nextCheckIn, scheduleKind } from "./schedule";
 import { getApplication } from "./data";
+import type { SentVia } from "./sent-via";
+import { missingColumn } from "@/lib/jobs/data";
 import { track } from "@/lib/analytics/server";
 import { APP } from "@/lib/config";
 import { lockLine, type LockSource } from "@/lib/rules/fact-lock";
@@ -140,7 +143,7 @@ async function draftPack(viewer: Viewer, job: JobView, cv: CvRecord, gapNote: st
       {
         person: { full_name: name, course: courseTitle, title_line: cv.doc.titleLine || null },
         requirements,
-        spelling: cv.doc.format === "us" ? "American English" : "British English",
+        spelling: cv.doc.format in PROFILES ? PROFILES[cv.doc.format as keyof typeof PROFILES].spelling : "British English",
         job: { title: role, employer: employer ?? "the employer", level: job.parsed.experience_level === "unknown" ? null : job.parsed.experience_level.replace(/_/g, " "), summary: job.rawText ? job.rawText.replace(/\s+/g, " ").slice(0, 1200) : null },
         proof,
         gap_note: gapNote,
@@ -261,33 +264,44 @@ export async function ensurePack(viewer: Viewer, job: JobView, cv: CvRecord, gap
  * "I've sent it": the job snapshot is frozen, the CV version is locked (edits make a new
  * version), and the first check in is scheduled. We never send anything ourselves.
  */
-export async function markSent(viewer: Viewer, applicationId: string): Promise<{ ok: true } | { error: string }> {
+/**
+ * The person sent it. From Ready to Send, the pack is what went; from the CV page (D-199),
+ * they sent the CV another way (WhatsApp, a job site, by hand), so `via` says how and
+ * `cvId` is the exact CV they had open, which becomes the application's record.
+ */
+export async function markSent(viewer: Viewer, applicationId: string, opts: { via?: SentVia; cvId?: string } = {}): Promise<{ ok: true } | { error: string }> {
   const app = await getApplication(viewer, applicationId);
   if (!app) return { error: "We couldn't find this application." };
   if (!canTransition(app.status, "sent")) return app.status === "sent" ? { ok: true } : { error: "This application can't be marked as sent." };
   const supabase = await createClient();
+  let cvId = app.cvId;
+  if (opts.cvId && opts.cvId !== cvId) {
+    const { data: cv } = await supabase.from("cv_versions").select("id").eq("id", opts.cvId).eq("job_id", app.jobId).eq("user_id", viewer.id).maybeSingle();
+    if (!cv) return { error: "We couldn't find that CV." };
+    cvId = cv.id;
+  }
   const { data: job } = await supabase.from("jobs").select("parsed, raw_text, source_url, raw_image_path, captured_at").eq("id", app.jobId).eq("user_id", viewer.id).maybeSingle();
   if (!job) return { error: "We couldn't find the job for this application." };
   const now = new Date();
   const kind = scheduleKind(job.parsed?.experience_level ?? "unknown", Boolean(matchAgency(job.parsed?.employer_name)));
   const next = nextCheckIn(kind, now, job.parsed?.deadline ?? null, 0);
 
-  const { error } = await supabase
-    .from("applications")
-    .update({
-      status: "sent",
-      sent_at: now.toISOString(),
-      job_snapshot: { parsed: job.parsed, rawText: job.raw_text, sourceUrl: job.source_url, imagePath: job.raw_image_path, capturedAt: job.captured_at },
-      next_check_in_at: next?.toISOString() ?? null,
-      schedule_kind: kind,
-    })
-    .eq("id", applicationId)
-    .eq("user_id", viewer.id);
+  const row = {
+    status: "sent" as const,
+    sent_at: now.toISOString(),
+    cv_version_id: cvId,
+    job_snapshot: { parsed: job.parsed, rawText: job.raw_text, sourceUrl: job.source_url, imagePath: job.raw_image_path, capturedAt: job.captured_at },
+    next_check_in_at: next?.toISOString() ?? null,
+    schedule_kind: kind,
+  };
+  let { error } = await supabase.from("applications").update(opts.via ? { ...row, sent_via: opts.via } : row).eq("id", applicationId).eq("user_id", viewer.id);
+  // Before migration section 24, how it was sent isn't kept; the rest is.
+  if (error && opts.via && missingColumn(error)) ({ error } = await supabase.from("applications").update(row).eq("id", applicationId).eq("user_id", viewer.id));
   if (error) return { error: "We couldn't save that. Try again." };
-  if (app.cvId) await supabase.from("cv_versions").update({ locked_at: now.toISOString() }).eq("id", app.cvId).eq("user_id", viewer.id).is("locked_at", null);
-  await supabase.from("outcome_events").insert({ application_id: applicationId, user_id: viewer.id, from_status: "packed", to_status: "sent", source: "tap" });
+  if (cvId) await supabase.from("cv_versions").update({ locked_at: now.toISOString() }).eq("id", cvId).eq("user_id", viewer.id).is("locked_at", null);
+  await supabase.from("outcome_events").insert({ application_id: applicationId, user_id: viewer.id, from_status: app.status, to_status: "sent", source: "tap" });
   await supabase.from("jobs").update({ state: "applied" }).eq("id", app.jobId).eq("user_id", viewer.id);
-  await track("application_sent", { channel: app.pack?.channel ?? "email" }, viewer.id);
+  await track("application_sent", { channel: opts.via ?? app.pack?.channel ?? "email" }, viewer.id);
   return { ok: true };
 }
 

@@ -54,7 +54,7 @@ const FAQ = [
   },
   {
     q: "Does it work for jobs abroad?",
-    a: "Yes. Each job gets the CV format its country expects: Nigerian private sector, Nigerian graduate programmes, UK CVs and US resumes. NYSC and HND are explained in a line for employers abroad.",
+    a: "Yes. Each job gets the CV format its country expects: Nigerian private sector, Nigerian graduate programmes, UK CVs, US and Canadian resumes, and Gulf CVs. You can change it in one tap. NYSC and HND are explained in a line for employers abroad.",
   },
   {
     q: "What happens to my data?",
@@ -84,7 +84,7 @@ const NEVERS = [
   "Tell you to hide your age, grade or NYSC status",
 ];
 
-const PLACES = ["LinkedIn", "Jobberman", "MyJobMag", "Indeed", "Company career pages", "WhatsApp job flyers", "Graduate trainee programmes", "NYSC and SIWES", "UK CVs", "US resumes", "Banks", "Oil and gas", "Tech", "NGOs", "Telcos", "Consulting"];
+const PLACES = ["LinkedIn", "Jobberman", "MyJobMag", "Indeed", "Company career pages", "WhatsApp job flyers", "Graduate trainee programmes", "NYSC and SIWES", "UK CVs", "US resumes", "Canadian resumes", "Gulf CVs", "Banks", "Oil and gas", "Tech", "NGOs", "Telcos", "Consulting"];
 
 const PEOPLE = ["Final year students", "Corps members", "Graduate trainees", "Career switchers", "First job hunters", "Early career professionals", "Going abroad"];
 
@@ -128,7 +128,7 @@ const FEATURES: Feature[] = [
     eyebrow: "Tailored CV",
     title: "A CV that holds up in the interview",
     body: "We rewrite your CV for each job using the job's own words, so hiring software and recruiters find what they look for. Only from what you've really done.",
-    points: ["Every line traced to your experience", "You accept each change, or keep your own words", "Four designs hiring software can read", "Nigerian, UK and US formats, PDF or Word"],
+    points: ["Every line traced to your experience", "You accept each change, or keep your own words", "Four designs hiring software can read", "Nigerian, UK, US, Canadian and Gulf formats, PDF or Word"],
     image: "/landing/cv.jpg",
     alt: "A tailored CV for Tolu Adebayo with a suggested profile summary to accept, keep or edit.",
     tag: { icon: Verify, label: "Every line traced", sub: "Nothing made up. Ever." },

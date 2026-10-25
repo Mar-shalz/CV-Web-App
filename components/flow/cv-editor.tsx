@@ -9,8 +9,12 @@ import { editCv, type CvOp } from "@/app/(app)/jobs/[id]/cv/actions";
 import { answerSurvey } from "@/app/(app)/jobs/[id]/check/actions";
 import type { CvBullet, CvDoc } from "@/lib/cv/types";
 import { openFlags, pendingSuggestions } from "@/lib/cv/types";
+import { summaryHeading } from "@/lib/cv/format";
+import { FormatChip } from "./format-chip";
+import { NextStepCard, SentAnotherWay, nextStep, type ApplyChannel, type SendInfo } from "./sent-another-way";
+import type { ProfileId } from "@/lib/rules/destination";
 import { findBullet, removeSkill, splitSkills, updateBullet } from "@/lib/cv/ops";
-import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, ArrowDown2, InfoCircle, Magicpen, Warning2, Lock1, Sms, DocumentText, CloseCircle } from "@/components/icons";
+import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, ArrowDown2, InfoCircle, Magicpen, Warning2, Lock1, DocumentText, CloseCircle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 
@@ -22,7 +26,7 @@ type FileType = "pdf" | "docx";
  * carry a warning with three choices. Warnings never block the download.
  */
 /** jobId is empty for the general CV from My Experience (D-143): no email pack follows it. */
-export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobToggle, title, subtitle }: { cvId: string; doc: CvDoc; jobId?: string; preview: boolean; dobToggle: boolean; title?: string; subtitle?: string }) {
+export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobToggle, title, subtitle, send, format }: { cvId: string; doc: CvDoc; jobId?: string; preview: boolean; dobToggle: boolean; title?: string; subtitle?: string; send?: SendInfo; format?: ProfileId }) {
   const [style, setStyle] = useCvStyle();
   const [doc, setDoc] = useState(initial);
   const [cvId, setCvId] = useState(initialId);
@@ -98,9 +102,15 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
           </div>
           <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
             <DownloadMenu onPick={(t) => download(t)} disabled={busy} />
-            {nextHref ? <NextButton href={nextHref} strong={downloaded} /> : null}
+            {nextHref ? <NextButton href={nextHref} strong={downloaded} channel={send?.channel ?? "email"} /> : null}
           </div>
         </div>
+        {/* Not every job wants an email: log a CV sent another way from here (founder, round 32). */}
+        {jobId && send ? (
+          <div className="mt-3 border-t border-ink-100 pt-3">
+            <SentAnotherWay jobId={jobId} cvId={cvId} send={send} variant="link" unaccepted={pending.lines + (pending.summary ? 1 : 0)} />
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -123,7 +133,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
             {doc.include.date_of_birth ? <p className="text-[0.8125rem] text-ink-600">Date of birth: added at download</p> : null}
           </header>
           {doc.summary.text || doc.summary.own ? (
-            <CvSectionBlock title={doc.format === "uk" ? "Profile" : doc.format === "us" ? "Summary" : "Profile summary"}>
+            <CvSectionBlock title={summaryHeading(doc.format)}>
               <SummaryBlock doc={doc} busy={busy} onChoose={chooseSummary} />
             </CvSectionBlock>
           ) : null}
@@ -326,6 +336,11 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
             <div className="mt-4">
               <StylePicker value={style} onChange={setStyle} />
             </div>
+            {jobId && format ? (
+              <div className="mt-3">
+                <FormatChip jobId={jobId} initial={format} inline />
+              </div>
+            ) : null}
             {/* Download CV lives in the header above (founder, round 21). */}
             {downloaded && !survey ? (
               <div className="mt-4 animate-pop rounded-2xl bg-ink-50 p-3.5" aria-live="polite">
@@ -404,19 +419,10 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
             </section>
           ) : null}
 
-          {/* The next step, spelled out (founder, round 20: the old link wasn't clear enough). */}
-          {nextHref ? (
-            <Link href={nextHref} className="group flex items-center gap-3 rounded-[var(--radius-card)] border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-card transition-colors hover:border-brand-400">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white">
-                <Sms size={22} variant="bulk" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[0.9375rem] font-semibold text-ink-900">Next: prepare your email</span>
-                <span className="block text-[0.8125rem] leading-5 text-ink-600">We write the email or cover note to send with this CV. You send it yourself.</span>
-              </span>
-              <ArrowRight size={20} className="shrink-0 text-brand-700 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          ) : null}
+          {/* The next step, named for how this job takes applications, and a way to log a CV
+              sent another way (founder, rounds 20 and 32). */}
+          {nextHref && !send?.sentAt ? <NextStepCard href={nextHref} channel={send?.channel ?? "email"} /> : null}
+          {jobId && send ? <SentAnotherWay jobId={jobId} cvId={cvId} send={send} variant="card" unaccepted={pending.lines + (pending.summary ? 1 : 0)} /> : null}
         </aside>
       </div>
 
@@ -596,15 +602,16 @@ function MenuItem({ onClick, icon, title, body }: { onClick: () => void; icon: R
   );
 }
 
-/** "Next: prepare your email", a real button beside Download CV; it turns solid once the CV is downloaded. */
-function NextButton({ href, strong }: { href: string; strong: boolean }) {
+/** The next step beside Download CV, named for how the job takes applications; solid once the CV is downloaded. */
+function NextButton({ href, strong, channel }: { href: string; strong: boolean; channel: ApplyChannel }) {
+  const n = nextStep(channel);
   return (
     <Link
       href={href}
       className={`inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-4 text-[0.9375rem] font-semibold transition-colors ${strong ? "bg-ink-900 text-white hover:bg-ink-800" : "border-[1.5px] border-brand-600 bg-white text-brand-700 hover:bg-brand-50"}`}
     >
-      <span className="sm:hidden">Next: email</span>
-      <span className="hidden sm:inline">Next: prepare your email</span>
+      <span className="sm:hidden">{n.short}</span>
+      <span className="hidden sm:inline">{n.title}</span>
       <ArrowRight size={18} />
     </Link>
   );

@@ -27,10 +27,20 @@ describe("destination detection (Build pack section 8)", () => {
     const d = detectDestination(EMPTY_JOB, ["GB", "NG"]);
     expect(d).toMatchObject({ country: "GB", ask: false, confidence: 0.3 });
   });
-  it("a country with no MVP profile uses the UK format and says so", () => {
-    const d = detectDestination(job({ location: { ...EMPTY_JOB.location, country: "Canada", country_code: "CA" } }), ["NG"]);
+  it("a country with no format of its own uses the UK format and says so", () => {
+    const d = detectDestination(job({ location: { ...EMPTY_JOB.location, country: "Germany", country_code: "DE" } }), ["NG"]);
     expect(d.profile).toBe("uk");
-    expect(d.fallbackNote).toContain("Canada");
+    expect(d.fallbackNote).toContain("Germany");
+  });
+  it("Canada, the Gulf and Ireland get their own formats, with no stand-in note (D-198)", () => {
+    const at = (code: string) => detectDestination(job({ location: { ...EMPTY_JOB.location, country_code: code } }), ["NG"]);
+    expect(at("CA")).toMatchObject({ profile: "ca", fallbackNote: null });
+    for (const c of ["AE", "SA", "QA", "KW", "OM", "BH"]) expect(at(c)).toMatchObject({ profile: "gulf", fallbackNote: null });
+    expect(at("IE")).toMatchObject({ profile: "uk", fallbackNote: null });
+  });
+  it("a Saudi riyal salary or a +966 number points to the Gulf", () => {
+    expect(detectDestination(job({ salary: { min: 5000, max: 7000, currency: "SAR", period: "month" } }), ["NG"]).profile).toBe("gulf");
+    expect(detectDestination(job({ contacts: { emails: [], phones: ["+966 50 000 0000"] } }), ["GB"]).country).toBe("SA");
   });
 
   it("uses the US resume format for US jobs, with no stand-in note (D-168)", () => {

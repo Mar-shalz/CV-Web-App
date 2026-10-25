@@ -11,7 +11,7 @@ const bullet = z.object({
 export const tailorCv = defineTask({
   name: "tailor_cv",
   model: "claude-sonnet-5-5",
-  promptVersion: "v4",
+  promptVersion: "v5",
   input: z.object({
     profile: z.object({ label: z.string(), spelling: z.string(), rules: z.array(z.string()).max(20) }),
     job: z.object({ title: z.string(), employer: z.string(), requirements: z.array(z.string()).max(20) }),

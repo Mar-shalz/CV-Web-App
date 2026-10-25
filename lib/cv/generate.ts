@@ -11,6 +11,7 @@ import { PROFILES, SECTION_HEADINGS, fileBase, profileRules } from "./profiles";
 import { allSkills, EMPTY_EXTRAS, type CvExtras } from "@/lib/vault/extras";
 import type { CvBullet, CvDoc, CvFlag, CvRoleBlock, CvSection } from "./types";
 import { jobTermsTheyHave, reviewDraft, reviewSummary } from "./quality";
+import { cleanHeadline } from "./headline";
 
 export type ContactDetails = { fullName: string | null; phone: string | null; email: string | null; city: string | null; state: string | null; linkedin: string | null; portfolio?: string | null; website?: string | null };
 
@@ -166,7 +167,8 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
   // Manual path: the model step failed, so the CV uses the person's confirmed items as they are.
   if (!out) {
     out = {
-      title_line: roles.find((r) => r.kind === "education")?.title ?? job.parsed.title ?? "",
+      // A headline is a title held, never the course studied (D-198); none when there's no job yet.
+      title_line: expRoles.filter((r) => r.kind === "job").sort(sortRecent)[0]?.title ?? "",
       summary: { text: extras.summary ?? "", source_item_ids: [] },
       experience: expRoles.map((r) => ({ role_id: r.id, bullets: r.items.filter((i) => i.confirmed).slice(0, 5).map((i) => ({ text: i.text, source_item_ids: [i.id], rewrite_type: "kept" as const })) })),
       skills: { tools: [], professional: vaultSkills.slice(0, 12), languages: [] },
@@ -209,6 +211,9 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     const terms = r.employmentType && EMPLOYMENT_KINDS.includes(r.kind) ? EMPLOYMENT_ON_CV[r.employmentType] : null;
     return { roleId: r.id, title: withTerms(r.title ?? "", terms), organisation: r.organisation, location: r.location, dates: rangeLabel(r.start, r.end, r.isCurrent), grade: null, bullets };
   };
+
+  // The headline: no course, degree or class of degree, and never a title they haven't held (D-198).
+  const headline = cleanHeadline(out.title_line, { jobTitle: job.parsed.title, held: expRoles.map((r) => r.title) });
 
   const sumSources = [...out.summary.source_item_ids.map((id) => sources.get(id)).filter((s): s is LockSource => Boolean(s)), ...(ownSummary ? [ownSummary] : [])];
   const skillsOk = (s: string) => vaultSkills.some((v) => v.toLowerCase() === s.toLowerCase()) || [...sources.values()].some((src) => `${src.text} ${src.sourceQuote ?? ""}`.toLowerCase().includes(s.toLowerCase()));
@@ -263,21 +268,24 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
       // Referees (D-162): named when the person added them and the format lists them, or the
       // job asks for them; otherwise "Available on request".
       const jobAsks = job.parsed.how_to_apply.required_documents.some((d) => /referee|reference/i.test(d)) || /\breferees?\b/i.test(job.rawText ?? "");
-      const listThem = extras.referees.length > 0 && (profile.referees === "listed_if_available" || jobAsks);
+      // Nigerian employers want two or three named referees and no "available on request"
+      // line (Jobberman); UK and Gulf CVs may say it; US and Canadian resumes leave referees off (D-198).
+      const listThem = extras.referees.length > 0 && (profile.referees === "listed_or_left_out" || jobAsks);
       if (listThem) {
         sections.push({ key, heading, kind: "entries", entries: extras.referees.slice(0, 3).map((r) => ({ title: r.name, subtitle: [r.role, r.organisation].filter(Boolean).join(", ") || null, dates: null, detail: [r.relationship, r.phone, r.email].filter(Boolean).join(" · ") || null })) });
-      } else if (profile.referees !== "left_out") sections.push({ key, heading, kind: "lines", lines: ["Available on request"] });
+      } else if (profile.referees === "available_on_request") sections.push({ key, heading, kind: "lines", lines: ["Available on request"] });
     }
   }
 
-  const place = profile.id === "uk" || profile.id === "us" ? [contact.city, "Nigeria"].filter(Boolean).join(", ") : [contact.city, contact.state].filter(Boolean).join(", ");
+  // At home, city and state; applying abroad, city and country.
+  const place = profile.address === "city_country_relocation" ? [contact.city, "Nigeria"].filter(Boolean).join(", ") : [contact.city, contact.state].filter(Boolean).join(", ");
   const doc: CvDoc = {
     format: job.destination.profile,
     profileVersion: profile.version,
     name: contact.fullName ?? "Your Name",
     contactLine: [formatPhone(contact.phone), contact.email, place, shortUrl(contact.linkedin), shortUrl(contact.portfolio), shortUrl(contact.website)].filter(Boolean).join(" · "),
-    titleLine: out.title_line,
-    titleFlags: toFlags(lockLine(out.title_line, all)),
+    titleLine: headline,
+    titleFlags: toFlags(headline ? lockLine(headline, all) : []),
     // Suggested for this job; the person confirms it, or keeps their own (D-163).
     summary: {
       text: out.summary.text,
@@ -288,7 +296,7 @@ export async function buildCv(viewer: Viewer, job: JobView, vault: Vault, contac
     },
     sections,
     include: { date_of_birth: false, gender: false, state_of_origin: false },
-    fileBase: fileBase(contact.fullName, job.parsed.title ?? "Role"),
+    fileBase: fileBase(contact.fullName, job.parsed.title ?? "Role", profile.label),
     jobTitle: job.parsed.title ?? "",
   };
   return { doc, generated, violations };

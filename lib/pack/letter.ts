@@ -62,7 +62,8 @@ export function buildLetter(input: {
   today: string;
   format: string;
 }): CoverLetter {
-  const us = input.format === "us";
+  // North American letters: month first dates and "Sincerely," (US, and Canada since D-198).
+  const us = input.format === "us" || input.format === "ca";
   const nigerian = input.format.startsWith("ng");
   const employer = input.employer && !/^the employer$/i.test(input.employer) ? input.employer : null;
   return {
@@ -96,5 +97,5 @@ export function templateParagraphs(role: string, employer: string | null, proof:
 
 /** The file name next to the CV's: "Tolu_Adebayo_Cover_Letter_Graduate_Trainee". */
 export function letterFileBase(cvFileBase: string): string {
-  return cvFileBase.replace(/_CV(_|$)/, "_Cover_Letter$1");
+  return cvFileBase.replace(/_(CV|Resume)(_|$)/, "_Cover_Letter$2");
 }

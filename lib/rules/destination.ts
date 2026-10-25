@@ -3,7 +3,11 @@ import markets from "@/config/markets.json";
 
 // Destination detection (Build pack section 8). Rules first; no model call.
 
-export type ProfileId = "ng_private" | "ng_graduate" | "uk" | "us";
+export type ProfileId = "ng_private" | "ng_graduate" | "uk" | "us" | "ca" | "gulf";
+export const PROFILE_IDS: ProfileId[] = ["ng_graduate", "ng_private", "uk", "us", "ca", "gulf"];
+
+/** Gulf states share one CV format (D-198). */
+const GULF = ["AE", "SA", "QA", "KW", "OM", "BH"];
 
 export type Destination = {
   country: string;
@@ -17,13 +21,16 @@ export type Destination = {
   fallbackNote: string | null;
 };
 
-const CURRENCY: Record<string, string> = { "₦": "NG", NGN: "NG", N: "NG", "£": "GB", GBP: "GB", "$": "US", USD: "US", CAD: "CA", AED: "AE", "€": "DE", EUR: "DE", GHS: "GH", KES: "KE" };
+const CURRENCY: Record<string, string> = { "₦": "NG", NGN: "NG", N: "NG", "£": "GB", GBP: "GB", "$": "US", USD: "US", CAD: "CA", AED: "AE", SAR: "SA", QAR: "QA", KWD: "KW", OMR: "OM", BHD: "BH", "€": "DE", EUR: "DE", GHS: "GH", KES: "KE" };
 const TLD: [RegExp, string][] = [
   [/\.ng$/, "NG"],
   [/\.(co\.)?uk$/, "GB"],
   [/\.ca$/, "CA"],
   [/\.de$/, "DE"],
   [/\.ae$/, "AE"],
+  [/\.sa$/, "SA"],
+  [/\.qa$/, "QA"],
+  [/\.kw$/, "KW"],
   [/\.gh$/, "GH"],
   [/\.ke$/, "KE"],
   [/\.ie$/, "IE"],
@@ -33,6 +40,11 @@ const PHONE: [RegExp, string][] = [
   [/^\+?234|^0[789][01]\d{8}$/, "NG"],
   [/^\+?44/, "GB"],
   [/^\+?971/, "AE"],
+  [/^\+?966/, "SA"],
+  [/^\+?974/, "QA"],
+  [/^\+?965/, "KW"],
+  [/^\+?968/, "OM"],
+  [/^\+?973/, "BH"],
   [/^\+?49/, "DE"],
   [/^\+?233/, "GH"],
   [/^\+?254/, "KE"],
@@ -121,6 +133,11 @@ export function detectDestination(job: ParsedJob, markets: string[]): Destinatio
   else if (country === "GB") profile = "uk";
   // A US resume (D-168): Letter paper, American spelling, no photo, date of birth or references.
   else if (country === "US") profile = "us";
+  // Canada (D-198): a North American resume with Canadian spelling, on Letter paper.
+  else if (country === "CA") profile = "ca";
+  else if (GULF.includes(country)) profile = "gulf";
+  // Irish CVs follow the same conventions as UK ones.
+  else if (country === "IE") profile = "uk";
   else {
     profile = "uk";
     fallbackNote = `We don't have a ${label(country)} format yet, so we've used our UK format, the closest we have.`;
@@ -133,6 +150,8 @@ export const PROFILE_LABELS: Record<ProfileId, string> = {
   ng_graduate: "Nigerian graduate programme",
   uk: "UK",
   us: "United States",
+  ca: "Canada",
+  gulf: "Gulf (UAE, Saudi Arabia, Qatar)",
 };
 
 export const countryLabel = label;

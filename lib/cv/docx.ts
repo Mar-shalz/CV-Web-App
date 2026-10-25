@@ -2,6 +2,7 @@ import "server-only";
 import { AlignmentType, BorderStyle, Document, Footer, Packer, PageNumber, Paragraph, ShadingType, TabStopType, TextRun } from "docx";
 import type { CvDoc } from "./types";
 import type { CvStyle } from "./styles";
+import { onLetterPaper, summaryHeading } from "./format";
 
 // The Word version of the same standard CV: one column, real headings, title and dates on
 // one line with a right tab, the employer in italics below, bullets, page numbers.
@@ -25,7 +26,7 @@ const TINT = "E8F5F5";
 type RunOpts = { bold?: boolean; italics?: boolean; size?: number; color?: string };
 
 export async function renderDocx(doc: CvDoc, personal: { dateOfBirth?: string | null }, style: CvStyle = "classic"): Promise<Buffer> {
-  const paper = doc.format === "us" ? PAGE.letter : PAGE.a4;
+  const paper = onLetterPaper(doc.format) ? PAGE.letter : PAGE.a4;
   const look = LOOK[style];
   const FONT = look.font;
   const ACCENT = look.accent;
@@ -71,7 +72,7 @@ export async function renderDocx(doc: CvDoc, personal: { dateOfBirth?: string | 
   }
 
   if (doc.summary.text) {
-    children.push(heading(doc.format === "uk" ? "Profile" : doc.format === "us" ? "Summary" : "Profile summary"));
+    children.push(heading(summaryHeading(doc.format)));
     children.push(new Paragraph({ spacing: { after: 60, line: 300 }, children: [run(doc.summary.text)] }));
   }
 
