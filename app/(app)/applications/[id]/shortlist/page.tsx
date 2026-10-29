@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { clearPrepNudge } from "@/lib/notifications/data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireReadyViewer } from "@/lib/auth/viewer";
@@ -25,7 +26,8 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   const viewer = await requireReadyViewer();
   const app = await getApplication(viewer, id);
   if (!app) notFound();
-  const access = await shortlistAccess(viewer, app.id);
+  // Preparing now: the "Later" reminder has done its job (D-202).
+  const [access] = await Promise.all([shortlistAccess(viewer, app.id), clearPrepNudge(viewer, app.id)]);
 
   const back = (
     <Link href={`/applications/${app.id}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl pr-3 text-sm font-semibold text-ink-600 hover:text-ink-900">

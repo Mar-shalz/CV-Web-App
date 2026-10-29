@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Viewer } from "@/lib/auth/viewer";
 import { accessOf } from "@/lib/entitlements";
+import { PREP_LATER } from "./prep";
 
 export type InboxKind = "message" | "payment" | "pass" | "trial" | "application" | "system" | "announcement";
 export type InboxItem = { id: string; kind: InboxKind; title: string; body: string | null; link: string | null; at: string; unread: boolean };
@@ -63,4 +64,24 @@ export async function notify(userId: string, n: { kind: Exclude<InboxKind, "anno
     .insert({ user_id: userId, kind: n.kind, title: n.title.slice(0, 120), body: n.body?.slice(0, 600) ?? null, link: n.link ?? null, dedupe_key: n.dedupeKey ?? null });
   // 23505 is the dedupe key doing its job.
   if (error && error.code !== "23505") throw error;
+}
+
+export type PrepNudge = { title: string; body: string | null; link: string };
+
+/**
+ * The newest interview prep reminder not yet acted on (D-202), to pop up when the person
+ * opens the app. Null when there is none.
+ */
+export async function getPrepNudge(viewer: Viewer): Promise<PrepNudge | null> {
+  if (viewer.preview) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("notifications").select("title, body, link").eq("user_id", viewer.id).like("dedupe_key", `${PREP_LATER}%`).is("read_at", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  return data?.link ? { title: data.title, body: data.body, link: data.link } : null;
+}
+
+/** Preparation started (the prep screen opened): the reminder has done its job. */
+export async function clearPrepNudge(viewer: Viewer, applicationId: string): Promise<void> {
+  if (viewer.preview) return;
+  const supabase = await createClient();
+  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("user_id", viewer.id).eq("dedupe_key", `${PREP_LATER}${applicationId}`).is("read_at", null);
 }

@@ -16,7 +16,7 @@ type State = { kind: "idle" } | { kind: "recording"; seconds: number } | { kind:
 export type SpokenMeta = { spoken: string; polished: boolean };
 
 /** With `polish`, what they say about an achievement comes back tidied into a clear line (D-125), with their exact words alongside. */
-export function VoiceRecorder({ onText, disabled, compact = false, polish }: { onText: (text: string, meta?: SpokenMeta) => void; disabled?: boolean; compact?: boolean; polish?: { roleId?: string; role?: string } }) {
+export function VoiceRecorder({ onText, disabled, compact = false, polish, onMicBlocked }: { onText: (text: string, meta?: SpokenMeta) => void; disabled?: boolean; compact?: boolean; polish?: { roleId?: string; role?: string }; onMicBlocked?: () => void }) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [levels, setLevels] = useState<number[]>(Array(24).fill(0.1));
   const rec = useRef<MediaRecorder | null>(null);
@@ -102,6 +102,7 @@ export function VoiceRecorder({ onText, disabled, compact = false, polish }: { o
       }, 1000);
     } catch {
       setState({ kind: "error", message: "We couldn't use your microphone. Allow it in your browser settings, or type your answer." });
+      onMicBlocked?.();
     }
   }
 

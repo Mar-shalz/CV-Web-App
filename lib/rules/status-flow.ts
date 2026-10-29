@@ -38,6 +38,19 @@ export function canTransition(from: ApplicationStatus, to: ApplicationStatus): b
   return TRANSITIONS[from].includes(to);
 }
 
+/** Closed applications: nothing moves them on, on the board or anywhere else. */
+export const CLOSED: readonly ApplicationStatus[] = ["rejected", "withdrawn"];
+
+/**
+ * A correction on the applications board (founder round 34, D-202): the person moves a
+ * job to the stage they know it's at, back or forward, skipping stages, because real
+ * replies don't follow the flow. Anything but a closed application, and only to a
+ * different stage. Going back to "not sent" is an undo of "sent" (lib/applications/status.ts).
+ */
+export function canCorrect(from: ApplicationStatus, to: ApplicationStatus): boolean {
+  return from !== to && !CLOSED.includes(from);
+}
+
 export function nextStatuses(from: ApplicationStatus): readonly ApplicationStatus[] {
   return TRANSITIONS[from];
 }

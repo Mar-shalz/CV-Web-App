@@ -10,6 +10,9 @@ import { Magicpen, SearchNormal1, Receipt21, InfoCircle, AddCircle } from "@/com
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
 import { ApplicationsBoard, type BoardCard } from "@/components/applications/board";
 import { ViewSwitch } from "@/components/applications/view-switch";
+import { SENT_VIA_SHORT } from "@/lib/applications/sent-via";
+
+const PACK_CHANNEL = { email: "Email", form: "Form", portal: "Website" } as const;
 
 export const metadata: Metadata = { title: "My Applications" };
 
@@ -38,7 +41,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   // The board shows every application (saved jobs aren't applications yet), narrowed only by the search.
   const boardCards: BoardCard[] = all
     .filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query))
-    .map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt }));
+    .map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt, via: a.sentVia ? SENT_VIA_SHORT[a.sentVia] : a.pack ? PACK_CHANNEL[a.pack.channel] : null }));
   const searchFor = (id: string) => (
     <form role="search" action="/applications" className="relative w-full sm:w-72">
       {active.id !== "all" ? <input type="hidden" name="status" value={active.id} /> : null}
@@ -65,23 +68,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
 
       {rows.length ? (
         <ViewSwitch
-          board={
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[0.8125rem] text-ink-600">Drag a job to where it stands now. Only the moves that fit light up. Moving one to Interview opens interview prep.</p>
-                {searchFor("board-filter")}
-              </div>
-              <ApplicationsBoard cards={boardCards} />
-              {saved.length ? (
-                <p className="text-[0.8125rem] text-ink-600">
-                  {saved.length} saved {saved.length === 1 ? "job isn't" : "jobs aren't"} on the board.{" "}
-                  <Link href="/applications?status=saved" className="font-semibold text-brand-700 hover:underline">
-                    See saved jobs
-                  </Link>
-                </p>
-              ) : null}
-            </div>
-          }
+          board={<ApplicationsBoard cards={boardCards} saved={saved.map((j) => ({ id: j.id, title: j.title, employer: j.employer, savedAt: j.savedAt }))} toolbar={searchFor("board-filter")} />}
           list={
         <>
           <nav aria-label="Filter by status" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">

@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Viewer } from "@/lib/auth/viewer";
-import { canTransition, type ApplicationStatus } from "@/lib/rules/status-flow";
+import { canCorrect, canTransition, CLOSED, type ApplicationStatus } from "@/lib/rules/status-flow";
 import { nextCheckIn, type ScheduleKind } from "./schedule";
 import { track } from "@/lib/analytics/server";
 import { LIMITS } from "@/lib/config";
@@ -19,14 +19,15 @@ export async function changeStatus(
   viewer: Viewer,
   applicationId: string,
   to: ApplicationStatus,
-  opts: { source: OutcomeSource; evidence?: string | null; verified?: boolean } = { source: "tap" },
+  opts: { source: OutcomeSource; evidence?: string | null; verified?: boolean; correction?: boolean } = { source: "tap" },
 ): Promise<{ ok: true; from: ApplicationStatus } | { error: string }> {
   const supabase = await createClient();
   const { data: app } = await supabase.from("applications").select("id, status, sent_at").eq("id", applicationId).eq("user_id", viewer.id).maybeSingle();
   if (!app) return { error: "We couldn't find this application." };
   const from = app.status as ApplicationStatus;
   if (from === to) return { ok: true, from };
-  if (!canTransition(from, to)) return { error: "That update doesn't fit where this application is now." };
+  // A board correction may go back or skip stages (D-202); everything else follows the flow.
+  if (opts.correction ? !canCorrect(from, to) || to === "draft" || to === "packed" || (to !== "sent" && !app.sent_at) : !canTransition(from, to)) return { error: "That update doesn't fit where this application is now." };
 
   const { error } = await supabase
     .from("applications")
@@ -38,6 +39,28 @@ export async function changeStatus(
   const days = app.sent_at ? Math.max(0, Math.floor((Date.now() - new Date(app.sent_at).getTime()) / DAY)) : 0;
   await track("outcome_logged", { to_status: to, source: opts.source, days_since_sent: days }, viewer.id);
   return { ok: true, from };
+}
+
+/**
+ * Back to "not sent" from the board (D-202): an undo of "sent", for a job marked sent by
+ * mistake. It goes back to Ready to Send when it has a pack, otherwise to the CV. The job
+ * post copy and the CV stay as they were.
+ */
+export async function unsend(viewer: Viewer, applicationId: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient();
+  const { data: app } = await supabase.from("applications").select("id, status, pack_id").eq("id", applicationId).eq("user_id", viewer.id).maybeSingle();
+  if (!app) return { error: "We couldn't find this application." };
+  const from = app.status as ApplicationStatus;
+  if (from === "draft" || from === "packed") return { ok: true };
+  if (CLOSED.includes(from)) return { error: "This application is closed." };
+  const to: ApplicationStatus = app.pack_id ? "packed" : "draft";
+  const row = { status: to, sent_at: null, next_check_in_at: null, status_verified: false, updated_at: new Date().toISOString() };
+  let { error } = await supabase.from("applications").update({ ...row, sent_via: null }).eq("id", applicationId).eq("user_id", viewer.id);
+  if (error && (error.code === "PGRST204" || error.code === "42703")) ({ error } = await supabase.from("applications").update(row).eq("id", applicationId).eq("user_id", viewer.id));
+  if (error) return { error: "We couldn't save that. Try again." };
+  await supabase.from("outcome_events").insert({ application_id: applicationId, user_id: viewer.id, from_status: from, to_status: to, source: "tap" });
+  await track("outcome_logged", { to_status: to, source: "tap", days_since_sent: 0 }, viewer.id);
+  return { ok: true };
 }
 
 /** "No reply yet": ask once more on the schedule, then let the 30 day rule take over. */
@@ -64,6 +87,18 @@ export async function closeSilent(viewer: Viewer): Promise<number> {
   const supabase = await createClient();
   const cutoff = new Date(Date.now() - LIMITS.checkins.no_response_after_days * DAY).toISOString();
   const { data } = await supabase.from("applications").select("id").eq("user_id", viewer.id).eq("status", "sent").lt("sent_at", cutoff).limit(20);
-  for (const a of data ?? []) await changeStatus(viewer, a.id, "no_response", { source: "auto_30d" });
-  return data?.length ?? 0;
+  if (!data?.length) return 0;
+  // A job the person moved back to "sent" themselves (D-202) stays where they put it.
+  const { data: moved } = await supabase
+    .from("outcome_events")
+    .select("application_id")
+    .eq("user_id", viewer.id)
+    .in("application_id", data.map((a) => a.id))
+    .eq("to_status", "sent")
+    .eq("source", "tap")
+    .not("from_status", "in", "(draft,packed)");
+  const keep = new Set((moved ?? []).map((m) => m.application_id));
+  const close = data.filter((a) => !keep.has(a.id));
+  for (const a of close) await changeStatus(viewer, a.id, "no_response", { source: "auto_30d" });
+  return close.length;
 }

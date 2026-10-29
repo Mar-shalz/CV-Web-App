@@ -79,18 +79,29 @@ describe("sent another way (founder round 32, D-199)", () => {
   });
 });
 
-describe("the applications board (founder round 33, D-201)", async () => {
-  const { COLUMNS, canDrop } = await import("@/lib/applications/board");
+describe("the applications board (founder rounds 33 and 34, D-201, D-202)", async () => {
+  const { COLUMNS, canDrop, needsSend } = await import("@/lib/applications/board");
+  const { canCorrect, canTransition } = await import("@/lib/rules/status-flow");
   const col = (id: string) => COLUMNS.find((c) => c.id === id)!;
-  it("a job not sent yet can only move to Sent", () => {
-    for (const status of ["draft", "packed"] as const) expect(COLUMNS.filter((c) => canDrop({ status }, c)).map((c) => c.id)).toEqual(["sent"]);
+  const ids = (status: Parameters<typeof canDrop>[0]["status"]) => COLUMNS.filter((c) => canDrop({ status }, c)).map((c) => c.id);
+  it("moves forward, back and across stages, never out of Not selected", () => {
+    expect(ids("interview")).toEqual(["not_sent", "sent", "assessment", "offer", "no_reply", "closed"]);
+    expect(ids("offer")).toContain("sent");
+    expect(ids("no_response")).toContain("interview");
+    expect(ids("rejected")).toEqual([]);
+    expect(ids("withdrawn")).toEqual([]);
   });
-  it("a sent job can move to any outcome, never back", () => {
-    expect(COLUMNS.filter((c) => canDrop({ status: "sent" }, c)).map((c) => c.id)).toEqual(["assessment", "interview", "offer", "no_reply", "closed"]);
-    expect(canDrop({ status: "interview" }, col("sent"))).toBe(false);
+  it("a job not sent yet can go anywhere but asks how it was sent first", () => {
+    expect(ids("draft")).toEqual(["sent", "assessment", "interview", "offer", "no_reply", "closed"]);
+    expect(needsSend({ status: "packed" }, col("interview"))).toBe(true);
+    expect(needsSend({ status: "sent" }, col("interview"))).toBe(false);
+    expect(canDrop({ status: "packed" }, col("not_sent"))).toBe(false);
   });
-  it("a closed job stays where it is", () => {
-    expect(COLUMNS.filter((c) => canDrop({ status: "rejected" }, c))).toHaveLength(0);
+  it("corrections are free except out of a closed application; the detail page keeps the flow", () => {
+    expect(canCorrect("offer", "sent")).toBe(true);
+    expect(canCorrect("rejected", "interview")).toBe(false);
+    expect(canCorrect("sent", "sent")).toBe(false);
+    expect(canTransition("offer", "sent")).toBe(false);
   });
   it("every status has exactly one column", () => {
     for (const s of ["draft", "packed", "sent", "no_response", "rejected", "assessment", "interview", "second_interview", "offer", "accepted", "withdrawn"]) {

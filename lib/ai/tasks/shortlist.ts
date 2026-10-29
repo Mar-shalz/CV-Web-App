@@ -113,7 +113,7 @@ export const interviewResearch = defineTask({
 export const mockInterview = defineTask({
   name: "mock_interview",
   model: "claude-sonnet-5-5",
-  promptVersion: "v1",
+  promptVersion: "v2",
   input: z.object({
     job: z.object({ title: z.string().max(200), employer: z.string().max(200), level: z.string().max(60).nullable(), requirements: z.array(z.string().max(300)).max(12), format: z.string().max(30) }),
     cv_lines: z.array(z.object({ id: z.string(), role: z.string().max(200), text: z.string().max(400) })).max(30),
@@ -129,6 +129,8 @@ export const mockInterview = defineTask({
   }),
   output: z.object({
     feedback: z.object({
+      /** How the answer would land with a panel (D-204): shown in the analysis at the end. */
+      rating: z.enum(["strong", "good", "work_on"]),
       matches_cv: z.enum(["yes", "partly", "no"]),
       did_well: z.string().max(220).nullable(),
       improve: z.array(z.string().max(220)).max(3),
@@ -142,7 +144,7 @@ export const mockInterview = defineTask({
         bullet_id: z.string().nullable(),
       })
       .nullable(),
-    wrap_up: z.object({ strengths: z.array(z.string().max(220)).max(3), work_on: z.array(z.string().max(220)).max(3) }).nullable(),
+    wrap_up: z.object({ strengths: z.array(z.string().max(220)).max(3), work_on: z.array(z.string().max(220)).max(3), encouragement: z.string().max(320) }).nullable(),
   }),
   maxTokens: 3500,
   timeoutMs: 40_000,

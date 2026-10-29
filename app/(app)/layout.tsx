@@ -10,7 +10,8 @@ import { MessageQuestion } from "@/components/icons";
 import { requireReadyViewer } from "@/lib/auth/viewer";
 import { accessOf } from "@/lib/entitlements";
 import { getCheckIns } from "@/lib/home-data";
-import { getInbox } from "@/lib/notifications/data";
+import { getInbox, getPrepNudge } from "@/lib/notifications/data";
+import { PrepNudge } from "@/components/notifications/prep-nudge";
 import { UpdatesDrawer } from "@/components/shell/updates-drawer";
 import { CheckInItem } from "@/components/home/check-in-item";
 import { APP, APP_NAME, MARKETS } from "@/lib/config";
@@ -26,10 +27,11 @@ export default async function AppLayout({
   modal: React.ReactNode;
 }) {
   const viewer = await requireReadyViewer();
-  const [jar, checkIns, inbox] = await Promise.all([
+  const [jar, checkIns, inbox, prepNudge] = await Promise.all([
     cookies(),
     getCheckIns(viewer),
     getInbox(viewer),
+    getPrepNudge(viewer),
   ]);
   const access = accessOf(viewer);
   const stageLabel =
@@ -55,6 +57,8 @@ export default async function AppLayout({
       data-low-data={viewer.lowDataMode || undefined}
     >
       <VisitBeacon />
+      {/* "Later" on interview prep (D-202): asked again on the next visit. */}
+      {prepNudge ? <PrepNudge {...prepNudge} /> : null}
       <Sidebar
         initialCollapsed={jar.get("sb_collapsed")?.value === "1"}
         footer={<AccessCard state={access} pass={{ amountKobo: viewer.pricing.pass.amountKobo, days: viewer.pricing.pass.days }} />}

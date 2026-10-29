@@ -7,6 +7,7 @@ import type { ApplicationStatus } from "@/lib/rules/status-flow";
 import type { OutcomeSuggestion } from "@/lib/applications/outcome";
 import { setStatus, readMessage, confirmFromMessage } from "@/app/(app)/applications/[id]/actions";
 import { Button } from "@/components/ui/button";
+import { Consolation } from "./consolation";
 import { MagicStar, MessageText1, TickCircle, Danger, Calendar, Location, Clock, ArrowRight2, InfoCircle } from "@/components/icons";
 
 export const ACTION_LABELS: Record<ApplicationStatus, string> = {
@@ -30,8 +31,9 @@ function prettyDate(d: string) {
 }
 
 /** Where it stands (screen 18): paste their reply and we read it, or tap the update yourself. */
-export function StatusUpdate({ applicationId, next }: { applicationId: string; next: readonly ApplicationStatus[] }) {
+export function StatusUpdate({ applicationId, next, current, employer }: { applicationId: string; next: readonly ApplicationStatus[]; current?: ApplicationStatus; employer?: string | null }) {
   const router = useRouter();
+  const [consoling, setConsoling] = useState(false);
   const [mode, setMode] = useState<"paste" | "tap">("tap");
   const [message, setMessage] = useState("");
   const [suggestion, setSuggestion] = useState<OutcomeSuggestion | null>(null);
@@ -41,9 +43,15 @@ export function StatusUpdate({ applicationId, next }: { applicationId: string; n
 
   if (!next.length) return null;
 
-  function after(res: { ok: true; shortlist?: boolean } | { ok: false; error: string }, label: string) {
+  function after(res: { ok: true; shortlist?: boolean } | { ok: false; error: string }, label: string, to?: ApplicationStatus) {
     if (!res.ok) return setError(res.error);
     if (res.shortlist) return router.push(`/applications/${applicationId}/shortlist`);
+    // A warm word first after a no (D-203); the page refreshes when they close it.
+    if (to === "rejected") {
+      setSuggestion(null);
+      setMessage("");
+      return setConsoling(true);
+    }
     setDone(label);
     toast(`Updated: ${label}.`);
     setSuggestion(null);
@@ -53,7 +61,7 @@ export function StatusUpdate({ applicationId, next }: { applicationId: string; n
 
   function tap(to: ApplicationStatus) {
     setError(null);
-    start(async () => after(await setStatus(applicationId, to), ACTION_LABELS[to]));
+    start(async () => after(await setStatus(applicationId, to), ACTION_LABELS[to], to));
   }
 
   function read() {
@@ -69,10 +77,21 @@ export function StatusUpdate({ applicationId, next }: { applicationId: string; n
   function confirm() {
     if (suggestion?.kind !== "suggest") return;
     setError(null);
-    start(async () => after(await confirmFromMessage(applicationId, { to: suggestion.to, evidence: suggestion.evidence, source: suggestion.source, invite: suggestion.invite }), ACTION_LABELS[suggestion.to]));
+    const to = suggestion.to;
+    start(async () => after(await confirmFromMessage(applicationId, { to, evidence: suggestion.evidence, source: suggestion.source, invite: suggestion.invite }), ACTION_LABELS[to], to));
   }
 
   return (
+    <>
+    <Consolation
+      open={consoling}
+      reached={Boolean(current && ["assessment", "interview", "second_interview", "offer"].includes(current))}
+      employer={employer ?? null}
+      onClose={() => {
+        setConsoling(false);
+        router.refresh();
+      }}
+    />
     <section aria-labelledby="update-title" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card">
       <h2 id="update-title" className="text-[0.9375rem] font-semibold text-ink-900">
         Heard Back?
@@ -151,6 +170,7 @@ export function StatusUpdate({ applicationId, next }: { applicationId: string; n
         </p>
       ) : null}
     </section>
+    </>
   );
 }
 

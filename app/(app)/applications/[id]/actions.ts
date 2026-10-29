@@ -8,7 +8,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { getViewer } from "@/lib/auth/viewer";
 import { getApplication } from "@/lib/applications/data";
-import { changeStatus, type OutcomeSource } from "@/lib/applications/status";
+import { changeStatus, unsend, type OutcomeSource } from "@/lib/applications/status";
+import { notify } from "@/lib/notifications/data";
+import { PREP_LATER } from "@/lib/notifications/prep";
 import { readEmployerMessage, type InviteDetails, type OutcomeSuggestion } from "@/lib/applications/outcome";
 import { saveInvite } from "@/lib/shortlist/data";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
@@ -43,14 +45,69 @@ export async function setStatus(applicationId: string, to: string): Promise<Resu
  * Sent, from the board (D-201): a draft or packed application dragged to "Sent". The CV on
  * the application becomes the record, as when "I've sent it" is tapped anywhere else.
  */
-export async function markSentVia(applicationId: string, via: string): Promise<Result> {
+export async function markSentVia(applicationId: string, via: string, then?: string): Promise<Result> {
   const viewer = await getViewer();
   if (!viewer) return { ok: false, error: "Please sign in again." };
   if (!isSentVia(via)) return { ok: false, error: "Tell us how you sent it." };
+  const next = then ? statusSchema.safeParse(then) : null;
+  if (next && !next.success) return { ok: false, error: "That isn't a status we know." };
   if (viewer.preview) return { ok: true };
   const res = await markSent(viewer, applicationId, { via });
   if ("error" in res) return { ok: false, error: res.error };
+  // Dragged past Sent (D-202): sent first, then straight to where they put it.
+  if (next?.success && next.data !== "sent") {
+    const moved = await changeStatus(viewer, applicationId, next.data, { source: "tap", correction: true });
+    if ("error" in moved) return { ok: false, error: moved.error };
+  }
   refresh(applicationId);
+  return { ok: true };
+}
+
+/**
+ * A move on the board (founder round 34, D-202): any stage, back or forward, except out of
+ * Not selected. "unsent" undoes "sent". Interview prep isn't opened here: the board asks
+ * first whether they're ready.
+ */
+export async function moveOnBoard(applicationId: string, to: string): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  if (to === "unsent") {
+    if (viewer.preview) return { ok: true };
+    const res = await unsend(viewer, applicationId);
+    if ("error" in res) return { ok: false, error: res.error };
+    refresh(applicationId);
+    return { ok: true };
+  }
+  const status = statusSchema.safeParse(to);
+  if (!status.success) return { ok: false, error: "That isn't a status we know." };
+  if (viewer.preview) return { ok: true };
+  const res = await changeStatus(viewer, applicationId, status.data, { source: "tap", correction: true });
+  if ("error" in res) return { ok: false, error: res.error };
+  refresh(applicationId);
+  return { ok: true };
+}
+
+/**
+ * "Later" on "Ready to prepare for your interview?" (D-202): a reminder that pops up the
+ * next time they open the app, and sits behind the bell until they start preparing.
+ */
+export async function prepLater(applicationId: string): Promise<{ ok: boolean }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false };
+  if (viewer.preview) return { ok: true };
+  const app = await getApplication(viewer, applicationId);
+  if (!app) return { ok: false };
+  try {
+    await notify(viewer.id, {
+      kind: "application",
+      title: `Get ready for your interview at ${app.employer}`.slice(0, 120),
+      body: `You're invited to interview for ${app.title}. Practise the likely questions and a mock interview when you have ten minutes.`,
+      link: `/applications/${app.id}/shortlist`,
+      dedupeKey: `${PREP_LATER}${app.id}`,
+    });
+  } catch {
+    return { ok: false };
+  }
   return { ok: true };
 }
 

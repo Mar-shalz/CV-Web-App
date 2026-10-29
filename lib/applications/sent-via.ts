@@ -14,6 +14,9 @@ export const SENT_VIA_LABELS: Record<SentVia, { label: string; hint: string | nu
   other: { label: "Another way", hint: null },
 };
 
+/** A short tag for the board's cards. */
+export const SENT_VIA_SHORT: Record<SentVia, string> = { whatsapp: "WhatsApp", job_site: "Job site", website: "Website", email: "Email", in_person: "By hand", other: "Other" };
+
 /** "Sent on WhatsApp", for the application's record. */
 export const SENT_VIA_PHRASE: Record<SentVia, string> = {
   whatsapp: "on WhatsApp",

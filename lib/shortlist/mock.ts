@@ -16,7 +16,8 @@ import { updateShortlist, type ShortlistView } from "./data";
 // against the CV that was sent, by code (numbers, dates) and by the model.
 
 export type MockKind = "intro" | "follow_up" | "defend_cv" | "job_fit" | "situational" | "technical" | "standard" | "closing";
-export type MockFeedback = { matches: "yes" | "partly" | "no"; didWell: string | null; improve: string[]; issues: string[] };
+/** `rating` is missing on answers given before D-204. */
+export type MockFeedback = { rating?: "strong" | "good" | "work_on"; matches: "yes" | "partly" | "no"; didWell: string | null; improve: string[]; issues: string[] };
 export type MockTurn = {
   id: string;
   question: string;
@@ -28,7 +29,10 @@ export type MockTurn = {
   mode: "voice" | "text" | null;
   feedback: MockFeedback | null;
 };
-export type MockState = { turns: MockTurn[]; total: number; done: boolean; wrap: { strengths: string[]; workOn: string[] } | null; startedAt: string };
+export type MockState = { turns: MockTurn[]; total: number; done: boolean; wrap: { strengths: string[]; workOn: string[]; encouragement?: string | null } | null; startedAt: string };
+
+/** When the model gave no closing words: still warm, still true (D-204). */
+const ENCOURAGE = "You did the hard part: you practised out loud. Go through the notes on each answer once more, say your best examples again, and walk in knowing your own proof.";
 
 const total = () => Math.min(12, Math.max(3, LIMITS.shortlist.mock_questions));
 const norm = (q: string) => q.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
@@ -64,9 +68,9 @@ function previewTurn(state: MockState, answer: string, view: ShortlistView) {
   const words = answer.replace(/\s+/g, " ").trim().split(" ").slice(0, 8).join(" ");
   const follow = state.turns.length === 1 && words;
   return {
-    feedback: { matches: "yes" as const, didWell: "You answered the question they asked, in your own words.", improve: ["Give one number from your CV to back it up", "End by linking it to what this job needs"], issues: [] },
+    feedback: { rating: "good" as const, matches: "yes" as const, didWell: "You answered the question they asked, in your own words.", improve: ["Give one number from your CV to back it up", "End by linking it to what this job needs"], issues: [] },
     next: follow ? { question: `You said "${words}...". What was the hardest part of that, and how did you handle it?`, why: "Panels follow up on what you just said to see how deep your experience goes.", kind: "follow_up" as const, bulletId: null, bulletText: null } : fallbackNext(state, view),
-    wrap: { strengths: ["You stayed on the question", "You used your own examples"], workOn: ["Give a number in every story answer", "Keep each answer to about a minute"] },
+    wrap: { strengths: ["You stayed on the question", "You used your own examples"], workOn: ["Give a number in every story answer", "Keep each answer to about a minute"], encouragement: ENCOURAGE },
   };
 }
 
@@ -106,9 +110,9 @@ export async function answerMock(viewer: Viewer, app: ApplicationView, view: Sho
     );
     const clean = (list: string[]) => list.filter((s) => s.trim() && !lintCopy(s).some((i) => i.kind === "phrase"));
     feedback = res.ok
-      ? { matches: checks.length ? "no" : res.data.feedback.matches_cv, didWell: res.data.feedback.did_well, improve: clean(res.data.feedback.improve), issues: [...checks, ...clean(res.data.feedback.new_claims).map((c) => `Not on your CV: ${c}. If they ask, you'll need to back it up.`)].slice(0, 5) }
+      ? { rating: checks.length ? "work_on" : res.data.feedback.rating, matches: checks.length ? "no" : res.data.feedback.matches_cv, didWell: res.data.feedback.did_well, improve: clean(res.data.feedback.improve), issues: [...checks, ...clean(res.data.feedback.new_claims).map((c) => `Not on your CV: ${c}. If they ask, you'll need to back it up.`)].slice(0, 5) }
       : { matches: checks.length ? "no" : "partly", didWell: null, improve: ["Set the scene in one line", "Say what you did, in your own words", "End with the result from your CV"], issues: checks };
-    if (final) wrap = res.ok && res.data.wrap_up ? { strengths: clean(res.data.wrap_up.strengths), workOn: clean(res.data.wrap_up.work_on) } : { strengths: [], workOn: ["Practise the likely questions below, out loud"] };
+    if (final) wrap = res.ok && res.data.wrap_up ? { strengths: clean(res.data.wrap_up.strengths), workOn: clean(res.data.wrap_up.work_on), encouragement: clean([res.data.wrap_up.encouragement])[0] ?? ENCOURAGE } : { strengths: [], workOn: ["Practise the likely questions below, out loud"], encouragement: ENCOURAGE };
     else if (!closingNext) {
       const n = res.ok ? res.data.next : null;
       const line = n?.bullet_id ? view.lines.find((l) => l.id === n.bullet_id) : undefined;
@@ -135,8 +139,8 @@ export async function endMock(viewer: Viewer, app: ApplicationView, view: Shortl
     await updateShortlist(viewer, view.id, { mock_interview: null });
     return { ...state, turns: [], done: true, wrap: null };
   }
-  let wrap: MockState["wrap"] = { strengths: [], workOn: ["Finish a full mock interview when you have ten minutes"] };
-  if (viewer.preview) wrap = { strengths: ["You used your own examples"], workOn: ["Give a number in every story answer"] };
+  let wrap: MockState["wrap"] = { strengths: [], workOn: ["Finish a full mock interview when you have ten minutes"], encouragement: ENCOURAGE };
+  if (viewer.preview) wrap = { strengths: ["You used your own examples"], workOn: ["Give a number in every story answer"], encouragement: ENCOURAGE };
   else {
     const parsed = app.snapshot?.parsed;
     const res = await runTask(
@@ -151,7 +155,7 @@ export async function endMock(viewer: Viewer, app: ApplicationView, view: Shortl
       },
       { userId: viewer.id },
     );
-    if (res.ok && res.data.wrap_up) wrap = { strengths: res.data.wrap_up.strengths.filter((s) => !lintCopy(s).length), workOn: res.data.wrap_up.work_on.filter((s) => !lintCopy(s).length) };
+    if (res.ok && res.data.wrap_up) wrap = { strengths: res.data.wrap_up.strengths.filter((s) => !lintCopy(s).length), workOn: res.data.wrap_up.work_on.filter((s) => !lintCopy(s).length), encouragement: lintCopy(res.data.wrap_up.encouragement).length ? ENCOURAGE : res.data.wrap_up.encouragement };
   }
   const result: MockState = { ...state, turns: answered, done: true, wrap };
   await updateShortlist(viewer, view.id, { mock_interview: result });

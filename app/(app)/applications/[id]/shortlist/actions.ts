@@ -93,14 +93,14 @@ const mockSchema: z.ZodType<MockState> = z.object({
         bulletText: z.string().max(500).nullable(),
         answer: z.string().max(3000).nullable(),
         mode: z.enum(["voice", "text"]).nullable(),
-        feedback: z.object({ matches: z.enum(["yes", "partly", "no"]), didWell: z.string().max(300).nullable(), improve: z.array(z.string().max(300)).max(3), issues: z.array(z.string().max(400)).max(6) }).nullable(),
+        feedback: z.object({ rating: z.enum(["strong", "good", "work_on"]).optional(), matches: z.enum(["yes", "partly", "no"]), didWell: z.string().max(300).nullable(), improve: z.array(z.string().max(300)).max(3), issues: z.array(z.string().max(400)).max(6) }).nullable(),
       }),
     )
     .min(1)
     .max(12),
   total: z.number().int().min(3).max(12),
   done: z.boolean(),
-  wrap: z.object({ strengths: z.array(z.string().max(300)).max(3), workOn: z.array(z.string().max(300)).max(3) }).nullable(),
+  wrap: z.object({ strengths: z.array(z.string().max(300)).max(3), workOn: z.array(z.string().max(300)).max(3), encouragement: z.string().max(400).nullable().optional() }).nullable(),
   startedAt: z.string().max(40),
 });
 

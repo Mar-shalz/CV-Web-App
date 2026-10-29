@@ -198,7 +198,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
         </div>
 
         <aside className="space-y-3">
-          {!notSent ? <StatusUpdate applicationId={app.id} next={nextStatuses(app.status)} /> : null}
+          {!notSent ? <StatusUpdate applicationId={app.id} next={nextStatuses(app.status)} current={app.status} employer={app.employer} /> : null}
           <Timeline events={app.timeline} />
           <p className="flex items-start gap-2 px-1 text-xs leading-5 text-ink-500">
             <ShieldTick size={16} className="mt-px shrink-0" />

@@ -150,7 +150,7 @@ const FEATURES: Feature[] = [
     eyebrow: "Mock interview",
     title: "Practise like it's the real thing",
     body: "When the invite comes, practise with an interviewer who listens. One question at a time, and the next one builds on what you just said, like a real panel.",
-    points: ["Follow-up questions from your own answers", "Feedback checked against the CV you sent", "Answer by voice or by typing", "A checklist for the day"],
+    points: ["Follow-up questions from your own answers", "Feedback checked against the CV you sent", "Answer out loud, then a full analysis", "A checklist for the day"],
     image: "/landing/interview.jpg",
     alt: "The mock interview screen: a follow-up question built on the candidate's last answer, with a tip on how to answer.",
     tag: { icon: Microphone, label: "Question 2 of 7", sub: "Built on your last answer" },
