@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Category, Profile2User, Card, TaskSquare, Judge, Cpu, Book1, People, Messages2 } from "./icons";
+import { Category, Profile2User, Card, TaskSquare, Judge, Cpu, Book1, People, Messages2, Building } from "./icons";
 
 const ITEMS = [
   { href: "/admin", label: "Overview", short: "Overview", icon: Category, perm: "overview" },
@@ -12,6 +12,7 @@ const ITEMS = [
   { href: "/admin/reviews", label: "Truth Reviews", short: "Reviews", icon: TaskSquare, perm: "reviews" },
   { href: "/admin/rules", label: "Rules and Lists", short: "Rules", icon: Judge, perm: "rules" },
   { href: "/admin/ai", label: "AI Cost and Quality", short: "AI", icon: Cpu, perm: "ai" },
+  { href: "/admin/companies", label: "Companies", short: "Companies", icon: Building, perm: "companies" },
   { href: "/admin/audit", label: "Audit Log", short: "Audit", icon: Book1, perm: "audit" },
   { href: "/admin/team", label: "Team and Access", short: "Team", icon: People, perm: "team" },
 ] as const;

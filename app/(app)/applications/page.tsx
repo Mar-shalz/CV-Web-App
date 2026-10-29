@@ -8,6 +8,8 @@ import { RecentApplications } from "@/components/home/recent-applications";
 import { ButtonLink } from "@/components/ui/button";
 import { Magicpen, SearchNormal1, Receipt21, InfoCircle, AddCircle } from "@/components/icons";
 import type { ApplicationStatus } from "@/lib/rules/status-flow";
+import { ApplicationsBoard, type BoardCard } from "@/components/applications/board";
+import { ViewSwitch } from "@/components/applications/view-switch";
 
 export const metadata: Metadata = { title: "My Applications" };
 
@@ -33,14 +35,18 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   const query = q?.trim().toLowerCase();
   const active = FILTERS.find((f) => f.id === status) ?? FILTERS[0];
   const items = rows.filter((a) => active.match(a)).filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query));
-  const search = (
+  // The board shows every application (saved jobs aren't applications yet), narrowed only by the search.
+  const boardCards: BoardCard[] = all
+    .filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query))
+    .map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt }));
+  const searchFor = (id: string) => (
     <form role="search" action="/applications" className="relative w-full sm:w-72">
       {active.id !== "all" ? <input type="hidden" name="status" value={active.id} /> : null}
-      <label htmlFor="apps-filter" className="sr-only">
+      <label htmlFor={id} className="sr-only">
         Search applications
       </label>
       <SearchNormal1 size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
-      <input id="apps-filter" name="q" type="search" defaultValue={q ?? ""} placeholder="Search by job or employer" className="min-h-11 w-full rounded-xl border border-ink-200 bg-white pl-10 pr-3 text-[0.9375rem] text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100" />
+      <input id={id} name="q" type="search" defaultValue={q ?? ""} placeholder="Search by job or employer" className="min-h-11 w-full rounded-xl border border-ink-200 bg-white pl-10 pr-3 text-[0.9375rem] text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100" />
     </form>
   );
 
@@ -58,6 +64,25 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
       </header>
 
       {rows.length ? (
+        <ViewSwitch
+          board={
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[0.8125rem] text-ink-600">Drag a job to where it stands now. Only the moves that fit light up. Moving one to Interview opens interview prep.</p>
+                {searchFor("board-filter")}
+              </div>
+              <ApplicationsBoard cards={boardCards} />
+              {saved.length ? (
+                <p className="text-[0.8125rem] text-ink-600">
+                  {saved.length} saved {saved.length === 1 ? "job isn't" : "jobs aren't"} on the board.{" "}
+                  <Link href="/applications?status=saved" className="font-semibold text-brand-700 hover:underline">
+                    See saved jobs
+                  </Link>
+                </p>
+              ) : null}
+            </div>
+          }
+          list={
         <>
           <nav aria-label="Filter by status" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
             {FILTERS.map((f) => {
@@ -91,8 +116,10 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
               No reply after 30 days closes an application, not the door. If they get back to you later, open it and update it. An invite opens interview prep.
             </p>
           ) : null}
-          <RecentApplications items={items} title={active.label === "All" ? "All applications" : active.label} showAll={false} action={search} empty={query ? "No matches. Try another word." : active.id === "saved" ? "No saved jobs." : "Nothing here right now."} />
+          <RecentApplications items={items} title={active.label === "All" ? "All applications" : active.label} showAll={false} action={searchFor("apps-filter")} empty={query ? "No matches. Try another word." : active.id === "saved" ? "No saved jobs." : "Nothing here right now."} />
         </>
+          }
+        />
       ) : (
         <section className="torn-edge mx-auto max-w-xl rounded-t-[var(--radius-card)] bg-paper p-8 text-center shadow-card">
           <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-brand-50 text-brand-700">

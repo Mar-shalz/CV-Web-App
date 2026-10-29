@@ -2,6 +2,7 @@ import "server-only";
 import { webSearch, type SearchHit } from "@/lib/search";
 import type { ResearchResult } from "@/lib/ai/research";
 import { foundedYear } from "./evidence";
+import { LIMITS } from "@/lib/config";
 
 export type SearchHits = { site: SearchHit[]; careers: SearchHit[]; boards: SearchHit[]; all: SearchHit[] };
 
@@ -28,7 +29,9 @@ export async function searchResearch(input: { employer: string | null; title: st
   for (const c of [...input.emails.slice(0, 1), ...input.phones.slice(0, 1)]) queries.push({ kind: "contacts", q: `"${c}" scam OR fraud` });
   if (!queries.length) return { research: { ok: false }, hits: null };
 
-  const results = await Promise.all(queries.map(({ q }) => webSearch(q, 6)));
+  // Facts about the company change slowly; listings and scam reports can change in days (D-200).
+  const days = (kind: (typeof queries)[number]["kind"]) => (kind === "site" ? LIMITS.legitimacy.cache_days_employer : LIMITS.legitimacy.cache_days_post);
+  const results = await Promise.all(queries.map(({ kind, q }) => webSearch(q, 6, { maxAgeDays: days(kind) })));
   const hits: SearchHits = { site: [], careers: [], boards: [], all: results.flat() };
   queries.forEach(({ kind }, i) => {
     if (kind === "site" || kind === "careers" || kind === "boards") hits[kind] = results[i]!;
@@ -59,7 +62,7 @@ export async function searchResearch(input: { employer: string | null; title: st
  * then one search of its own ("Cowrywise" founded). Null when no page says.
  */
 export async function searchFounded(employer: string, seen: SearchHit[]): Promise<{ year: number; url: string } | null> {
-  return foundedYear(seen, employer) ?? foundedYear(await webSearch(`"${employer}" founded`, 8), employer);
+  return foundedYear(seen, employer) ?? foundedYear(await webSearch(`"${employer}" founded`, 8, { maxAgeDays: LIMITS.legitimacy.cache_days_employer }), employer);
 }
 
 /**

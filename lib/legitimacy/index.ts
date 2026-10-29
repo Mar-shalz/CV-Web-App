@@ -14,6 +14,9 @@ import { companyRecord, hiringBoard, isAtsHost, domainOf, normaliseName } from "
 import { searchResearch, searchFounded } from "./search-research";
 import { boardListing, boardOf, careersHit } from "./evidence";
 import { searchProvider } from "@/lib/search";
+import { TASKS } from "@/lib/ai/tasks";
+import { lookupKey, readLookup, writeLookup } from "@/lib/cache/lookup";
+import { knownCompany, recordFrom, rememberCompany } from "./records";
 import sources from "@/config/lists/job_sources.json";
 
 export type LegitimacySignal = { id: string; severity: Severity | "ok"; text: string; evidence: string | null; sourceUrl: string | null };
@@ -215,6 +218,21 @@ export function quickCheck(text: string, job: ParsedJob): LegitimacyView {
   return view(layer1(text, job), [], false, new Date().toISOString(), job, true);
 }
 
+/**
+ * The AI's reading of the search results (legitimacy_lookup), from our own record when
+ * the same results were read in the last week (D-200): the same searches, answered from
+ * our record, give the same input, so the same reading is never paid for twice.
+ */
+async function readSources(input: { employer: string; title: string; sources: { url: string; title: string }[]; notes: string }, userId: string) {
+  const task = TASKS.legitimacy_lookup;
+  const key = lookupKey("legitimacy_read", [task.model, task.promptVersion, input]);
+  const saved = task.output.safeParse(await readLookup(key, LIMITS.legitimacy.cache_days_post));
+  if (saved.success) return { ok: true as const, data: saved.data };
+  const res = await runTask("legitimacy_lookup", input, { userId });
+  if (res.ok) await writeLookup("legitimacy_read", key, res.data, `${input.employer}: ${input.title}`);
+  return res;
+}
+
 /** A cached check from before D-118 has no "company exists" line; it is run again. */
 const current = (findings: Finding[]) => findings.some((f) => f.id === "L2-09");
 const searchDown = (findings: Finding[]) => findings.some((f) => f.note === "search_unavailable");
@@ -273,8 +291,11 @@ export async function fullCheck(
   ]
     .filter(Boolean)
     .join("\n");
+  // Our own company record first (D-200): a company checked in the last 30 days needs no
+  // new record lookup or start year search.
+  const known = agency ? null : await knownCompany(employer);
   const [record, searched_, cac] = await Promise.all([
-    agency ? Promise.resolve(null) : companyRecord(employer),
+    agency ? Promise.resolve(null) : known ? Promise.resolve(recordFrom(known)) : companyRecord(employer),
     // Our own web search when one is set up (D-152), otherwise Gemini's Google Search.
     !(employer || routes.length)
       ? Promise.resolve(null)
@@ -287,8 +308,8 @@ export async function fullCheck(
   const hits = searched_?.hits ?? null;
   // The AI reads the sources while, if the company record has no start year, the search looks for one (D-156).
   const [structured, foundedHit] = await Promise.all([
-    research?.ok ? runTask("legitimacy_lookup", { employer: employer ?? "not named", title: job.title ?? "not stated", sources: research.sources, notes: research.notes }, { userId }) : Promise.resolve(null),
-    employer && !agency && !record?.founded && searchProvider() ? searchFounded(employer, hits?.all ?? []) : Promise.resolve(null),
+    research?.ok ? readSources({ employer: employer ?? "not named", title: job.title ?? "not stated", sources: research.sources, notes: research.notes }, userId) : Promise.resolve(null),
+    employer && !agency && !record?.founded && !known?.foundedYear && searchProvider() ? searchFounded(employer, hits?.all ?? []) : Promise.resolve(null),
   ]);
   const company = structured?.ok ? structured.data.company : null;
   const searched = Boolean(structured?.ok);
@@ -296,13 +317,16 @@ export async function fullCheck(
 
   // 3. The company's own website: a government body's known domains, the company record, what the search found, then what the post claims.
   const searchDomain = company?.official_domain ? domainOf(company.official_domain) : null;
-  const officialDomains = [...new Set([...(agency?.domains ?? []), record?.domain, searchDomain, job.employer_domain_claimed?.toLowerCase()].filter((d): d is string => Boolean(d)))];
+  const officialDomains = [...new Set([...(agency?.domains ?? []), record?.domain, known?.officialDomain, searchDomain, job.employer_domain_claimed?.toLowerCase()].filter((d): d is string => Boolean(d)))];
   const mainDomain = officialDomains[0] ?? null;
 
   // L2-09 Does the company exist?
   if (agency) findings.push({ id: "L2-09", result: "found", text: `Yes. ${agency.name ?? employer} is a government body.`, sourceUrl: agency.domains?.[0] ? `https://${agency.domains[0]}` : null, sourceType: "official" });
   else if (record) findings.push({ id: "L2-09", result: "found", text: `Yes. ${record.description && record.description.length > 60 ? record.description : `${record.label}${record.description ? `, ${record.description}` : ""}`}.${record.domain ? ` Official website: ${record.domain}.` : ""}`, sourceUrl: record.sourceUrl, sourceType: "registry" });
-  else if (company?.exists === "yes") findings.push({ id: "L2-09", result: "found", text: `Yes. We found ${employer} online${searchDomain ? `, with its own website at ${searchDomain}` : ""}.`, sourceUrl: searchDomain ? `https://${searchDomain}` : null, sourceType: null });
+  else if (company?.exists === "yes" || (company?.exists !== "no" && known?.exists === "yes")) {
+    const site = searchDomain ?? known?.officialDomain ?? null;
+    findings.push({ id: "L2-09", result: "found", text: `Yes. We found ${employer} online${site ? `, with its own website at ${site}` : ""}.`, sourceUrl: site ? `https://${site}` : null, sourceType: null });
+  }
   else if (company?.exists === "no") findings.push({ id: "L2-09", result: "not_found", text: `We found no trace of a company called ${employer} online. Be careful.`, sourceUrl: null, sourceType: null });
   else if (!employer) findings.push({ id: "L2-09", result: "unknown", text: "The post doesn't name the company, so we couldn't look it up.", sourceUrl: null, sourceType: null });
   else if (searched) findings.push({ id: "L2-09", result: "unknown", text: `We couldn't find a public record of ${employer}. Small and new firms often have none, so check their website or office yourself.`, sourceUrl: null, sourceType: null });
@@ -310,10 +334,11 @@ export async function fullCheck(
 
   // L2-10 How long has it been around? The company record, then a page that says when it
   // started (found by our search), then what the AI read, then the age of its website.
-  const founded = record?.founded ?? foundedHit?.year ?? company?.founded_year ?? null;
+  const founded = record?.founded ?? known?.foundedYear ?? foundedHit?.year ?? company?.founded_year ?? null;
+  const foundedSrc = record?.founded ? record.sourceUrl : known?.foundedYear ? known.foundedSource : foundedHit ? foundedHit.url : company?.founded_source_index && research?.ok ? research.sources[company.founded_source_index - 1]?.url : undefined;
   if (founded) {
     const years = now.getFullYear() - founded;
-    const src = record?.founded ? record.sourceUrl : foundedHit ? foundedHit.url : company?.founded_source_index && research?.ok ? research.sources[company.founded_source_index - 1]?.url : undefined;
+    const src = foundedSrc;
     findings.push({ id: "L2-10", result: years < 1 ? "warning" : "found", text: years < 1 ? `It started in ${founded}, less than a year ago.` : `Since ${founded}, about ${years} ${years === 1 ? "year" : "years"}.`, sourceUrl: src ?? null, sourceType: record?.founded ? "registry" : null });
   }
   const ageDomain = mainDomain ?? job.employer_domain_claimed ?? null;
@@ -404,6 +429,25 @@ export async function fullCheck(
 
   const state = scamState(layer, findings);
   const down = searchDown(findings);
+  // Add what we learned to our company record (D-200). The post's own claimed website or
+  // email domain never becomes the company's official one: a fake post would plant it.
+  if (employer && !agency) {
+    const claimed = [...routes, sourceUrl, job.employer_domain_claimed].map(host).filter((h): h is string => Boolean(h));
+    const trustedSearchDomain = searchDomain && !claimed.some((h) => within(h, searchDomain) || within(searchDomain, h)) ? searchDomain : null;
+    await rememberCompany(
+      employer,
+      {
+        officialDomain: record?.domain ?? trustedSearchDomain,
+        exists: record || company?.exists === "yes" ? "yes" : company?.exists === "no" ? "no" : "unknown",
+        description: record?.description ?? null,
+        foundedYear: founded,
+        foundedSource: foundedSrc ?? null,
+        recordLabel: record?.label ?? null,
+        recordSource: record?.sourceUrl ?? null,
+      },
+      { fresh: !known, redFlags: state === "red_flags", state },
+    );
+  }
   await supabase.from("legitimacy_checks").insert({
     job_id: jobId,
     user_id: userId,

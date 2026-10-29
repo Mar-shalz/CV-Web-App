@@ -245,3 +245,45 @@ alter table public.jobs add column if not exists destination_profile text
   check (destination_profile is null or destination_profile in ('ng_private', 'ng_graduate', 'uk', 'us', 'ca', 'gulf'));
 alter table public.applications add column if not exists sent_via text
   check (sent_via is null or sent_via in ('email', 'whatsapp', 'job_site', 'website', 'in_person', 'other'));
+
+-- 25. Our own records of what job checks have already looked up (founder round 33, D-200),
+-- so the same question is paid for once. Server only: no app user can read or change them.
+-- lookup_cache: web search results and the AI's reading of them, shared by everyone. Only
+-- public things go in (searches about employers, job titles and the contacts in job posts),
+-- never anything about the person using the app.
+create table if not exists public.lookup_cache (
+  key text primary key check (char_length(key) = 64),
+  kind text not null check (kind in ('search', 'legitimacy_read')),
+  label text not null default '' check (char_length(label) <= 300),
+  value jsonb not null,
+  created_at timestamptz not null default now(),
+  hits int not null default 0,
+  last_hit_at timestamptz
+);
+create index if not exists lookup_cache_kind_idx on public.lookup_cache (kind, created_at desc);
+alter table public.lookup_cache enable row level security;
+revoke all on public.lookup_cache from anon, authenticated;
+
+-- company_records: what job checks learned about each employer (official website, whether it
+-- exists, when it started, its open record), reused for 30 days. Facts only: never a verdict
+-- on the company. posts_with_red_flags is for the back office alone.
+create table if not exists public.company_records (
+  normalised_name text primary key check (char_length(normalised_name) between 1 and 160),
+  name text not null check (char_length(name) <= 160),
+  official_domain text,
+  exists_state text not null default 'unknown' check (exists_state in ('yes', 'no', 'unknown')),
+  description text,
+  founded_year int,
+  founded_source text,
+  record_label text,
+  record_source text,
+  checked_at timestamptz not null default now(),
+  checks int not null default 0,
+  posts_with_red_flags int not null default 0,
+  last_state text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists company_records_checks_idx on public.company_records (checks desc);
+alter table public.company_records enable row level security;
+revoke all on public.company_records from anon, authenticated;

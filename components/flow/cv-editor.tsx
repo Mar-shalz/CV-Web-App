@@ -4,17 +4,16 @@ import { StylePicker, useCvStyle } from "./style-picker";
 import { CV_STYLE_INFO } from "@/lib/cv/styles";
 import { ModalHeader } from "@/components/ui/modal-header";
 import { useEffect, useRef, useState, useTransition } from "react";
-import Link from "next/link";
 import { editCv, type CvOp } from "@/app/(app)/jobs/[id]/cv/actions";
 import { answerSurvey } from "@/app/(app)/jobs/[id]/check/actions";
 import type { CvBullet, CvDoc } from "@/lib/cv/types";
 import { openFlags, pendingSuggestions } from "@/lib/cv/types";
 import { summaryHeading } from "@/lib/cv/format";
 import { FormatChip } from "./format-chip";
-import { NextStepCard, SentAnotherWay, nextStep, type ApplyChannel, type SendInfo } from "./sent-another-way";
+import { SendPanel, type SendInfo } from "./send-panel";
 import type { ProfileId } from "@/lib/rules/destination";
 import { findBullet, removeSkill, splitSkills, updateBullet } from "@/lib/cv/ops";
-import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowRight, ArrowDown2, InfoCircle, Magicpen, Warning2, Lock1, DocumentText, CloseCircle } from "@/components/icons";
+import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowDown2, InfoCircle, Magicpen, Warning2, Lock1, DocumentText, CloseCircle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 
@@ -90,6 +89,8 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
   }
 
   const nextHref = jobId ? `/jobs/${jobId}/pack` : null;
+  const unaccepted = pending.lines + (pending.summary ? 1 : 0);
+  const fileUrl = `/api/cv/${cvId}/export?type=pdf&style=${style}`;
 
   return (
     <div className="space-y-3">
@@ -100,18 +101,18 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
             <h1 className="font-display text-[1.5rem] font-semibold leading-8 tracking-[-0.03em] text-ink-900 lg:text-[1.75rem] lg:leading-9">{title ?? "Your CV"}</h1>
             {subtitle ? <p className="mt-0.5 max-w-2xl text-[0.875rem] leading-6 text-ink-600">{subtitle}</p> : null}
           </div>
-          <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+          <div className="grid shrink-0 gap-2 sm:flex">
             <DownloadMenu onPick={(t) => download(t)} disabled={busy} />
-            {nextHref ? <NextButton href={nextHref} strong={downloaded} channel={send?.channel ?? "email"} /> : null}
           </div>
         </div>
-        {/* Not every job wants an email: log a CV sent another way from here (founder, round 32). */}
-        {jobId && send ? (
-          <div className="mt-3 border-t border-ink-100 pt-3">
-            <SentAnotherWay jobId={jobId} cvId={cvId} send={send} variant="link" unaccepted={pending.lines + (pending.summary ? 1 : 0)} />
-          </div>
-        ) : null}
       </div>
+
+      {/* How are you applying? Asked up front, with "I've sent it" always in reach (founder, rounds 32 and 33). */}
+      {jobId && send && nextHref ? (
+        <div className="rounded-[var(--radius-card)] border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-card lg:p-5">
+          <SendPanel jobId={jobId} cvId={cvId} send={send} nextHref={nextHref} unaccepted={unaccepted} fileUrl={fileUrl} fileName={doc.fileBase} onDownload={() => download("pdf")} />
+        </div>
+      ) : null}
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
         <article aria-label="Your tailored CV" className="min-w-0 rounded-[18px] border border-paper-edge bg-paper px-5 py-7 shadow-raised sm:px-10 sm:py-10" style={{ fontFamily: CV_STYLE_INFO[style].css }}>
@@ -419,10 +420,12 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
             </section>
           ) : null}
 
-          {/* The next step, named for how this job takes applications, and a way to log a CV
-              sent another way (founder, rounds 20 and 32). */}
-          {nextHref && !send?.sentAt ? <NextStepCard href={nextHref} channel={send?.channel ?? "email"} /> : null}
-          {jobId && send ? <SentAnotherWay jobId={jobId} cvId={cvId} send={send} variant="card" unaccepted={pending.lines + (pending.summary ? 1 : 0)} /> : null}
+          {/* The same question again after the CV, for people who read it first (round 33). */}
+          {jobId && send && nextHref ? (
+            <div className="rounded-[var(--radius-card)] border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-card">
+              <SendPanel jobId={jobId} cvId={cvId} send={send} nextHref={nextHref} unaccepted={unaccepted} fileUrl={fileUrl} fileName={doc.fileBase} onDownload={() => download("pdf")} />
+            </div>
+          ) : null}
         </aside>
       </div>
 
@@ -599,21 +602,6 @@ function MenuItem({ onClick, icon, title, body }: { onClick: () => void; icon: R
         <span className="block text-xs leading-4 text-ink-500">{body}</span>
       </span>
     </button>
-  );
-}
-
-/** The next step beside Download CV, named for how the job takes applications; solid once the CV is downloaded. */
-function NextButton({ href, strong, channel }: { href: string; strong: boolean; channel: ApplyChannel }) {
-  const n = nextStep(channel);
-  return (
-    <Link
-      href={href}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-4 text-[0.9375rem] font-semibold transition-colors ${strong ? "bg-ink-900 text-white hover:bg-ink-800" : "border-[1.5px] border-brand-600 bg-white text-brand-700 hover:bg-brand-50"}`}
-    >
-      <span className="sm:hidden">{n.short}</span>
-      <span className="hidden sm:inline">{n.title}</span>
-      <ArrowRight size={18} />
-    </Link>
   );
 }
 

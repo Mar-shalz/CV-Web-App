@@ -78,3 +78,23 @@ describe("sent another way (founder round 32, D-199)", () => {
     expect(isSentVia(null)).toBe(false);
   });
 });
+
+describe("the applications board (founder round 33, D-201)", async () => {
+  const { COLUMNS, canDrop } = await import("@/lib/applications/board");
+  const col = (id: string) => COLUMNS.find((c) => c.id === id)!;
+  it("a job not sent yet can only move to Sent", () => {
+    for (const status of ["draft", "packed"] as const) expect(COLUMNS.filter((c) => canDrop({ status }, c)).map((c) => c.id)).toEqual(["sent"]);
+  });
+  it("a sent job can move to any outcome, never back", () => {
+    expect(COLUMNS.filter((c) => canDrop({ status: "sent" }, c)).map((c) => c.id)).toEqual(["assessment", "interview", "offer", "no_reply", "closed"]);
+    expect(canDrop({ status: "interview" }, col("sent"))).toBe(false);
+  });
+  it("a closed job stays where it is", () => {
+    expect(COLUMNS.filter((c) => canDrop({ status: "rejected" }, c))).toHaveLength(0);
+  });
+  it("every status has exactly one column", () => {
+    for (const s of ["draft", "packed", "sent", "no_response", "rejected", "assessment", "interview", "second_interview", "offer", "accepted", "withdrawn"]) {
+      expect(COLUMNS.filter((c) => (c.statuses as string[]).includes(s))).toHaveLength(1);
+    }
+  });
+});

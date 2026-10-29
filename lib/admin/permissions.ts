@@ -17,6 +17,8 @@ export const PERMISSIONS = [
   "rules",
   "rules.publish",
   "ai",
+  // Company records built by job checks, and what our own records saved (D-200).
+  "companies",
   "audit",
   "team",
   "messages",
@@ -25,7 +27,7 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 const MATRIX: Record<AdminRole, readonly Permission[]> = {
   owner: PERMISSIONS,
-  reviewer: ["overview", "reviews", "reviews.resolve", "rules", "ai"],
+  reviewer: ["overview", "reviews", "reviews.resolve", "rules", "ai", "companies"],
   support: ["overview", "users", "waitlist", "reviews", "messages"],
   finance: ["overview", "payments", "payments.refund", "ai"],
 };

@@ -44,7 +44,12 @@
   "legitimacy": {
     "max_searches": 4,
     "cache_days_post": 7,
-    "cache_days_employer": 30
+    "cache_days_employer": 30,
+    "note": "Days a job post's check, and a company's facts (website, start year, record), are reused for everyone before we look again (D-200)."
+  },
+  "search": {
+    "cache_days": 14,
+    "note": "Days one web search's results are reused for anyone asking the same thing (D-200). Scam warning searches use cache_days_post."
   },
   "notifications": {
     "pass_ending_days": 3,

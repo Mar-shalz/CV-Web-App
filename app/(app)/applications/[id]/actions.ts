@@ -13,6 +13,8 @@ import { readEmployerMessage, type InviteDetails, type OutcomeSuggestion } from 
 import { saveInvite } from "@/lib/shortlist/data";
 import { allow, RATE_LIMITED_MESSAGE } from "@/lib/rate-limit";
 import { STATUSES, opensShortlist } from "@/lib/rules/status-flow";
+import { markSent } from "@/lib/applications/pack";
+import { isSentVia } from "@/lib/applications/sent-via";
 
 type Result = { ok: true; shortlist?: boolean } | { ok: false; error: string };
 
@@ -35,6 +37,21 @@ export async function setStatus(applicationId: string, to: string): Promise<Resu
   if ("error" in res) return { ok: false, error: res.error };
   refresh(applicationId);
   return { ok: true, shortlist: opensShortlist(status.data) };
+}
+
+/**
+ * Sent, from the board (D-201): a draft or packed application dragged to "Sent". The CV on
+ * the application becomes the record, as when "I've sent it" is tapped anywhere else.
+ */
+export async function markSentVia(applicationId: string, via: string): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  if (!isSentVia(via)) return { ok: false, error: "Tell us how you sent it." };
+  if (viewer.preview) return { ok: true };
+  const res = await markSent(viewer, applicationId, { via });
+  if ("error" in res) return { ok: false, error: res.error };
+  refresh(applicationId);
+  return { ok: true };
 }
 
 /** Paste their reply: the model reads it and suggests, nothing changes yet. */
