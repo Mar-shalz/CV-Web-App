@@ -16,12 +16,13 @@ import { track } from "@/lib/analytics/server";
 import { findJobs, type FeedJob } from "./index";
 import { bandFor, fresh, levelFits, placeFits, prescore, rolesFrom } from "./rank";
 
-// Jobs for you (founder rounds 34 and 35, D-205). Every day, for everyone: search
+// Jobs for you (founder rounds 34 to 37, D-205, D-208). Every day, for everyone: search
 // employers' own career pages and remote job boards for the roles the person goes for,
 // keep jobs posted in the last 60 days at a level they could be hired at, run the full fit
-// check on the few most promising, and list those they match 90% or more. Searches are
-// shared by people looking for the same role. With "Tailor ahead" on, the CV is written
-// straight away; otherwise when they tap Tailor. Nothing is ever sent for them.
+// check on the few most promising not checked yet, and list those they match
+// limits.matches.min_match % or more. Searches are shared by people looking for the same
+// role. With "Tailor ahead" on, the CV is written straight away; otherwise when they tap
+// Tailor. Nothing is ever sent for them.
 
 export type MatchRun = { ran: boolean; found: number; checked: number; matched: number; reason?: "recent" | "no_roles" | "no_experience" };
 
@@ -56,9 +57,11 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
   const minHours = opts.minHours ?? 20;
   const { data: me } = await db.from("users").select("matches_searched_at, tailor_ahead").eq("id", viewer.id).maybeSingle();
   const last = (me as { matches_searched_at?: string | null } | null)?.matches_searched_at;
-  if (last && Date.now() - Date.parse(last) < minHours * 3_600_000) return none("recent");
-
   const supabase = await createClient();
+  // Earlier checks that now clear the bar (it went from 90% to 85%): our own records, no new fit check.
+  const promoted = await promoteNearMisses(viewer, supabase, db);
+  if (last && Date.now() - Date.parse(last) < minHours * 3_600_000) return { ...none("recent"), matched: promoted };
+
   const [vault, extras, { data: recent }] = await Promise.all([
     getVault(viewer),
     getExtras(viewer),
@@ -78,15 +81,18 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
   const band = bandFor(workMonths(vault));
   const skills = allSkills(extras);
 
-  // 1. Search (shared), then keep what's fresh, at their level, in their places, and new to them.
+  // 1. Search (shared), then keep what's fresh, at their level and in their places. Jobs
+  // already seen but not checked yet stay in the running, so a good job that missed one
+  // day's few checks is checked on a later day (D-208).
   const jobs = (await findJobs(roles, countries, since)).filter((j) => fresh(j, LIMITS.matches.max_age_days) && levelFits(j.title, band) && placeFits(j, countries));
-  const { data: known } = await db.from("job_matches").select("source, source_job_id").eq("user_id", viewer.id).limit(5000);
-  const seen = new Set((known ?? []).map((k) => `${k.source}:${k.source_job_id}`));
-  const fresh_ = jobs
-    .filter((j) => !seen.has(`${j.source}:${j.sourceId}`))
-    .map((j) => ({ j, score: prescore(j, roles, skills) }))
+  const { data: known } = await db.from("job_matches").select("source, source_job_id, status").eq("user_id", viewer.id).limit(5000);
+  const status = new Map((known ?? []).map((k) => [`${k.source}:${k.source_job_id}`, k.status as string]));
+  const open = jobs
+    .filter((j) => (status.get(`${j.source}:${j.sourceId}`) ?? "found") === "found")
+    .map((j) => ({ j, score: prescore(j, roles, skills), seen: status.has(`${j.source}:${j.sourceId}`) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 60);
+  const fresh_ = open.filter((o) => !o.seen);
   if (fresh_.length) {
     await db.from("job_matches").upsert(
       fresh_.map(({ j, score }) => ({ user_id: viewer.id, source: j.source, source_job_id: j.sourceId, title: j.title, employer: j.employer, location: j.location, remote: j.remote, posted_at: j.postedAt, url: j.url, credit: j.credit, prescore: score })),
@@ -95,12 +101,39 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
   }
 
   // 2. The full fit check on the most promising few, in parallel.
-  const picks = fresh_.filter((f) => f.score >= 25).slice(0, LIMITS.matches.checks_per_day);
+  const picks = open.filter((f) => f.score >= 25).slice(0, LIMITS.matches.checks_per_day);
   const tailorAhead = Boolean((me as { tailor_ahead?: boolean } | null)?.tailor_ahead);
   const results = await Promise.all(picks.map(({ j }) => checkOne(viewer, supabase, db, j, tailorAhead).catch(() => false)));
-  const matched = results.filter(Boolean).length;
+  const matched = results.filter(Boolean).length + promoted;
   await track("matches_searched", { found: fresh_.length, checked: picks.length, matched }, viewer.id);
   return { ran: true, found: fresh_.length, checked: picks.length, matched };
+}
+
+/**
+ * Jobs checked before that scored at or above the bar but were turned down only for the
+ * old, higher one: listed now when their saved eligibility didn't fail and their saved fit
+ * verdict wasn't "skip". Reads our records only; no fit check runs.
+ */
+async function promoteNearMisses(viewer: Viewer, supabase: SupabaseClient, db: SupabaseClient): Promise<number> {
+  const { data: near } = await db
+    .from("job_matches")
+    .select("id, job_id")
+    .eq("user_id", viewer.id)
+    .eq("status", "not_a_match")
+    .gte("match_percent", LIMITS.matches.min_match)
+    .not("job_id", "is", null)
+    .limit(20);
+  let n = 0;
+  for (const m of near ?? []) {
+    const [{ data: el }, { data: v }] = await Promise.all([
+      supabase.from("eligibility_results").select("overall").eq("job_id", m.job_id).eq("user_id", viewer.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("verdicts").select("verdict").eq("job_id", m.job_id).eq("user_id", viewer.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    if (!el || !v || el.overall === "fail" || v.verdict === "skip") continue;
+    const { error } = await db.from("job_matches").update({ status: "matched" }).eq("id", m.id).eq("user_id", viewer.id);
+    if (!error) n++;
+  }
+  return n;
 }
 
 /** Saves the job for them (as "suggested"), runs eligibility and the fit check, and records the match. */

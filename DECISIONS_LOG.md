@@ -514,3 +514,17 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
 - *Board mode.* The search box is gone from Board mode; the list keeps it, and the board no longer narrows by a search typed in the list. The line between the instructions and the saved jobs link is darker (ink-300, was close to the background) with more room on both sides. Focusing a control can no longer nudge the locked page.
 - *The floating Tailor my CV button* no longer shows on Jobs for You (each match has its own Tailor button) or on My Applications, where it covered the bottom right of the board. On My Applications it sits in the page header on laptops and tablets instead.
 - *Tailor ahead.* The switch moved off Jobs for You. The page now says plainly whether it's on ("Tailor ahead is on: we write your CV as soon as a job matches") or off, with a button to Settings to turn it on or off. Settings picks out the Tailor ahead row when they arrive from that button.
+
+**D-208 Board chips removed, smoother trackpad scrolling, and Jobs for You at 85% (founder round 37).**
+- *Board.* The founder didn't want the stage chips above the board; they are gone. The arrows, the scrollbar and the board sliding while dragging stay.
+- *Trackpad scrolling.* Three changes make two-finger sideways scrolling smooth:
+  - Nothing on the board re-renders while it moves. The arrows check their state once a frame, and only update when it changes.
+  - A sideways swipe over a column's cards now moves the board. The columns used to hold on to it, because their scroll containment covered both directions; now it covers up and down only.
+  - Swiping past either end no longer triggers the browser's back or forward page swipe.
+  - The mouse wheel moves the board sideways only over headers and gaps, never over cards.
+- *Jobs for You.* The founder saw only three matches. The fit check that gives the percentage runs on four jobs a person hasn't checked yet each day (config limits.matches.checks_per_day), so a day can add at most four. Changes:
+  - The bar is now 85% (config limits.matches.min_match), as the founder asked.
+  - Jobs checked earlier at 85 to 89% are listed now, when their saved eligibility didn't fail and their saved verdict wasn't "skip". This reads our own records; no new fit check runs.
+  - A fix: jobs found on one day but not among its four checks were never checked later. They now stay in the running and are ranked with the new ones each day, so the best jobs get checked over the following days.
+  - The copy and the Home card read the bar from config.
+  - Raising the four checks a day is a cost decision, left to the founder.

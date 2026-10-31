@@ -142,44 +142,41 @@ export function ApplicationsBoard({ cards: initial, saved }: { cards: BoardCard[
     };
   }, []);
 
-  // Getting round a board wider than the screen (founder round 36): stage chips that scroll
-  // to a column and take drops, arrows at the edges, a visible scrollbar, the wheel over
-  // headers and gaps moving sideways, and the board sliding along while a card is dragged
-  // near an edge.
+  // Getting round a board wider than the screen (founder rounds 36 and 37): arrows at the
+  // edges, a visible scrollbar, trackpads scrolling sideways natively (nothing re-renders
+  // while the board moves), the wheel over headers and gaps moving it sideways, and the
+  // board sliding along while a card is dragged near an edge.
   const scroller = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ left: false, right: false });
-  const [inView, setInView] = useState<string[]>([]);
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
+    let frame = 0;
     const read = () => {
-      setEdges({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
-      const box = el.getBoundingClientRect();
-      setInView(
-        [...el.querySelectorAll<HTMLElement>("[data-col]")]
-          .filter((c) => {
-            const r = c.getBoundingClientRect();
-            return r.width > 0 && Math.min(r.right, box.right) - Math.max(r.left, box.left) >= r.width * 0.6;
-          })
-          .map((c) => c.dataset.col!),
-      );
+      frame = 0;
+      const left = el.scrollLeft > 4;
+      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+      setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(read);
     };
     read();
-    el.addEventListener("scroll", read, { passive: true });
-    const seen = new ResizeObserver(read);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const seen = new ResizeObserver(onScroll);
     seen.observe(el);
     return () => {
-      el.removeEventListener("scroll", read);
+      el.removeEventListener("scroll", onScroll);
       seen.disconnect();
+      cancelAnimationFrame(frame);
     };
   }, []);
   const slide = (dir: 1 | -1) => {
     const el = scroller.current;
     if (el) el.scrollBy({ left: dir * Math.max(272, el.clientWidth * 0.7), behavior: "smooth" });
   };
-  const goTo = (id: string) => scroller.current?.querySelector(`[data-col="${id}"]`)?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
 
-  /** What lets a card land on a column, or on its chip above the board. */
+  /** What lets a card land on a column. */
   const dropOn = (col: Column) => {
     const ok = moving ? canDrop(moving, col) : false;
     return {
@@ -204,8 +201,8 @@ export function ApplicationsBoard({ cards: initial, saved }: { cards: BoardCard[
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div className="max-w-xl">
+      <div>
+        <div className="w-fit max-w-full">
           <p className="text-[0.8125rem] leading-5 text-ink-600">Drag a job to where it stands now, forward or back. Only Not selected is final. Moving one to Interview offers interview prep.</p>
           {saved.length ? (
             <p className="mt-3 border-t border-ink-300 pt-3 text-[0.8125rem] text-ink-600">
@@ -216,39 +213,19 @@ export function ApplicationsBoard({ cards: initial, saved }: { cards: BoardCard[
             </p>
           ) : null}
         </div>
-        <nav aria-label="Go to a stage" className="flex flex-wrap justify-end gap-1.5">
-          {COLUMNS.map((col) => {
-            const n = cards.filter((c) => col.statuses.includes(c.status)).length;
-            const shown = inView.includes(col.id);
-            const ok = moving ? canDrop(moving, col) : false;
-            return (
-              <button
-                key={col.id}
-                type="button"
-                onClick={() => goTo(col.id)}
-                {...dropOn(col)}
-                aria-current={shown ? "true" : undefined}
-                className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors ${over === col.id ? "bg-brand-100 text-brand-900 ring-2 ring-brand-500" : ok ? "bg-brand-50 text-brand-800 ring-1 ring-brand-300" : shown ? "bg-white text-ink-900 ring-1 ring-ink-300" : "bg-ink-100 text-ink-500 hover:bg-white hover:text-ink-900 hover:ring-1 hover:ring-ink-200"}`}
-              >
-                <span className={`size-2 rounded-full ${col.solid}`} aria-hidden="true" />
-                {col.title}
-                <span className="tabular-nums text-ink-500">{n}</span>
-              </button>
-            );
-          })}
-        </nav>
       </div>
 
       {/* The board fills the rest of the screen; each column scrolls on its own (founder round 35). */}
       <div ref={boardRef} style={height ? { height } : undefined} className="relative flex min-h-[22rem] flex-col rounded-[var(--radius-panel)] border border-ink-150 bg-white p-3 pb-1.5 shadow-card" aria-busy={busy || undefined}>
         <div
           ref={scroller}
-          className="board-scroll min-h-0 flex-1 overflow-x-auto pb-2"
+          className="board-scroll min-h-0 flex-1 overflow-x-auto overscroll-x-contain pb-2"
           onWheel={(e) => {
+            // A mouse wheel over the headers or the gaps moves the board sideways. Sideways
+            // trackpad swipes and anything over a column's cards are left to the browser.
             const el = scroller.current;
-            if (!el || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
-            const list = (e.target as HTMLElement).closest<HTMLElement>("[data-col-list]");
-            if (list && list.scrollHeight > list.clientHeight + 1) return;
+            if (!el || e.shiftKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+            if ((e.target as HTMLElement).closest("[data-col-list]")) return;
             el.scrollLeft += e.deltaY;
           }}
           onDragOver={(e) => {
@@ -271,7 +248,7 @@ export function ApplicationsBoard({ cards: initial, saved }: { cards: BoardCard[
                   data-col={col.id}
                   aria-label={`${col.title}, ${list.length}`}
                   {...dropOn(col)}
-                  className={`flex h-full w-[16.5rem] shrink-0 scroll-mx-3 flex-col transition-opacity ${moving && !ok && !home ? "opacity-40" : ""}`}
+                  className={`flex h-full w-[16.5rem] shrink-0 flex-col transition-opacity ${moving && !ok && !home ? "opacity-40" : ""}`}
                 >
                   <div className="flex h-11 overflow-hidden rounded-xl shadow-sm">
                     <h3 className={`flex flex-1 items-center gap-2 px-3 text-sm font-semibold text-white ${col.solid}`}>
@@ -280,7 +257,7 @@ export function ApplicationsBoard({ cards: initial, saved }: { cards: BoardCard[
                     </h3>
                     <span className={`grid min-w-12 place-items-center px-3 text-sm font-semibold tabular-nums ${col.tint}`}>{list.length}</span>
                   </div>
-                  <ul data-col-list className={`mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain rounded-xl p-2 transition-colors ${over === col.id ? "bg-brand-50 ring-2 ring-brand-400" : ok ? "bg-brand-50/60" : "bg-ink-75"}`}>
+                  <ul data-col-list className={`mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-y-contain rounded-xl p-2 transition-colors ${over === col.id ? "bg-brand-50 ring-2 ring-brand-400" : ok ? "bg-brand-50/60" : "bg-ink-75"}`}>
                     {over === col.id ? <li aria-hidden="true" className="h-20 shrink-0 rounded-xl border-2 border-dashed border-brand-300 bg-[repeating-linear-gradient(135deg,var(--color-ink-100)_0_8px,transparent_8px_16px)]" /> : null}
                     {list.map((c) => (
                       <BoardItem

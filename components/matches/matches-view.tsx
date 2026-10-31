@@ -23,13 +23,13 @@ const searched = (iso: string | null) => {
 };
 
 /**
- * Jobs for you (founder rounds 34 and 35, D-205): what the daily search found that the
- * person matches 90% or more. The search runs on its own each day; opening the page runs it
+ * Jobs for you (founder rounds 34 to 37, D-205, D-208): what the daily search found that
+ * the person matches `minMatch`% or more. The search runs on its own each day; opening the page runs it
  * when the last one is a day old. Tailor moves a job to their CV and then My Applications.
  * Tailor ahead is switched in Settings; this page says plainly whether it's on and links
  * there to change it (founder round 36).
  */
-export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, preview }: { items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; preview: boolean }) {
+export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, preview, minMatch }: { items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; preview: boolean; minMatch: number }) {
   const router = useRouter();
   const [items, setItems] = useState(initial);
   const [searching, setSearching] = useState(false);
@@ -45,9 +45,10 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
       const res = await searchMatches();
       setSearching(false);
       if ("error" in res) return toast(res.error, "error");
-      if (manual && !res.ran && res.reason === "recent") toast("We searched in the last few hours. New jobs show up here as we find them.", "info");
+      if (!res.ran && res.matched) toast(`${res.matched} more ${res.matched === 1 ? "job fits" : "jobs fit"} you.`);
+      else if (manual && !res.ran && res.reason === "recent") toast("We searched in the last few hours. New jobs show up here as we find them.", "info");
       if (manual && res.reason === "no_roles") toast("Check a job or two you'd like first, so we know which roles to look for.", "info");
-      if (res.ran) toast(res.matched ? `${res.matched} new ${res.matched === 1 ? "job fits" : "jobs fit"} you.` : "No new jobs at 90% or more this time. We'll look again tomorrow.");
+      if (res.ran) toast(res.matched ? `${res.matched} new ${res.matched === 1 ? "job fits" : "jobs fit"} you.` : `No new jobs at ${minMatch}% or more this time. We'll look again tomorrow.`);
       router.refresh();
     });
   }
@@ -179,11 +180,11 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
             <SearchStatus size={30} variant="bulk" />
           </span>
           <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">No Matches Yet</h2>
-          <p className="mx-auto mt-2 max-w-sm text-[0.9375rem] leading-6 text-ink-600">We look every day and only show jobs you match 90% or more, so this list stays short and worth your time.</p>
+          <p className="mx-auto mt-2 max-w-sm text-[0.9375rem] leading-6 text-ink-600">We look every day and only show jobs you match {minMatch}% or more, so this list stays short and worth your time.</p>
           <ul className="mx-auto mt-4 max-w-sm space-y-2 text-left text-[0.8125rem] leading-5 text-ink-700">
             <li className="flex gap-2">
               <ArrowRight2 size={16} className="mt-0.5 shrink-0 text-brand-600" />
-              Confirm more of your experience: the fuller it is, the more jobs reach 90%.
+              Confirm more of your experience: the fuller it is, the more jobs reach {minMatch}%.
             </li>
             <li className="flex gap-2">
               <ArrowRight2 size={16} className="mt-0.5 shrink-0 text-brand-600" />
