@@ -236,13 +236,17 @@ const MOBILE_ORDER = NAV_ITEMS.filter((i) => !("sidebarOnly" in i)).sort((a, b) 
 
 /**
  * "Tailor my CV" floating at the bottom right on laptops and tablets (D-160), on every
- * screen except while applying for a job (the job flow has its own next step).
+ * screen except while applying for a job (the job flow has its own next step), Jobs for
+ * You (each match has its own Tailor button) and My Applications, where it covered the
+ * board and the page header carries it instead (founder round 36).
  */
 export function TailorFab() {
   const path = usePathname();
   if (
     path.startsWith("/jobs") ||
     path.startsWith("/applications/new") ||
+    path === "/applications" ||
+    path === "/matches" ||
     path.startsWith("/pass")
   )
     return null;

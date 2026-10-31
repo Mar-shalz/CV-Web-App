@@ -38,10 +38,9 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   const query = q?.trim().toLowerCase();
   const active = FILTERS.find((f) => f.id === status) ?? FILTERS[0];
   const items = rows.filter((a) => active.match(a)).filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query));
-  // The board shows every application (saved jobs aren't applications yet), narrowed only by the search.
-  const boardCards: BoardCard[] = all
-    .filter((a) => !query || `${a.title} ${a.employer}`.toLowerCase().includes(query))
-    .map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt, via: a.sentVia ? SENT_VIA_SHORT[a.sentVia] : a.pack ? PACK_CHANNEL[a.pack.channel] : null }));
+  // The board shows every application (saved jobs aren't applications yet). Search is the
+  // list's: the board has its stages to find a job by (founder round 36).
+  const boardCards: BoardCard[] = all.map((a) => ({ id: a.id, title: a.title, employer: a.employer, status: a.status, sentAt: a.sentAt, via: a.sentVia ? SENT_VIA_SHORT[a.sentVia] : a.pack ? PACK_CHANNEL[a.pack.channel] : null }));
   const searchFor = (id: string) => (
     <form role="search" action="/applications" className="relative w-full sm:w-72">
       {active.id !== "all" ? <input type="hidden" name="status" value={active.id} /> : null}
@@ -60,15 +59,24 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">My Applications</h1>
           <p className="mt-1 text-[0.9375rem] text-ink-600">Every job you applied to, with the exact CV you sent and a copy of the post.</p>
         </div>
-        <ButtonLink href="/applications/new" variant="secondary">
-          <AddCircle size={20} />
-          Add one you already sent
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/applications/new" variant="secondary">
+            <AddCircle size={20} />
+            Add one you already sent
+          </ButtonLink>
+          {/* Laptops and tablets: the floating Tailor button sits here instead, off the board (round 36). */}
+          <div className="hidden lg:block">
+            <ButtonLink href="/jobs/new">
+              <Magicpen size={20} variant="bulk" />
+              Tailor my CV
+            </ButtonLink>
+          </div>
+        </div>
       </header>
 
       {rows.length ? (
         <ViewSwitch
-          board={<ApplicationsBoard cards={boardCards} saved={saved.map((j) => ({ id: j.id, title: j.title, employer: j.employer, savedAt: j.savedAt }))} toolbar={searchFor("board-filter")} />}
+          board={<ApplicationsBoard cards={boardCards} saved={saved.map((j) => ({ id: j.id, title: j.title, employer: j.employer, savedAt: j.savedAt }))} />}
           list={
         <>
           <nav aria-label="Filter by status" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">

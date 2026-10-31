@@ -14,7 +14,7 @@ import { prepSeenKey } from "@/components/notifications/prep-nudge";
 import { ModalHeader } from "@/components/ui/modal-header";
 import { Button } from "@/components/ui/button";
 import type { IconProps } from "@/components/icons/make";
-import { ArrowRight2, More, Book1, DocumentText, Send2, TaskSquare, Teacher, Star1, Clock, CloseCircle, Archive, InfoCircle } from "@/components/icons";
+import { ArrowLeft2, ArrowRight2, More, Book1, DocumentText, Send2, TaskSquare, Teacher, Star1, Clock, CloseCircle, Archive, InfoCircle } from "@/components/icons";
 import { formatDate } from "@/lib/format";
 
 export type BoardCard = { id: string; title: string; employer: string; status: ApplicationStatus; sentAt: string | null; via: string | null };
@@ -44,7 +44,7 @@ type Asking = { card: BoardCard; kind: "send"; then: Drop } | { card: BoardCard;
  * drag. Phones keep the list: dragging between columns on a small touch screen fights
  * scrolling.
  */
-export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: BoardCard[]; saved: SavedJob[]; toolbar?: ReactNode }) {
+export function ApplicationsBoard({ cards: initial, saved }: { cards: BoardCard[]; saved: SavedJob[] }) {
   const router = useRouter();
   const [cards, setCards] = useState(initial);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -142,13 +142,73 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
     };
   }, []);
 
+  // Getting round a board wider than the screen (founder round 36): stage chips that scroll
+  // to a column and take drops, arrows at the edges, a visible scrollbar, the wheel over
+  // headers and gaps moving sideways, and the board sliding along while a card is dragged
+  // near an edge.
+  const scroller = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const [inView, setInView] = useState<string[]>([]);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const read = () => {
+      setEdges({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+      const box = el.getBoundingClientRect();
+      setInView(
+        [...el.querySelectorAll<HTMLElement>("[data-col]")]
+          .filter((c) => {
+            const r = c.getBoundingClientRect();
+            return r.width > 0 && Math.min(r.right, box.right) - Math.max(r.left, box.left) >= r.width * 0.6;
+          })
+          .map((c) => c.dataset.col!),
+      );
+    };
+    read();
+    el.addEventListener("scroll", read, { passive: true });
+    const seen = new ResizeObserver(read);
+    seen.observe(el);
+    return () => {
+      el.removeEventListener("scroll", read);
+      seen.disconnect();
+    };
+  }, []);
+  const slide = (dir: 1 | -1) => {
+    const el = scroller.current;
+    if (el) el.scrollBy({ left: dir * Math.max(272, el.clientWidth * 0.7), behavior: "smooth" });
+  };
+  const goTo = (id: string) => scroller.current?.querySelector(`[data-col="${id}"]`)?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+
+  /** What lets a card land on a column, or on its chip above the board. */
+  const dropOn = (col: Column) => {
+    const ok = moving ? canDrop(moving, col) : false;
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        if (!ok) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (over !== col.id) setOver(col.id);
+      },
+      onDragLeave: (e: React.DragEvent) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((o) => (o === col.id ? null : o));
+      },
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault();
+        const c = card(e.dataTransfer.getData("text/x-application") || dragging);
+        setOver(null);
+        setDragging(null);
+        if (c) move(c, col);
+      },
+    };
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[0.8125rem] text-ink-600">Drag a job to where it stands now, forward or back. Only Not selected is final. Moving one to Interview offers interview prep.</p>
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="max-w-xl">
+          <p className="text-[0.8125rem] leading-5 text-ink-600">Drag a job to where it stands now, forward or back. Only Not selected is final. Moving one to Interview offers interview prep.</p>
           {saved.length ? (
-            <p className="mt-1.5 border-t border-ink-150 pt-1.5 text-[0.8125rem] text-ink-600">
+            <p className="mt-3 border-t border-ink-300 pt-3 text-[0.8125rem] text-ink-600">
               {saved.length} saved {saved.length === 1 ? "job isn't" : "jobs aren't"} on the board.{" "}
               <button type="button" onClick={() => setShowSaved(true)} className="font-semibold text-brand-700 hover:underline">
                 See saved jobs
@@ -156,12 +216,49 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
             </p>
           ) : null}
         </div>
-        {toolbar}
+        <nav aria-label="Go to a stage" className="flex flex-wrap justify-end gap-1.5">
+          {COLUMNS.map((col) => {
+            const n = cards.filter((c) => col.statuses.includes(c.status)).length;
+            const shown = inView.includes(col.id);
+            const ok = moving ? canDrop(moving, col) : false;
+            return (
+              <button
+                key={col.id}
+                type="button"
+                onClick={() => goTo(col.id)}
+                {...dropOn(col)}
+                aria-current={shown ? "true" : undefined}
+                className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors ${over === col.id ? "bg-brand-100 text-brand-900 ring-2 ring-brand-500" : ok ? "bg-brand-50 text-brand-800 ring-1 ring-brand-300" : shown ? "bg-white text-ink-900 ring-1 ring-ink-300" : "bg-ink-100 text-ink-500 hover:bg-white hover:text-ink-900 hover:ring-1 hover:ring-ink-200"}`}
+              >
+                <span className={`size-2 rounded-full ${col.solid}`} aria-hidden="true" />
+                {col.title}
+                <span className="tabular-nums text-ink-500">{n}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {/* The board fills the rest of the screen; each column scrolls on its own (founder round 35). */}
-      <div ref={boardRef} style={height ? { height } : undefined} className="flex min-h-[22rem] flex-col rounded-[var(--radius-panel)] border border-ink-150 bg-white p-3 shadow-card" aria-busy={busy || undefined}>
-        <div className="no-scrollbar min-h-0 flex-1 overflow-x-auto">
+      <div ref={boardRef} style={height ? { height } : undefined} className="relative flex min-h-[22rem] flex-col rounded-[var(--radius-panel)] border border-ink-150 bg-white p-3 pb-1.5 shadow-card" aria-busy={busy || undefined}>
+        <div
+          ref={scroller}
+          className="board-scroll min-h-0 flex-1 overflow-x-auto pb-2"
+          onWheel={(e) => {
+            const el = scroller.current;
+            if (!el || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+            const list = (e.target as HTMLElement).closest<HTMLElement>("[data-col-list]");
+            if (list && list.scrollHeight > list.clientHeight + 1) return;
+            el.scrollLeft += e.deltaY;
+          }}
+          onDragOver={(e) => {
+            const el = scroller.current;
+            if (!el || !dragging) return;
+            const box = el.getBoundingClientRect();
+            if (e.clientX < box.left + 96) el.scrollLeft -= 18;
+            else if (e.clientX > box.right - 96) el.scrollLeft += 18;
+          }}
+        >
           <ol className="flex h-full min-w-max gap-3" aria-label="Applications by stage">
             {COLUMNS.map((col) => {
               const list = cards.filter((c) => col.statuses.includes(c.status));
@@ -171,24 +268,10 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
               return (
                 <li
                   key={col.id}
+                  data-col={col.id}
                   aria-label={`${col.title}, ${list.length}`}
-                  onDragOver={(e) => {
-                    if (!ok) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    if (over !== col.id) setOver(col.id);
-                  }}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((o) => (o === col.id ? null : o));
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const c = card(e.dataTransfer.getData("text/x-application") || dragging);
-                    setOver(null);
-                    setDragging(null);
-                    if (c) move(c, col);
-                  }}
-                  className={`flex h-full w-[17rem] shrink-0 flex-col transition-opacity ${moving && !ok && !home ? "opacity-40" : ""}`}
+                  {...dropOn(col)}
+                  className={`flex h-full w-[16.5rem] shrink-0 scroll-mx-3 flex-col transition-opacity ${moving && !ok && !home ? "opacity-40" : ""}`}
                 >
                   <div className="flex h-11 overflow-hidden rounded-xl shadow-sm">
                     <h3 className={`flex flex-1 items-center gap-2 px-3 text-sm font-semibold text-white ${col.solid}`}>
@@ -197,7 +280,7 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
                     </h3>
                     <span className={`grid min-w-12 place-items-center px-3 text-sm font-semibold tabular-nums ${col.tint}`}>{list.length}</span>
                   </div>
-                  <ul className={`mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain rounded-xl p-2 transition-colors ${over === col.id ? "bg-brand-50 ring-2 ring-brand-400" : ok ? "bg-brand-50/60" : "bg-ink-75"}`}>
+                  <ul data-col-list className={`mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain rounded-xl p-2 transition-colors ${over === col.id ? "bg-brand-50 ring-2 ring-brand-400" : ok ? "bg-brand-50/60" : "bg-ink-75"}`}>
                     {over === col.id ? <li aria-hidden="true" className="h-20 shrink-0 rounded-xl border-2 border-dashed border-brand-300 bg-[repeating-linear-gradient(135deg,var(--color-ink-100)_0_8px,transparent_8px_16px)]" /> : null}
                     {list.map((c) => (
                       <BoardItem
@@ -224,6 +307,16 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
             })}
           </ol>
         </div>
+        {edges.left ? (
+          <button type="button" onClick={() => slide(-1)} aria-label="Earlier stages" className="absolute left-2 top-1/2 z-10 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-ink-800 shadow-raised ring-1 ring-ink-200 transition-transform hover:scale-105 hover:text-brand-700">
+            <ArrowLeft2 size={20} />
+          </button>
+        ) : null}
+        {edges.right ? (
+          <button type="button" onClick={() => slide(1)} aria-label="Later stages" className="absolute right-2 top-1/2 z-10 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-ink-800 shadow-raised ring-1 ring-ink-200 transition-transform hover:scale-105 hover:text-brand-700">
+            <ArrowRight2 size={20} />
+          </button>
+        ) : null}
       </div>
 
       <SentHowDialog

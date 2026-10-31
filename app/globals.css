@@ -278,6 +278,17 @@ textarea::placeholder {
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* The applications board's sideways scrollbar: always shown (overlay scrollbars hide it
+   until you scroll), so the later stages are findable. Chrome and Safari draw this one only
+   while scrollbar-width is unset, so the standard properties are for Firefox alone. */
+.board-scroll::-webkit-scrollbar { height: 10px; }
+.board-scroll::-webkit-scrollbar-track { background: var(--color-ink-75); border-radius: 9999px; }
+.board-scroll::-webkit-scrollbar-thumb { background: var(--color-ink-300); border-radius: 9999px; }
+.board-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-ink-400); }
+@supports not selector(::-webkit-scrollbar) {
+  .board-scroll { scrollbar-width: thin; scrollbar-color: var(--color-ink-300) var(--color-ink-75); }
+}
+
 /* Every select: our own chevron with room around it, never the browser's arrow
    pressed against the edge. */
 select {

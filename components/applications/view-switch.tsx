@@ -19,18 +19,25 @@ export function ViewSwitch({ board, list }: { board: ReactNode; list: ReactNode 
     } catch {}
   }, []);
   // Board mode never scrolls the page on laptops and tablets (founder round 35); the list does.
+  // Focusing a control or a card can still nudge a locked page, so it is held at the top.
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 1024px)");
+    const locked = () => view === "board" && wide.matches;
+    const hold = () => {
+      if (locked() && window.scrollY) window.scrollTo({ top: 0, behavior: "instant" });
+    };
     const apply = () => {
-      if (view === "board" && wide.matches) {
-        window.scrollTo({ top: 0 });
+      if (locked()) {
+        hold();
         document.documentElement.style.overflow = "hidden";
       } else document.documentElement.style.removeProperty("overflow");
     };
     apply();
     wide.addEventListener("change", apply);
+    window.addEventListener("scroll", hold, { passive: true });
     return () => {
       wide.removeEventListener("change", apply);
+      window.removeEventListener("scroll", hold);
       document.documentElement.style.removeProperty("overflow");
     };
   }, [view]);

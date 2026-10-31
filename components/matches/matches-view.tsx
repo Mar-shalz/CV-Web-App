@@ -4,10 +4,10 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MatchView } from "@/lib/jobfeed/match";
-import { acceptMatch, dismissMatch, searchMatches, setTailorAhead } from "@/app/(app)/matches/actions";
+import { acceptMatch, dismissMatch, searchMatches } from "@/app/(app)/matches/actions";
 import { toast } from "@/components/ui/toaster";
-import { Button } from "@/components/ui/button";
-import { Magicpen, Global, Calendar, Location, Refresh2, SearchStatus, TickCircle, ArrowRight2, CloseCircle, Export } from "@/components/icons";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Magicpen, Global, Calendar, Location, Refresh2, SearchStatus, TickCircle, ArrowRight2, CloseCircle, Export, Setting2 } from "@/components/icons";
 
 const HOUR = 3_600_000;
 const daysAgo = (iso: string) => Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
@@ -26,12 +26,13 @@ const searched = (iso: string | null) => {
  * Jobs for you (founder rounds 34 and 35, D-205): what the daily search found that the
  * person matches 90% or more. The search runs on its own each day; opening the page runs it
  * when the last one is a day old. Tailor moves a job to their CV and then My Applications.
+ * Tailor ahead is switched in Settings; this page says plainly whether it's on and links
+ * there to change it (founder round 36).
  */
-export function MatchesView({ items: initial, searchedAt, tailorAhead: initialAhead, preview }: { items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; preview: boolean }) {
+export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, preview }: { items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; preview: boolean }) {
   const router = useRouter();
   const [items, setItems] = useState(initial);
   const [searching, setSearching] = useState(false);
-  const [ahead, setAhead] = useState(initialAhead);
   const [busy, start] = useTransition();
   const started = useRef(false);
 
@@ -77,28 +78,27 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: initialAh
     });
   }
 
-  function toggleAhead(on: boolean) {
-    setAhead(on);
-    start(async () => {
-      const res = await setTailorAhead(on);
-      if (!res.ok) {
-        setAhead(!on);
-        return toast(res.error ?? "We couldn't save that.", "error");
-      }
-      toast(on ? "We'll write the CV as soon as a job matches." : "We'll write the CV when you tap Tailor.");
-    });
-  }
-
   return (
     <div className="space-y-3">
       <section className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
-        <label className="flex cursor-pointer items-start gap-3">
-          <input type="checkbox" role="switch" checked={ahead} onChange={(e) => toggleAhead(e.target.checked)} className="mt-1 size-5 accent-brand-600" />
-          <span>
-            <span className="block text-sm font-semibold text-ink-900">Tailor ahead</span>
-            <span className="block text-[0.8125rem] leading-5 text-ink-600">{ahead ? "Your CV is written as soon as a job matches, ready when you look." : "Off: your CV is written when you tap Tailor, so none are made for jobs you skip."}</span>
+        <div className="flex items-start gap-3">
+          <span className={`grid size-10 shrink-0 place-items-center rounded-2xl ${ahead ? "bg-proof-50 text-proof-700" : "bg-ink-75 text-ink-600"}`}>
+            <Magicpen size={20} variant="bulk" />
           </span>
-        </label>
+          <div>
+            <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-900">
+              Tailor ahead
+              <span className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.06em] ${ahead ? "bg-proof-50 text-proof-700 ring-1 ring-proof-100" : "bg-ink-100 text-ink-600"}`}>{ahead ? "On" : "Off"}</span>
+            </p>
+            <p className="mt-0.5 max-w-xl text-[0.8125rem] leading-5 text-ink-600">
+              {ahead ? "Tailor ahead is on: we write your CV as soon as a job matches, so it's ready when you look." : "We write your CV when you tap Tailor my CV. Turn on Tailor ahead to have it ready as soon as a job matches."}
+            </p>
+            <ButtonLink href="/settings#tailor-ahead" variant="secondary" size="sm" className="mt-2.5">
+              <Setting2 size={16} />
+              {ahead ? "Turn off in Settings" : "Turn on in Settings"}
+            </ButtonLink>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-ink-500">{searched(searchedAt)}</span>
           <Button variant="secondary" size="sm" onClick={() => search(true)} disabled={busy || searching || preview}>
