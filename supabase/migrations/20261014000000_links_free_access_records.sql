@@ -287,3 +287,53 @@ create table if not exists public.company_records (
 create index if not exists company_records_checks_idx on public.company_records (checks desc);
 alter table public.company_records enable row level security;
 revoke all on public.company_records from anon, authenticated;
+
+-- 26. Jobs for you (founder rounds 34 and 35, D-205): a daily search of employers' own career
+-- pages (Headcount Labs) and remote job boards (Jobicy) for every person, using their roles and
+-- experience. Jobs posted in the last 60 days that they match 90% or more are listed for them to
+-- tailor or turn down; nothing is ever sent for them.
+-- job_matches: one row per job found for a person. Written by the server; the person reads
+-- their own and can only change what they decided (status, decided_at).
+create table if not exists public.job_matches (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  source text not null check (source in ('headcount', 'jobicy')),
+  source_job_id text not null check (char_length(source_job_id) <= 120),
+  title text not null check (char_length(title) <= 300),
+  employer text not null check (char_length(employer) <= 200),
+  location text check (char_length(location) <= 200),
+  remote boolean not null default false,
+  posted_at timestamptz,
+  url text not null check (url ~ '^https://'),
+  credit jsonb,
+  prescore int not null default 0,
+  match_percent int,
+  status text not null default 'found' check (status in ('found', 'matched', 'not_a_match', 'dismissed', 'accepted')),
+  job_id uuid references public.jobs (id) on delete set null,
+  cv_version_id uuid references public.cv_versions (id) on delete set null,
+  created_at timestamptz not null default now(),
+  checked_at timestamptz,
+  decided_at timestamptz,
+  unique (user_id, source, source_job_id)
+);
+create index if not exists job_matches_user_idx on public.job_matches (user_id, status, created_at desc);
+alter table public.job_matches enable row level security;
+create policy job_matches_select_own on public.job_matches for select to authenticated using (user_id = (select auth.uid()));
+create policy job_matches_update_own on public.job_matches for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke insert, update, delete on public.job_matches from anon, authenticated;
+grant update (status, decided_at) on public.job_matches to authenticated;
+
+-- A job found by the search is saved for the person as 'suggested' until they act on it, so it
+-- never shows among the jobs they added themselves.
+alter table public.jobs drop constraint if exists jobs_state_check;
+alter table public.jobs add constraint jobs_state_check check (state in ('captured', 'reviewed', 'checked', 'saved', 'skipped', 'applying', 'applied', 'suggested'));
+
+-- Tailor ahead (a setting, off by default: CVs are written when the person taps Tailor), and
+-- when the search last ran for them.
+alter table public.users add column if not exists tailor_ahead boolean not null default false;
+alter table public.users add column if not exists matches_searched_at timestamptz;
+grant update (tailor_ahead) on public.users to authenticated;
+
+-- Shared job search results, reused by everyone looking for the same role in the same places.
+alter table public.lookup_cache drop constraint if exists lookup_cache_kind_check;
+alter table public.lookup_cache add constraint lookup_cache_kind_check check (kind in ('search', 'legitimacy_read', 'job_feed'));

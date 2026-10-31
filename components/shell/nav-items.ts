@@ -3,6 +3,8 @@ export const NAV_ITEMS = [
   { href: "/home", label: "Home", short: "Home", icon: "home" },
   { href: "/jobs/new", label: "Tailor My CV", short: "Tailor CV", icon: "tailor", primary: true },
   { href: "/applications", label: "My Applications", short: "Applied", icon: "applications" },
+  // Jobs the daily search found that fit them (D-205). Sidebar only: phones reach it from Home.
+  { href: "/matches", label: "Jobs for You", short: "For you", icon: "matches", sidebarOnly: true },
   { href: "/experience", label: "My Experience", short: "Experience", icon: "experience" },
   // "Not sure a job is real? Check it first, free" (founder, round 23). Named with the
   // question people ask themselves (round 24, D-180). Sidebar only: phones get a floating button on Home.

@@ -14,6 +14,7 @@ import {
   Global,
   MessageQuestion,
   ShieldSearch,
+  SearchStatus,
 } from "@/components/icons";
 import { Logo } from "@/components/brand/logo";
 import { NAV_ITEMS, type NavItem } from "./nav-items";
@@ -31,6 +32,7 @@ const ICONS = {
   applications: Send2,
   experience: Briefcase,
   check: ShieldSearch,
+  matches: SearchStatus,
   settings: Setting2,
 };
 

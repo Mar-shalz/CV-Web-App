@@ -9,7 +9,7 @@ import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 // contacts in job posts, never anything about the person using the app. Server only (the
 // table is closed to app users). Without the table, or in preview, nothing is cached.
 
-export type LookupKind = "search" | "legitimacy_read";
+export type LookupKind = "search" | "legitimacy_read" | "job_feed";
 
 const enabled = () => isSupabaseConfigured() && !isPreviewMode() && Boolean(process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY);
 

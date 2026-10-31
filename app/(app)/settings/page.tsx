@@ -4,8 +4,9 @@ import { requireReadyViewer } from "@/lib/auth/viewer";
 import { signOut } from "@/app/(auth)/actions";
 import { MARKETS } from "@/lib/config";
 import { Avatar } from "@/components/shell/user-chip";
-import { ArrowRight2, Lock1, Logout, ShieldTick, DocumentDownload, Mobile, Global, Crown1, Edit2 } from "@/components/icons";
-import { DataSaverSwitch } from "@/components/settings/settings-forms";
+import { ArrowRight2, Lock1, Logout, ShieldTick, DocumentDownload, Mobile, Global, Crown1, Edit2, Magicpen } from "@/components/icons";
+import { DataSaverSwitch, TailorAheadSwitch } from "@/components/settings/settings-forms";
+import { tailorAheadOf } from "@/lib/jobfeed/match";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { marketsLabel } from "@/lib/markets";
 import { AccessCard } from "@/components/shell/access-card";
@@ -34,6 +35,7 @@ function Row({ href, icon, title, body, className }: { href?: string; icon: Reac
 
 export default async function SettingsPage() {
   const viewer = await requireReadyViewer();
+  const tailorAhead = await tailorAheadOf(viewer);
   const stage = MARKETS.career_stages.find((s) => s.id === viewer.careerStage)?.label;
   const markets = marketsLabel(viewer.targetMarkets);
   const access = accessOf(viewer);
@@ -91,6 +93,9 @@ export default async function SettingsPage() {
             <Row href="/onboarding/setup" icon={<Global size={20} />} title="Where you're applying" body={markets || "Not set"} />
             <li>
               <DataSaverSwitch initial={viewer.lowDataMode} icon={<Mobile size={20} />} />
+            </li>
+            <li>
+              <TailorAheadSwitch initial={tailorAhead} icon={<Magicpen size={20} />} />
             </li>
             {/* Nothing to buy while the app is open (D-196). */}
             {access.kind !== "open" ? <Row href="/pass" icon={<Crown1 size={20} />} title="Pass and payments" body="Your pass, receipts and the refund rule." /> : null}

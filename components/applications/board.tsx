@@ -121,13 +121,34 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
 
   const moving = card(dragging);
 
+  // Board mode never scrolls the page (founder round 35): the board takes the screen's
+  // remaining height, measured from where it starts; the view switch holds the page still.
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const fit = () => {
+      if (!window.matchMedia("(min-width: 1024px)").matches || !el.offsetParent) return setHeight(null);
+      setHeight(Math.max(352, window.innerHeight - el.getBoundingClientRect().top - window.scrollY - 16));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    const seen = new ResizeObserver(fit);
+    seen.observe(el.parentElement ?? el);
+    return () => {
+      window.removeEventListener("resize", fit);
+      seen.disconnect();
+    };
+  }, []);
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
+        <div>
           <p className="text-[0.8125rem] text-ink-600">Drag a job to where it stands now, forward or back. Only Not selected is final. Moving one to Interview offers interview prep.</p>
           {saved.length ? (
-            <p className="text-[0.8125rem] text-ink-600">
+            <p className="mt-1.5 border-t border-ink-150 pt-1.5 text-[0.8125rem] text-ink-600">
               {saved.length} saved {saved.length === 1 ? "job isn't" : "jobs aren't"} on the board.{" "}
               <button type="button" onClick={() => setShowSaved(true)} className="font-semibold text-brand-700 hover:underline">
                 See saved jobs
@@ -138,9 +159,10 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
         {toolbar}
       </div>
 
-      <div className="rounded-[var(--radius-panel)] border border-ink-150 bg-white p-3 shadow-card" aria-busy={busy || undefined}>
-        <div className="no-scrollbar overflow-x-auto">
-          <ol className="flex min-w-max gap-3" aria-label="Applications by stage">
+      {/* The board fills the rest of the screen; each column scrolls on its own (founder round 35). */}
+      <div ref={boardRef} style={height ? { height } : undefined} className="flex min-h-[22rem] flex-col rounded-[var(--radius-panel)] border border-ink-150 bg-white p-3 shadow-card" aria-busy={busy || undefined}>
+        <div className="no-scrollbar min-h-0 flex-1 overflow-x-auto">
+          <ol className="flex h-full min-w-max gap-3" aria-label="Applications by stage">
             {COLUMNS.map((col) => {
               const list = cards.filter((c) => col.statuses.includes(c.status));
               const ok = moving ? canDrop(moving, col) : false;
@@ -166,7 +188,7 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
                     setDragging(null);
                     if (c) move(c, col);
                   }}
-                  className={`flex w-[17rem] shrink-0 flex-col transition-opacity ${moving && !ok && !home ? "opacity-40" : ""}`}
+                  className={`flex h-full w-[17rem] shrink-0 flex-col transition-opacity ${moving && !ok && !home ? "opacity-40" : ""}`}
                 >
                   <div className="flex h-11 overflow-hidden rounded-xl shadow-sm">
                     <h3 className={`flex flex-1 items-center gap-2 px-3 text-sm font-semibold text-white ${col.solid}`}>
@@ -175,7 +197,7 @@ export function ApplicationsBoard({ cards: initial, saved, toolbar }: { cards: B
                     </h3>
                     <span className={`grid min-w-12 place-items-center px-3 text-sm font-semibold tabular-nums ${col.tint}`}>{list.length}</span>
                   </div>
-                  <ul className={`mt-2.5 flex h-[calc(100dvh-17rem)] min-h-[24rem] flex-col gap-2.5 overflow-y-auto rounded-xl p-2 transition-colors ${over === col.id ? "bg-brand-50 ring-2 ring-brand-400" : ok ? "bg-brand-50/60" : "bg-ink-75"}`}>
+                  <ul className={`mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain rounded-xl p-2 transition-colors ${over === col.id ? "bg-brand-50 ring-2 ring-brand-400" : ok ? "bg-brand-50/60" : "bg-ink-75"}`}>
                     {over === col.id ? <li aria-hidden="true" className="h-20 shrink-0 rounded-xl border-2 border-dashed border-brand-300 bg-[repeating-linear-gradient(135deg,var(--color-ink-100)_0_8px,transparent_8px_16px)]" /> : null}
                     {list.map((c) => (
                       <BoardItem

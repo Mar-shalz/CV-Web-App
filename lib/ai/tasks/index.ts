@@ -11,6 +11,7 @@ import { shortlistQuestions, drillFeedback, interviewResearch, mockInterview } f
 import { polishAchievement } from "./polish";
 import { cvTarget } from "./cv-target";
 import { cvSummary } from "./cv-summary";
+import { formAnswers } from "./form-answers";
 
 /**
  * Task registry (Build pack section 6). One entry per task: model, prompt version,
@@ -39,6 +40,7 @@ export const TASKS = {
   polish_achievement: polishAchievement,
   cv_target: cvTarget,
   cv_summary: cvSummary,
+  form_answers: formAnswers,
 } as const;
 
 export type TaskName = keyof typeof TASKS;

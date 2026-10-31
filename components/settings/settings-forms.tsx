@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState, useTransition, type ReactNode } from "react";
 import { saveProfile, setLowData, removeSensitive, setConsent, deleteAccount, type SettingsState } from "@/app/(app)/settings/actions";
+import { setTailorAhead } from "@/app/(app)/matches/actions";
 import { Field, TextInput, inputClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { TickCircle, Trash, DocumentDownload, Danger } from "@/components/icons";
@@ -116,6 +117,36 @@ export function DataSaverSwitch({ initial, icon }: { initial: boolean; icon?: Re
             if (!ok) setOn(!next);
             // Apply at once on this page too, before the refresh arrives.
             document.querySelector("[data-app-shell]")?.toggleAttribute("data-low-data", ok ? next : !next);
+          });
+        }}
+        className="peer sr-only"
+      />
+      <span aria-hidden="true" className="relative h-7 w-12 shrink-0 rounded-full bg-ink-200 transition-colors peer-checked:bg-brand-600 peer-focus-visible:ring-4 peer-focus-visible:ring-brand-100 after:absolute after:left-1 after:top-1 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" />
+    </label>
+  );
+}
+
+/** Tailor ahead (founder round 35, D-205): CVs for matched jobs written straight away. Off by default. */
+export function TailorAheadSwitch({ initial, icon }: { initial: boolean; icon?: ReactNode }) {
+  const [on, setOn] = useState(initial);
+  const [, start] = useTransition();
+  return (
+    <label className="flex min-h-[76px] cursor-pointer items-center gap-3.5 rounded-2xl px-3 py-3 transition-colors hover:bg-ink-50">
+      {icon ? <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">{icon}</span> : null}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[0.9375rem] font-semibold text-ink-900">Tailor ahead</span>
+        <span className="block text-[0.8125rem] leading-5 text-ink-500">{on ? "On. When Jobs for You finds a match, your CV is written straight away." : "Off. Your CV for a match is written when you tap Tailor."}</span>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={on}
+        onChange={(e) => {
+          const next = e.target.checked;
+          setOn(next);
+          start(async () => {
+            const res = await setTailorAhead(next);
+            if (!res.ok) setOn(!next);
           });
         }}
         className="peer sr-only"

@@ -18,6 +18,22 @@ export function ViewSwitch({ board, list }: { board: ReactNode; list: ReactNode 
       if (localStorage.getItem(KEY) === "list") setView("list");
     } catch {}
   }, []);
+  // Board mode never scrolls the page on laptops and tablets (founder round 35); the list does.
+  useEffect(() => {
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const apply = () => {
+      if (view === "board" && wide.matches) {
+        window.scrollTo({ top: 0 });
+        document.documentElement.style.overflow = "hidden";
+      } else document.documentElement.style.removeProperty("overflow");
+    };
+    apply();
+    wide.addEventListener("change", apply);
+    return () => {
+      wide.removeEventListener("change", apply);
+      document.documentElement.style.removeProperty("overflow");
+    };
+  }, [view]);
   const pick = (v: View) => {
     setView(v);
     try {

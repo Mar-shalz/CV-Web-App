@@ -1,0 +1,172 @@
+import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Viewer } from "@/lib/auth/viewer";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
+import { LIMITS } from "@/lib/config";
+import { getVault, type Vault } from "@/lib/vault/data";
+import { allSkills, getExtras } from "@/lib/vault/extras";
+import { captureJob } from "@/lib/jobs/capture";
+import { getJob } from "@/lib/jobs/data";
+import { getVerdict, runEligibility } from "@/lib/jobs/check";
+import { matchPercent } from "@/lib/rules/match-score";
+import { generateForJob } from "@/lib/cv/data";
+import { track } from "@/lib/analytics/server";
+import { findJobs, type FeedJob } from "./index";
+import { bandFor, fresh, levelFits, placeFits, prescore, rolesFrom } from "./rank";
+
+// Jobs for you (founder rounds 34 and 35, D-205). Every day, for everyone: search
+// employers' own career pages and remote job boards for the roles the person goes for,
+// keep jobs posted in the last 60 days at a level they could be hired at, run the full fit
+// check on the few most promising, and list those they match 90% or more. Searches are
+// shared by people looking for the same role. With "Tailor ahead" on, the CV is written
+// straight away; otherwise when they tap Tailor. Nothing is ever sent for them.
+
+export type MatchRun = { ran: boolean; found: number; checked: number; matched: number; reason?: "recent" | "no_roles" | "no_experience" };
+
+const DAY = 86_400_000;
+
+function workMonths(vault: Vault): number {
+  return vault.roles
+    .filter((r) => r.confirmed && r.kind === "job" && r.start)
+    .reduce((sum, r) => {
+      const [sy, sm] = r.start!.split("-").map(Number) as [number, number];
+      const end = r.isCurrent || !r.end ? new Date().toISOString().slice(0, 7) : r.end;
+      const [ey, em] = end.split("-").map(Number) as [number, number];
+      return sum + Math.max(0, (ey - sy) * 12 + em - sm + 1);
+    }, 0);
+}
+
+/** The text a found job is read from: what the source published, labelled, and its link. */
+const postText = (j: FeedJob) => [j.title, j.employer, j.location, j.remote ? "Remote" : null, "", j.description, "", `Apply: ${j.url}`].filter((l) => l !== null).join("\n");
+
+/**
+ * One person's daily search. `db` writes the job_matches rows (closed to app users);
+ * the rest runs as the person (their session, or the admin client scoped to them).
+ * `minHours`: skip when their last search is more recent than this.
+ */
+export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {}): Promise<MatchRun> {
+  const none = (reason?: MatchRun["reason"]): MatchRun => ({ ran: false, found: 0, checked: 0, matched: 0, reason });
+  if (viewer.preview || !isSupabaseConfigured() || isPreviewMode()) return none();
+  const db = createAdminClient();
+  // Before migration section 26 there's nowhere to keep matches: spend nothing.
+  const { error: missing } = await db.from("job_matches").select("id").limit(1);
+  if (missing) return none();
+  const minHours = opts.minHours ?? 20;
+  const { data: me } = await db.from("users").select("matches_searched_at, tailor_ahead").eq("id", viewer.id).maybeSingle();
+  const last = (me as { matches_searched_at?: string | null } | null)?.matches_searched_at;
+  if (last && Date.now() - Date.parse(last) < minHours * 3_600_000) return none("recent");
+
+  const supabase = await createClient();
+  const [vault, extras, { data: recent }] = await Promise.all([
+    getVault(viewer),
+    getExtras(viewer),
+    supabase.from("jobs").select("parsed").eq("user_id", viewer.id).neq("state", "suggested").order("captured_at", { ascending: false }).limit(20),
+  ]);
+  if (!vault.confirmedItems) return none("no_experience");
+  const applied = (recent ?? []).map((j) => (j.parsed as { title?: string | null } | null)?.title ?? null);
+  const held = vault.roles.filter((r) => r.confirmed && r.kind === "job").map((r) => r.title);
+  const roles = rolesFrom(applied, held, LIMITS.matches.roles);
+  if (!roles.length) return none("no_roles");
+
+  await db.from("users").update({ matches_searched_at: new Date().toISOString() }).eq("id", viewer.id);
+  // Their target countries; "abroad" with no country named means the main ones Nigerians move to.
+  const named = viewer.targetMarkets.filter((m) => /^[A-Z]{2}$/.test(m));
+  const countries = named.length ? named : viewer.targetMarkets.includes("INTL") ? ["GB", "US", "CA", "AE", "IE"] : ["NG"];
+  const since = new Date(Date.now() - LIMITS.matches.max_age_days * DAY).toISOString().slice(0, 10);
+  const band = bandFor(workMonths(vault));
+  const skills = allSkills(extras);
+
+  // 1. Search (shared), then keep what's fresh, at their level, in their places, and new to them.
+  const jobs = (await findJobs(roles, countries, since)).filter((j) => fresh(j, LIMITS.matches.max_age_days) && levelFits(j.title, band) && placeFits(j, countries));
+  const { data: known } = await db.from("job_matches").select("source, source_job_id").eq("user_id", viewer.id).limit(5000);
+  const seen = new Set((known ?? []).map((k) => `${k.source}:${k.source_job_id}`));
+  const fresh_ = jobs
+    .filter((j) => !seen.has(`${j.source}:${j.sourceId}`))
+    .map((j) => ({ j, score: prescore(j, roles, skills) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 60);
+  if (fresh_.length) {
+    await db.from("job_matches").upsert(
+      fresh_.map(({ j, score }) => ({ user_id: viewer.id, source: j.source, source_job_id: j.sourceId, title: j.title, employer: j.employer, location: j.location, remote: j.remote, posted_at: j.postedAt, url: j.url, credit: j.credit, prescore: score })),
+      { onConflict: "user_id,source,source_job_id", ignoreDuplicates: true },
+    );
+  }
+
+  // 2. The full fit check on the most promising few, in parallel.
+  const picks = fresh_.filter((f) => f.score >= 25).slice(0, LIMITS.matches.checks_per_day);
+  const tailorAhead = Boolean((me as { tailor_ahead?: boolean } | null)?.tailor_ahead);
+  const results = await Promise.all(picks.map(({ j }) => checkOne(viewer, supabase, db, j, tailorAhead).catch(() => false)));
+  const matched = results.filter(Boolean).length;
+  await track("matches_searched", { found: fresh_.length, checked: picks.length, matched }, viewer.id);
+  return { ran: true, found: fresh_.length, checked: picks.length, matched };
+}
+
+/** Saves the job for them (as "suggested"), runs eligibility and the fit check, and records the match. */
+async function checkOne(viewer: Viewer, supabase: SupabaseClient, db: SupabaseClient, j: FeedJob, tailorAhead: boolean): Promise<boolean> {
+  const captured = await captureJob(supabase, viewer.id, viewer.targetMarkets, { mode: "paste", text: postText(j), sourceUrl: j.url });
+  if (!captured.ok) return false;
+  await supabase.from("jobs").update({ state: "suggested" }).eq("id", captured.jobId).eq("user_id", viewer.id);
+  const job = await getJob(viewer, captured.jobId);
+  const vault = await getVault(viewer);
+  const eligibility = await runEligibility(viewer, job, vault);
+  const verdict = await getVerdict(viewer, job, vault, eligibility);
+  const pct = matchPercent(verdict.requirements, job.parsed.requirements);
+  const ok = eligibility.overall !== "fail" && verdict.verdict !== "skip" && pct !== null && pct >= LIMITS.matches.min_match;
+  let cvId: string | null = null;
+  if (ok && tailorAhead) {
+    const res = await generateForJob(viewer, job);
+    if (res.ok) cvId = res.cvId;
+  }
+  await db
+    .from("job_matches")
+    .update({ status: ok ? "matched" : "not_a_match", match_percent: pct, job_id: captured.jobId, cv_version_id: cvId, checked_at: new Date().toISOString() })
+    .eq("user_id", viewer.id)
+    .eq("source", j.source)
+    .eq("source_job_id", j.sourceId);
+  return ok;
+}
+
+export type MatchView = { id: string; title: string; employer: string; location: string | null; remote: boolean; postedAt: string | null; url: string; credit: { text: string; link: string } | null; percent: number; jobId: string | null; tailored: boolean; source: "headcount" | "jobicy" };
+
+/** Jobs that fit them and are waiting for a yes or no, best first. */
+export async function listMatches(viewer: Viewer): Promise<{ items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; ready: boolean }> {
+  if (viewer.preview) {
+    const ago = (d: number) => new Date(Date.now() - d * DAY).toISOString();
+    return {
+      ready: true,
+      searchedAt: ago(0.2),
+      tailorAhead: false,
+      items: [
+        { id: "m1", title: "Graduate Trainee, Finance", employer: "Northbridge Bank", location: "Lagos, Nigeria", remote: false, postedAt: ago(3), url: "https://example.com/jobs/1", credit: null, percent: 94, jobId: "demo", tailored: false, source: "headcount" },
+        { id: "m2", title: "Accounts Assistant", employer: "Lekki Foods Manufacturing", location: "Lagos, Nigeria", remote: false, postedAt: ago(9), url: "https://example.com/jobs/2", credit: null, percent: 91, jobId: "demo", tailored: true, source: "headcount" },
+        { id: "m3", title: "Finance Operations Associate (Remote)", employer: "Sample Fintech", location: "Remote (EMEA)", remote: true, postedAt: ago(1), url: "https://jobicy.com/jobs/0-sample", credit: { text: "Listed on Jobicy", link: "https://jobicy.com/jobs/0-sample" }, percent: 90, jobId: "demo", tailored: false, source: "jobicy" },
+      ],
+    };
+  }
+  const supabase = await createClient();
+  const [{ data, error }, { data: me }] = await Promise.all([
+    supabase.from("job_matches").select("*").eq("user_id", viewer.id).eq("status", "matched").order("match_percent", { ascending: false }).order("posted_at", { ascending: false }).limit(50),
+    supabase.from("users").select("*").eq("id", viewer.id).maybeSingle(),
+  ]);
+  const u = me as { matches_searched_at?: string | null; tailor_ahead?: boolean } | null;
+  if (error) return { items: [], searchedAt: null, tailorAhead: false, ready: false };
+  const cutoff = Date.now() - LIMITS.matches.max_age_days * DAY;
+  return {
+    ready: true,
+    searchedAt: u?.matches_searched_at ?? null,
+    tailorAhead: Boolean(u?.tailor_ahead),
+    items: (data ?? [])
+      .filter((m) => !m.posted_at || Date.parse(m.posted_at) >= cutoff)
+      .map((m) => ({ id: m.id, title: m.title, employer: m.employer, location: m.location, remote: m.remote, postedAt: m.posted_at, url: m.url, credit: m.credit, percent: m.match_percent ?? 0, jobId: m.job_id, tailored: Boolean(m.cv_version_id), source: m.source })),
+  };
+}
+
+/** The Tailor ahead setting (off until set, and before migration section 26). */
+export async function tailorAheadOf(viewer: Viewer): Promise<boolean> {
+  if (viewer.preview) return false;
+  const supabase = await createClient();
+  const { data } = await supabase.from("users").select("*").eq("id", viewer.id).maybeSingle();
+  return Boolean((data as { tailor_ahead?: boolean } | null)?.tailor_ahead);
+}

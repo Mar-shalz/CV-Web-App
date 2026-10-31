@@ -10,7 +10,9 @@ import { TailorHero } from "@/components/home/tailor-hero";
 import { RecentApplications } from "@/components/home/recent-applications";
 import { VaultCard } from "@/components/home/vault-card";
 import { GettingStarted } from "@/components/home/getting-started";
-import { Send2, TickCircle, Clock, Briefcase, ShieldTick } from "@/components/icons";
+import { Send2, TickCircle, Clock, Briefcase, ShieldTick, SearchStatus, ArrowRight2 } from "@/components/icons";
+import Link from "next/link";
+import { listMatches } from "@/lib/jobfeed/match";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -24,7 +26,7 @@ const PROMISES = [
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ preview?: string }> }) {
   const viewer = await requireReadyViewer();
   const { preview } = await searchParams;
-  const data = await getHomeData(viewer, { previewEmpty: preview === "new" });
+  const [data, matches] = await Promise.all([getHomeData(viewer, { previewEmpty: preview === "new" }), listMatches(viewer)]);
   const access = accessOf(viewer);
 
   // Setup shows until the first application is sent. Step 2 is done once a CV has been
@@ -65,6 +67,22 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </li>
         </ul>
       )}
+
+      {/* Jobs for You (D-205): a way in on every screen size, with how many are waiting. */}
+      <Link
+        href="/matches"
+        style={{ "--i": 2 } as CSSProperties}
+        className="group flex items-center gap-3 rounded-[var(--radius-card)] border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-card transition-colors hover:border-brand-400"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white">
+          <SearchStatus size={22} variant="bulk" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[0.9375rem] font-semibold text-ink-900">{matches.items.length ? `${matches.items.length} ${matches.items.length === 1 ? "job fits" : "jobs fit"} you 90% or more` : "Jobs for You"}</span>
+          <span className="block text-[0.8125rem] leading-5 text-ink-600">We search employers&apos; careers pages every day for jobs like the ones you go for.</span>
+        </span>
+        <ArrowRight2 size={20} className="shrink-0 text-brand-700 transition-transform group-hover:translate-x-0.5" />
+      </Link>
 
       {/* Phones: My Experience sits right under the overview (founder, round 24). */}
       <div style={{ "--i": 2 } as CSSProperties} className="lg:hidden">

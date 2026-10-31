@@ -19,15 +19,15 @@ export type Column = {
 
 const NOT_SENT: ApplicationStatus[] = ["draft", "packed"];
 
-/** Left to right as an application moves on. Each colour keeps white text at 4.5:1 or better. */
+/** Left to right as an application moves on. Not sent is black and Not selected grey (founder round 35); each keeps white text at 4.5:1 or better. */
 export const COLUMNS: Column[] = [
-  { id: "not_sent", title: "Not sent yet", statuses: ["draft", "packed"], drop: "unsent", empty: "Tailored CVs you haven't sent show here.", solid: "bg-indigo-600", tint: "bg-indigo-100 text-indigo-700" },
+  { id: "not_sent", title: "Not sent yet", statuses: ["draft", "packed"], drop: "unsent", empty: "Tailored CVs you haven't sent show here.", solid: "bg-ink-950", tint: "bg-ink-200 text-ink-900" },
   { id: "sent", title: "Sent", statuses: ["sent"], drop: "sent", empty: "Waiting to hear back.", solid: "bg-blue-600", tint: "bg-blue-100 text-blue-700" },
   { id: "assessment", title: "Test", statuses: ["assessment"], drop: "assessment", empty: "Invited to a test or assessment.", solid: "bg-violet-600", tint: "bg-violet-100 text-violet-700" },
   { id: "interview", title: "Interview", statuses: ["interview", "second_interview"], drop: "interview", empty: "Drop a job here when they invite you.", solid: "bg-teal-700", tint: "bg-teal-100 text-teal-800" },
   { id: "offer", title: "Offer", statuses: ["offer", "accepted"], drop: "offer", empty: "Your offers land here.", solid: "bg-green-700", tint: "bg-green-100 text-green-800" },
   { id: "no_reply", title: "No reply", statuses: ["no_response"], drop: "no_response", empty: "No word after 30 days. A late reply can still move it on.", solid: "bg-amber-700", tint: "bg-amber-100 text-amber-800" },
-  { id: "closed", title: "Not selected", statuses: ["rejected", "withdrawn"], drop: "rejected", empty: "Closed applications.", solid: "bg-rose-600", tint: "bg-rose-100 text-rose-700" },
+  { id: "closed", title: "Not selected", statuses: ["rejected", "withdrawn"], drop: "rejected", empty: "Closed applications.", solid: "bg-ink-500", tint: "bg-ink-100 text-ink-700" },
 ];
 
 /**

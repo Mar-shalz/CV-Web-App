@@ -19,6 +19,8 @@ export type AnalyticsEvents = {
   verdict_overridden: { verdict: string };
   cv_generated: { format: string; bullets_changed: number };
   format_chosen: { format: string };
+  matches_searched: { found: number; checked: number; matched: number };
+  match_decided: { decision: string; percent: number };
   fact_lock_violation: { type: string; prompt_version: string };
   claim_review_completed: { confirmed: number; edited: number; reverted: number };
   cv_exported: { format: string; file_type: "pdf" | "docx"; style?: string };
@@ -66,6 +68,8 @@ const ALLOWED_KEYS: { [K in EventName]: (keyof AnalyticsEvents[K])[] } = {
   verdict_overridden: ["verdict"],
   cv_generated: ["format", "bullets_changed"],
   format_chosen: ["format"],
+  matches_searched: ["found", "checked", "matched"],
+  match_decided: ["decision", "percent"],
   fact_lock_violation: ["type", "prompt_version"],
   claim_review_completed: ["confirmed", "edited", "reverted"],
   cv_exported: ["format", "file_type", "style"],

@@ -1,3 +1,4 @@
+import { scanFormFields, fillFormFields } from "./autofill.js";
 import { APP_URL } from "./config.js";
 import { detectJob } from "./detect.js";
 import { composeWithCv, blobToBase64 } from "./gmail.js";
@@ -635,6 +636,49 @@ function copyButton(text, label) {
   return b;
 }
 
+/**
+ * Fills the employer's application form in the open tab (founder round 35, D-206): their
+ * details, the CV file and the cover note, plus first drafts of written questions marked
+ * for them to read. We never press Submit. Personal details stay for them to fill.
+ */
+async function fillPage(c, say) {
+  try {
+    if (!(await hasAllSites()) && !(await chrome.permissions.request({ origins: ["<all_urls>"] }))) return say("Allow __APP_NAME__ on this site so it can fill the form.", true);
+    const tab = await activeTab();
+    if (!tab?.id || !/^https?:/.test(tab.url || "")) return say("Open the employer's application form in this window, then try again.", true);
+    say("Reading the form…");
+    const frames = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scanFormFields });
+    const fields = frames.flatMap((f) => (f.result || []).map((x) => ({ ...x, frameId: f.frameId })));
+    if (!fields.length) return say("We couldn't find a form on this page. Open the employer's application form, then try again.", true);
+    say(`Filling the form. Written answers take a few seconds…`);
+    const res = await api("/api/ext/autofill", { jobId: c.jobId, pageUrl: tab.url, fields: fields.map(({ key, label, type, autocomplete, name, placeholder }) => ({ key, label, type, autocomplete, name, placeholder })) });
+    let file = null;
+    if (res.cv && res.values.some((v) => v.kind === "cv_file")) {
+      const blob = await fetch(`${APP_URL}/api/ext/cv?cvId=${encodeURIComponent(res.cv.cvId)}&style=classic`, { headers: { authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.blob() : null));
+      if (blob) file = { name: res.cv.file, mime: "application/pdf", base64: await blobToBase64(blob) };
+    }
+    let filled = 0;
+    let review = 0;
+    for (const frameId of [...new Set(fields.map((f) => f.frameId))]) {
+      const keys = new Set(fields.filter((f) => f.frameId === frameId).map((f) => f.key));
+      const values = res.values.filter((v) => keys.has(v.key));
+      if (!values.length) continue;
+      const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id, frameIds: [frameId] }, func: fillFormFields, args: [values, file] });
+      filled += r?.result?.filled || 0;
+      review += r?.result?.review || 0;
+    }
+    if (!filled) return say("We couldn't match this form's fields to your details. Fill it in yourself, using the CV you downloaded.", true);
+    const parts = [`Filled ${filled} ${filled === 1 ? "field" : "fields"}, outlined in green.`];
+    if (review) parts.push(`${review} written ${review === 1 ? "answer is" : "answers are"} outlined in orange: drafted from your CV, so read and make ${review === 1 ? "it" : "them"} yours.`);
+    if (res.skipped) parts.push(`${res.skipped} personal ${res.skipped === 1 ? "question is" : "questions are"} left for you.`);
+    if (res.needsCv) parts.push("Tailor your CV for this job to get drafts of the written questions.");
+    parts.push("We never press Submit: check every field, then submit it yourself.");
+    say(parts.join(" "));
+  } catch (e) {
+    if (e.message !== "signin") say(e.message || "We couldn't fill this form. Try again.", true);
+  }
+}
+
 function packScreen(c, pack) {
   const file = pack.attachments?.[0] || "CV.pdf";
   const style = h(
@@ -697,7 +741,7 @@ function packScreen(c, pack) {
             h("div", { class: "field" }, h("p", { class: "label" }, "Subject"), h("div", { class: "value" }, h("span", {}, pack.subject), copyButton(pack.subject, "subject"))),
             h("div", { class: "field" }, h("p", { class: "label" }, "Message"), h("pre", { class: "message" }, pack.body), copyButton(pack.body, "message")),
           )
-        : h("p", { class: "small", style: "margin-top:6px;color:var(--ink-2)" }, "This employer takes applications on their own page. Download your CV, then open their page to upload it."),
+        : h("p", { class: "small", style: "margin-top:6px;color:var(--ink-2)" }, "This employer takes applications on their own page. Open it, then press Fill the form on this page: we fill in your details and attach your CV, and you check it and press Submit."),
       h("div", { class: "field", style: "margin-top:10px" }, h("p", { class: "label" }, "CV design"), style),
       h(
         "div",
@@ -707,6 +751,7 @@ function packScreen(c, pack) {
           : pack.applyUrl
             ? h("button", { class: "btn primary", type: "button", onclick: () => chrome.tabs.create({ url: pack.applyUrl }) }, icon("external", 16), "Open their application page")
             : null,
+        email ? null : h("button", { class: "btn outline", type: "button", onclick: () => fillPage(c, say) }, icon("tick", 16), "Fill the form on this page"),
         h("button", { class: "btn outline", type: "button", onclick: () => downloadCv(pack.cvId, file, style.value).then(() => say("Your CV is in Downloads.")).catch((e) => say(e.message, true)) }, "Download my CV"),
       ),
       note,

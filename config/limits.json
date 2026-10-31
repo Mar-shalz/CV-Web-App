@@ -47,6 +47,16 @@
     "cache_days_employer": 30,
     "note": "Days a job post's check, and a company's facts (website, start year, record), are reused for everyone before we look again (D-200)."
   },
+  "matches": {
+    "max_age_days": 60,
+    "min_match": 90,
+    "checks_per_day": 4,
+    "roles": 3,
+    "feed_cache_hours": 24,
+    "cron_users_per_run": 4,
+    "active_days": 14,
+    "note": "Jobs for you (D-205): only jobs posted in the last max_age_days; the full fit check runs on the checks_per_day most promising new jobs a person gets each day, and those matching min_match % or more are listed. Searches for the same role and places are shared for feed_cache_hours."
+  },
   "search": {
     "cache_days": 14,
     "note": "Days one web search's results are reused for anyone asking the same thing (D-200). Scam warning searches use cache_days_post."
