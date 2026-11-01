@@ -11,20 +11,21 @@ import { captureJob } from "@/lib/jobs/capture";
 import { getJob } from "@/lib/jobs/data";
 import { getVerdict, runEligibility } from "@/lib/jobs/check";
 import { matchPercent } from "@/lib/rules/match-score";
-import { generateForJob } from "@/lib/cv/data";
+import { generateForJob, getLatestCv } from "@/lib/cv/data";
+import { accessOf } from "@/lib/entitlements";
 import { track } from "@/lib/analytics/server";
 import { findJobs, type FeedJob } from "./index";
 import { bandFor, fresh, levelFits, placeFits, prescore, rolesFrom } from "./rank";
 
-// Jobs for you (founder rounds 34 to 37, D-205, D-208). Every day, for everyone: search
+// Jobs for you (founder rounds 34 to 38, D-205, D-208, D-209). Every day, for everyone: search
 // employers' own career pages and remote job boards for the roles the person goes for,
 // keep jobs posted in the last 60 days at a level they could be hired at, run the full fit
 // check on the few most promising not checked yet, and list those they match
 // limits.matches.min_match % or more. Searches are shared by people looking for the same
-// role. With "Tailor ahead" on, the CV is written straight away; otherwise when they tap
-// Tailor. Nothing is ever sent for them.
+// role. With "Tailor ahead" on, CVs are written for the jobs on their list a few at a time
+// (tailorPending); otherwise when they tap Tailor. Nothing is ever sent for them.
 
-export type MatchRun = { ran: boolean; found: number; checked: number; matched: number; reason?: "recent" | "no_roles" | "no_experience" };
+export type MatchRun = { ran: boolean; found: number; checked: number; matched: number; tailored?: number; reason?: "recent" | "no_roles" | "no_experience" };
 
 const DAY = 86_400_000;
 
@@ -55,7 +56,7 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
   const { error: missing } = await db.from("job_matches").select("id").limit(1);
   if (missing) return none();
   const minHours = opts.minHours ?? 20;
-  const { data: me } = await db.from("users").select("matches_searched_at, tailor_ahead").eq("id", viewer.id).maybeSingle();
+  const { data: me } = await db.from("users").select("matches_searched_at").eq("id", viewer.id).maybeSingle();
   const last = (me as { matches_searched_at?: string | null } | null)?.matches_searched_at;
   const supabase = await createClient();
   // Earlier checks that now clear the bar (it went from 90% to 85%): our own records, no new fit check.
@@ -102,11 +103,61 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
 
   // 2. The full fit check on the most promising few, in parallel.
   const picks = open.filter((f) => f.score >= 25).slice(0, LIMITS.matches.checks_per_day);
-  const tailorAhead = Boolean((me as { tailor_ahead?: boolean } | null)?.tailor_ahead);
-  const results = await Promise.all(picks.map(({ j }) => checkOne(viewer, supabase, db, j, tailorAhead).catch(() => false)));
+  const results = await Promise.all(picks.map(({ j }) => checkOne(viewer, supabase, db, j).catch(() => false)));
   const matched = results.filter(Boolean).length + promoted;
   await track("matches_searched", { found: fresh_.length, checked: picks.length, matched }, viewer.id);
-  return { ran: true, found: fresh_.length, checked: picks.length, matched };
+
+  // 3. Tailor ahead: CVs for the jobs on their list that don't have one yet.
+  const { tailored } = await tailorPending(viewer, db);
+  return { ran: true, found: fresh_.length, checked: picks.length, matched, tailored };
+}
+
+export type TailorRun = { tailored: number; left: number; error?: string };
+
+/**
+ * Tailor ahead (founder rounds 35 and 38, D-209): CVs for the jobs on their list that don't
+ * have one yet, best match first, limits.matches.tailor_ahead_per_run at a time. Covers
+ * jobs listed before it was switched on, not only new matches. A CV already made for the
+ * job is linked, not written again. Never starts someone's trial for them. `left` is how
+ * many still wait; `error` says why a CV couldn't be written (the day's fair use limit).
+ */
+export async function tailorPending(viewer: Viewer, db: SupabaseClient = createAdminClient()): Promise<TailorRun> {
+  if (viewer.preview || !isSupabaseConfigured() || isPreviewMode()) return { tailored: 0, left: 0 };
+  const { data: me } = await db.from("users").select("tailor_ahead").eq("id", viewer.id).maybeSingle();
+  if (!(me as { tailor_ahead?: boolean } | null)?.tailor_ahead) return { tailored: 0, left: 0 };
+  const { data: waiting } = await db
+    .from("job_matches")
+    .select("id, job_id")
+    .eq("user_id", viewer.id)
+    .eq("status", "matched")
+    .is("cv_version_id", null)
+    .not("job_id", "is", null)
+    .order("match_percent", { ascending: false })
+    .limit(50);
+  const rows = (waiting ?? []) as { id: string; job_id: string }[];
+  if (!rows.length) return { tailored: 0, left: 0 };
+  const access = accessOf(viewer);
+  if (access.kind === "trial_ready") return { tailored: 0, left: rows.length, error: "Tailor ahead starts with your free trial. Tap Tailor my CV on a job to start it." };
+  if (access.kind === "trial_ended") return { tailored: 0, left: rows.length, error: "Your trial has ended, so Tailor ahead is paused." };
+
+  const outcomes = await Promise.all(
+    rows.slice(0, LIMITS.matches.tailor_ahead_per_run).map(async (m): Promise<string | null> => {
+      try {
+        let cvId = (await getLatestCv(viewer, m.job_id))?.id ?? null;
+        if (!cvId) {
+          const res = await generateForJob(viewer, await getJob(viewer, m.job_id));
+          if (!res.ok) return res.error;
+          cvId = res.cvId;
+        }
+        const { error } = await db.from("job_matches").update({ cv_version_id: cvId }).eq("id", m.id).eq("user_id", viewer.id);
+        return error ? "We couldn't save that CV. We'll try again later." : null;
+      } catch {
+        return "We couldn't write that CV just now. We'll try again later.";
+      }
+    }),
+  );
+  const tailored = outcomes.filter((o) => o === null).length;
+  return { tailored, left: rows.length - tailored, error: outcomes.find((o) => o !== null) ?? undefined };
 }
 
 /**
@@ -137,7 +188,7 @@ async function promoteNearMisses(viewer: Viewer, supabase: SupabaseClient, db: S
 }
 
 /** Saves the job for them (as "suggested"), runs eligibility and the fit check, and records the match. */
-async function checkOne(viewer: Viewer, supabase: SupabaseClient, db: SupabaseClient, j: FeedJob, tailorAhead: boolean): Promise<boolean> {
+async function checkOne(viewer: Viewer, supabase: SupabaseClient, db: SupabaseClient, j: FeedJob): Promise<boolean> {
   const captured = await captureJob(supabase, viewer.id, viewer.targetMarkets, { mode: "paste", text: postText(j), sourceUrl: j.url });
   if (!captured.ok) return false;
   await supabase.from("jobs").update({ state: "suggested" }).eq("id", captured.jobId).eq("user_id", viewer.id);
@@ -147,14 +198,9 @@ async function checkOne(viewer: Viewer, supabase: SupabaseClient, db: SupabaseCl
   const verdict = await getVerdict(viewer, job, vault, eligibility);
   const pct = matchPercent(verdict.requirements, job.parsed.requirements);
   const ok = eligibility.overall !== "fail" && verdict.verdict !== "skip" && pct !== null && pct >= LIMITS.matches.min_match;
-  let cvId: string | null = null;
-  if (ok && tailorAhead) {
-    const res = await generateForJob(viewer, job);
-    if (res.ok) cvId = res.cvId;
-  }
   await db
     .from("job_matches")
-    .update({ status: ok ? "matched" : "not_a_match", match_percent: pct, job_id: captured.jobId, cv_version_id: cvId, checked_at: new Date().toISOString() })
+    .update({ status: ok ? "matched" : "not_a_match", match_percent: pct, job_id: captured.jobId, checked_at: new Date().toISOString() })
     .eq("user_id", viewer.id)
     .eq("source", j.source)
     .eq("source_job_id", j.sourceId);

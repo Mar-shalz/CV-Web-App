@@ -50,12 +50,13 @@
   "matches": {
     "max_age_days": 60,
     "min_match": 85,
-    "checks_per_day": 4,
+    "checks_per_day": 8,
+    "tailor_ahead_per_run": 3,
     "roles": 3,
     "feed_cache_hours": 24,
     "cron_users_per_run": 4,
     "active_days": 14,
-    "note": "Jobs for you (D-205, D-208): only jobs posted in the last max_age_days; the full fit check runs on the checks_per_day most promising jobs not checked yet (new ones and those left over from earlier days), and those matching min_match % or more are listed (85 from founder round 37, was 90). Searches for the same role and places are shared for feed_cache_hours."
+    "note": "Jobs for you (D-205, D-208): only jobs posted in the last max_age_days; the full fit check runs on the checks_per_day most promising jobs not checked yet (new ones and those left over from earlier days; 8 from founder round 38, was 4), and those matching min_match % or more are listed (85 from founder round 37, was 90). With Tailor ahead on, CVs are written for listed jobs tailor_ahead_per_run at a time (each search, and each visit to Jobs for You while some wait), within ai.fair_use_cvs_per_day (D-209). Searches for the same role and places are shared for feed_cache_hours."
   },
   "search": {
     "cache_days": 14,

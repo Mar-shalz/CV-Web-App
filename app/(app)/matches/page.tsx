@@ -21,7 +21,7 @@ export default async function MatchesPage() {
         </p>
       </header>
       {m.ready ? (
-        <MatchesView items={m.items} searchedAt={m.searchedAt} tailorAhead={m.tailorAhead} preview={viewer.preview} minMatch={LIMITS.matches.min_match} />
+        <MatchesView items={m.items} searchedAt={m.searchedAt} tailorAhead={m.tailorAhead} preview={viewer.preview} minMatch={LIMITS.matches.min_match} perRun={LIMITS.matches.tailor_ahead_per_run} />
       ) : (
         <p className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 text-sm text-ink-600 shadow-card">Jobs for You is almost ready. It switches on after the next app update.</p>
       )}

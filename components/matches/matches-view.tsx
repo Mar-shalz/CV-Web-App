@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MatchView } from "@/lib/jobfeed/match";
-import { acceptMatch, dismissMatch, searchMatches } from "@/app/(app)/matches/actions";
+import { acceptMatch, dismissMatch, searchMatches, tailorAheadNow } from "@/app/(app)/matches/actions";
 import { toast } from "@/components/ui/toaster";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Magicpen, Global, Calendar, Location, Refresh2, SearchStatus, TickCircle, ArrowRight2, CloseCircle, Export, Setting2 } from "@/components/icons";
@@ -23,18 +23,23 @@ const searched = (iso: string | null) => {
 };
 
 /**
- * Jobs for you (founder rounds 34 to 37, D-205, D-208): what the daily search found that
- * the person matches `minMatch`% or more. The search runs on its own each day; opening the page runs it
+ * Jobs for you (founder rounds 34 to 38, D-205, D-208, D-209): what the daily search found
+ * that the person matches `minMatch`% or more. The search runs on its own each day; opening the page runs it
  * when the last one is a day old. Tailor moves a job to their CV and then My Applications.
  * Tailor ahead is switched in Settings; this page says plainly whether it's on and links
- * there to change it (founder round 36).
+ * there to change it (founder round 36). While it's on, opening the page writes CVs for
+ * the jobs here that don't have one yet, `perRun` at a time (founder round 38).
  */
-export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, preview, minMatch }: { items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; preview: boolean; minMatch: number }) {
+export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, preview, minMatch, perRun }: { items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; preview: boolean; minMatch: number; perRun: number }) {
   const router = useRouter();
   const [items, setItems] = useState(initial);
   const [searching, setSearching] = useState(false);
   const [busy, start] = useTransition();
+  const [writing, startWriting] = useTransition();
+  const [aheadNote, setAheadNote] = useState<string | null>(null);
   const started = useRef(false);
+  const waiting = items.filter((m) => !m.tailored);
+  const nowWriting = new Set(writing ? waiting.slice(0, perRun).map((m) => m.id) : []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setItems(initial), [initial]);
@@ -49,6 +54,17 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
       else if (manual && !res.ran && res.reason === "recent") toast("We searched in the last few hours. New jobs show up here as we find them.", "info");
       if (manual && res.reason === "no_roles") toast("Check a job or two you'd like first, so we know which roles to look for.", "info");
       if (res.ran) toast(res.matched ? `${res.matched} new ${res.matched === 1 ? "job fits" : "jobs fit"} you.` : `No new jobs at ${minMatch}% or more this time. We'll look again tomorrow.`);
+      if (res.tailored) toast(`Your CV is ready for ${res.tailored} ${res.tailored === 1 ? "job" : "jobs"}.`);
+      router.refresh();
+    });
+  }
+
+  // Tailor ahead: CVs for the jobs here that don't have one yet, a few at a time.
+  function writeCvs() {
+    startWriting(async () => {
+      const res = await tailorAheadNow();
+      setAheadNote(res.error ?? null);
+      if (res.tailored) toast(`Your CV is ready for ${res.tailored} ${res.tailored === 1 ? "job" : "jobs"}.`);
       router.refresh();
     });
   }
@@ -60,6 +76,8 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
     // Runs once on open; search() reads nothing that changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!searchedAt || Date.now() - Date.parse(searchedAt) > 20 * HOUR) search(false);
+    // The search writes Tailor ahead CVs when it's done, so this runs only without one.
+    else if (ahead && waiting.length) writeCvs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -92,8 +110,9 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
               <span className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.06em] ${ahead ? "bg-proof-50 text-proof-700 ring-1 ring-proof-100" : "bg-ink-100 text-ink-600"}`}>{ahead ? "On" : "Off"}</span>
             </p>
             <p className="mt-0.5 max-w-xl text-[0.8125rem] leading-5 text-ink-600">
-              {ahead ? "Tailor ahead is on: we write your CV as soon as a job matches, so it's ready when you look." : "We write your CV when you tap Tailor my CV. Turn on Tailor ahead to have it ready as soon as a job matches."}
+              {ahead ? "Tailor ahead is on: we write your CV for each job here, a few at a time, so it's ready when you look." : "We write your CV when you tap Tailor my CV. Turn on Tailor ahead to have it ready as soon as a job matches."}
             </p>
+            {ahead && aheadNote ? <p className="mt-1 max-w-xl text-[0.8125rem] font-medium leading-5 text-flag-700">{aheadNote}</p> : null}
             <ButtonLink href="/settings#tailor-ahead" variant="secondary" size="sm" className="mt-2.5">
               <Setting2 size={16} />
               {ahead ? "Turn off in Settings" : "Turn on in Settings"}
@@ -109,17 +128,19 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
         </div>
       </section>
 
-      {searching ? (
+      {searching || writing ? (
         <p aria-live="polite" className="flex items-center gap-3 rounded-[var(--radius-card)] border border-brand-200 bg-brand-50 p-4 text-sm font-medium text-brand-800">
           <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-brand-600 border-r-transparent" aria-hidden="true" />
-          Looking for new jobs that fit you and checking the best ones against your experience. This can take a minute or two.
+          {searching
+            ? "Looking for new jobs that fit you and checking the best ones against your experience. This can take a minute or two."
+            : `Tailor ahead is writing your CV for ${Math.min(perRun, waiting.length)} ${Math.min(perRun, waiting.length) === 1 ? "job" : "jobs"} below. This can take a minute.`}
         </p>
       ) : null}
 
       {items.length ? (
         <ul className="grid gap-3 lg:grid-cols-2">
           {items.map((m) => (
-            <li key={m.id} className="flex flex-col rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card">
+            <li key={m.id} className="@container flex flex-col rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-proof-50 px-2.5 py-1 text-xs font-bold text-proof-700 ring-1 ring-proof-100">
                   <TickCircle size={14} variant="bulk" />
@@ -131,7 +152,14 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
                     {when(m.postedAt)}
                   </span>
                 ) : null}
-                {m.tailored ? <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800">CV ready</span> : null}
+                {m.tailored ? (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800">CV ready</span>
+                ) : nowWriting.has(m.id) ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-75 px-2 py-0.5 text-xs font-semibold text-ink-700">
+                    <span className="size-3 animate-spin rounded-full border-[1.5px] border-ink-500 border-r-transparent" aria-hidden="true" />
+                    Writing your CV
+                  </span>
+                ) : null}
               </div>
               <h3 className="mt-2 text-[1.0625rem] font-semibold leading-6 text-ink-900">{m.title}</h3>
               <p className="text-sm text-ink-600">{m.employer}</p>
@@ -158,15 +186,15 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
                   </>
                 ) : null}
               </p>
-              <div className="mt-auto grid gap-2 pt-4 sm:grid-cols-[1fr_auto_auto]">
-                <Button onClick={() => tailor(m)} disabled={busy}>
+              <div className="mt-auto grid gap-2 pt-4 @md:grid-cols-3">
+                <Button onClick={() => tailor(m)} disabled={busy || nowWriting.has(m.id)} className="whitespace-nowrap @md:px-3">
                   <Magicpen size={18} variant="bulk" />
                   {m.tailored ? "Review my CV" : "Tailor my CV"}
                 </Button>
-                <a href={m.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-2xl border border-ink-200 px-4 text-sm font-semibold text-ink-800 hover:bg-ink-75">
+                <a href={m.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl border border-ink-200 px-3 text-sm font-semibold text-ink-800 hover:bg-ink-75">
                   View job <Export size={16} />
                 </a>
-                <button type="button" onClick={() => dismiss(m)} disabled={busy} className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-2xl px-3 text-sm font-semibold text-ink-500 hover:bg-ink-75 hover:text-ink-800">
+                <button type="button" onClick={() => dismiss(m)} disabled={busy} className="inline-flex min-h-12 items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl px-3 text-sm font-semibold text-ink-500 hover:bg-ink-75 hover:text-ink-800">
                   <CloseCircle size={16} />
                   Not for me
                 </button>

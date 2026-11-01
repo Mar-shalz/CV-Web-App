@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth/viewer";
-import { runMatches, type MatchRun } from "@/lib/jobfeed/match";
+import { runMatches, tailorPending, type MatchRun, type TailorRun } from "@/lib/jobfeed/match";
 import { getJob } from "@/lib/jobs/data";
 import { ensureDraftApplication } from "@/lib/applications/pack";
 import { track } from "@/lib/analytics/server";
@@ -18,6 +18,15 @@ export async function searchMatches(): Promise<MatchRun | { ran: false; error: s
   const run = await runMatches(viewer, { minHours: 6 });
   revalidatePath("/matches");
   revalidatePath("/home");
+  return run;
+}
+
+/** Tailor ahead (D-209): CVs for the jobs on their list that don't have one yet, a few at a time. */
+export async function tailorAheadNow(): Promise<TailorRun> {
+  const viewer = await getViewer();
+  if (!viewer) return { tailored: 0, left: 0, error: "Please sign in again." };
+  const run = await tailorPending(viewer);
+  if (run.tailored) revalidatePath("/matches");
   return run;
 }
 

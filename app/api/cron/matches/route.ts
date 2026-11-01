@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
   if (!ids.length) return NextResponse.json({ ok: true, ran: 0 });
   const { data: users } = await db.from("users").select("id, email, target_markets, matches_searched_at").in("id", ids.slice(0, 1000)).order("matches_searched_at", { ascending: true, nullsFirst: true }).limit(LIMITS.matches.cron_users_per_run);
   let ran = 0;
+  const started = Date.now();
   for (const u of users ?? []) {
+    // One person's search, fit checks and Tailor ahead CVs can take two minutes: don't start one that can't finish.
+    if (Date.now() - started > 120_000) break;
     const viewer = await extViewer(db, { id: u.id, email: u.email ?? "", name: null, targetMarkets: (u.target_markets as string[] | null) ?? ["NG"], preview: false });
     const res = await withClient(db, () => runMatches(viewer)).catch(() => null);
     if (res?.ran) ran++;

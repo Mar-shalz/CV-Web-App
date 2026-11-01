@@ -528,3 +528,15 @@ Choices the Build pack did not cover. Newest last. Each one is the simplest opti
   - A fix: jobs found on one day but not among its four checks were never checked later. They now stay in the running and are ranked with the new ones each day, so the best jobs get checked over the following days.
   - The copy and the Home card read the bar from config.
   - Raising the four checks a day is a cost decision, left to the founder.
+
+**D-209 Eight fit checks a day, Tailor ahead fixed, equal buttons on Jobs for You (founder round 38).**
+- *Eight checks a day.* The founder raised the daily fit checks from four to eight (config limits.matches.checks_per_day). A day can now add up to eight matches. This roughly doubles the AI cost of Jobs for You for each active person.
+- *Tailor ahead was not working.* It wrote a CV only for jobs that matched in a fit check after it was switched on. Jobs already on the list, and those listed again at 85% (D-208), never got one. So switching it on changed nothing anyone could see. Now:
+  - CVs are written for every job on the list that doesn't have one, best match first, three at a time (config limits.matches.tailor_ahead_per_run).
+  - This happens at the end of each search (daily, on opening the page, or Search now), and each time Jobs for You opens while some jobs still wait.
+  - The page says "Tailor ahead is writing your CV for 3 jobs below" and marks those cards "Writing your CV" until each is ready.
+  - A CV already made for the job is linked, not written again.
+  - The day's fair use limit (ai.fair_use_cvs_per_day) still applies. When a CV can't be written, the Tailor ahead card says why.
+  - It never starts someone's trial for them. When charging is on and the trial hasn't started (or has ended), Tailor ahead waits and says so. While charging is off, as now, this doesn't apply.
+- *Daily job.* One person's search can now take about two minutes (eight checks, then CVs). The daily job stops starting new people after two minutes, so it never runs past Vercel's five minute limit. Everyone else gets their search when they open Jobs for You.
+- *Equal buttons.* Tailor my CV, View job and Not for me are the same width on every card: three equal columns when the card is wide enough, one full width column when it isn't.

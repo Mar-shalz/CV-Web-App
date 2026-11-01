@@ -126,7 +126,7 @@ export function DataSaverSwitch({ initial, icon }: { initial: boolean; icon?: Re
   );
 }
 
-/** Tailor ahead (founder round 35, D-205): CVs for matched jobs written straight away. Off by default. */
+/** Tailor ahead (founder rounds 35 and 38, D-205, D-209): CVs written for the jobs in Jobs for You. Off by default. */
 /** Jobs for You links here with #tailor-ahead to switch it (founder round 36): the row is picked out when they arrive. */
 export function TailorAheadSwitch({ initial, icon }: { initial: boolean; icon?: ReactNode }) {
   const [on, setOn] = useState(initial);
@@ -145,7 +145,7 @@ export function TailorAheadSwitch({ initial, icon }: { initial: boolean; icon?: 
       {icon ? <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">{icon}</span> : null}
       <span className="min-w-0 flex-1">
         <span className="block text-[0.9375rem] font-semibold text-ink-900">Tailor ahead</span>
-        <span className="block text-[0.8125rem] leading-5 text-ink-500">{on ? "On. When Jobs for You finds a match, your CV is written straight away." : "Off. Your CV for a match is written when you tap Tailor."}</span>
+        <span className="block text-[0.8125rem] leading-5 text-ink-500">{on ? "On. We write your CV for each job in Jobs for You, a few at a time, so it's ready when you look." : "Off. Your CV for a match is written when you tap Tailor."}</span>
       </span>
       <input
         type="checkbox"
