@@ -26,7 +26,10 @@ const REGION_HINT: Record<string, string> = {
   both: "No need to pick countries. We read the country from each job post and format that CV for it.",
 };
 
-export function SetupForm({ stages, regions, countries, initial, submitLabel = "Finish setup" }: { stages: Option[]; regions: Option[]; countries: { code: string; label: string }[]; initial?: Initial; submitLabel?: string }) {
+// Jobs for You adds office jobs abroad for Abroad and Both (founder round 41, D-212).
+const abroadHint = (abroad: string) => ` Jobs for You also shows office jobs abroad (${abroad}).`;
+
+export function SetupForm({ stages, regions, countries, abroad, initial, submitLabel = "Finish setup" }: { stages: Option[]; regions: Option[]; countries: { code: string; label: string }[]; abroad: string; initial?: Initial; submitLabel?: string }) {
   const [state, action] = useActionState<FormState, FormData>(saveSetup, undefined);
   const [region, setRegion] = useState<string>(initial?.region ?? "nigeria");
   const [stage, setStage] = useState<string>(initial?.stage ?? "");
@@ -87,6 +90,7 @@ export function SetupForm({ stages, regions, countries, initial, submitLabel = "
         </div>
         <p className="mt-2 text-[0.8125rem] leading-5 text-ink-600" aria-live="polite">
           {REGION_HINT[region]}
+          {region === "nigeria" ? null : abroadHint(abroad)}
         </p>
       </fieldset>
 

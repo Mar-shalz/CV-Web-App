@@ -14,14 +14,16 @@ import { matchPercent } from "@/lib/rules/match-score";
 import { generateForJob, getLatestCv } from "@/lib/cv/data";
 import { accessOf } from "@/lib/entitlements";
 import { track } from "@/lib/analytics/server";
+import { reachOf, type Reach } from "@/lib/markets";
 import { findJobs, type FeedJob } from "./index";
 import { bandFor, fresh, isNewMatch, levelFits, newestFirst, prescore, rolesFrom } from "./rank";
-import { openTo, placeOf } from "./place";
+import { fits } from "./place";
 
-// Jobs for you (founder rounds 34 to 40, D-205, D-208 to D-211). Every day, for everyone: search
+// Jobs for you (founder rounds 34 to 41, D-205, D-208 to D-212). Every day, for everyone: search
 // employers' own career pages and remote job boards for the roles the person goes for,
 // keep jobs posted in the last 60 days, at a level they could be hired at, in the country
-// they live in or remote and open to people there, run the full fit check on every one
+// they live in, remote and open to people there, or office jobs in the countries they apply
+// to abroad, run the full fit check on every one
 // worth checking, and list those they match limits.matches.min_match % or more. Searches
 // are shared by people looking for the same role. With "Tailor ahead" on, CVs are written
 // for the jobs on their list a few at a time (tailorPending); otherwise when they tap
@@ -78,16 +80,16 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
   if (!roles.length) return none("no_roles");
 
   await db.from("users").update({ matches_searched_at: new Date().toISOString() }).eq("id", viewer.id);
-  // Where they live (founder round 40): jobs there, and remote jobs open to people there.
-  const home = viewer.homeCountry;
+  // Where they live (founder round 40), and abroad when they apply there (round 41).
+  const reach = reachOf(viewer.targetMarkets, viewer.homeCountry);
   const since = new Date(Date.now() - LIMITS.matches.max_age_days * DAY).toISOString().slice(0, 10);
   const band = bandFor(workMonths(vault));
   const skills = allSkills(extras);
 
-  // 1. Search (shared), then keep what's fresh, at their level and open to them where they
-  // live. Jobs already seen but not checked yet stay in the running, so a job one search
+  // 1. Search (shared), then keep what's fresh, at their level and in a place that suits
+  // them. Jobs already seen but not checked yet stay in the running, so a job one search
   // didn't reach is checked on a later day (D-208).
-  const jobs = (await findJobs(roles, [home], since)).filter((j) => fresh(j, LIMITS.matches.max_age_days) && levelFits(j.title, band) && openTo(placeOf(j), home));
+  const jobs = (await findJobs(roles, [[reach.home], reach.away], since)).filter((j) => fresh(j, LIMITS.matches.max_age_days) && levelFits(j.title, band) && fits(j, reach));
   const { data: known } = await db.from("job_matches").select("source, source_job_id, status").eq("user_id", viewer.id).limit(5000);
   const status = new Map((known ?? []).map((k) => [`${k.source}:${k.source_job_id}`, k.status as string]));
   const open = jobs
@@ -144,7 +146,7 @@ export async function tailorPending(viewer: Viewer, db: SupabaseClient = createA
   if (!(me as { tailor_ahead?: boolean } | null)?.tailor_ahead) return { tailored: 0, left: 0 };
   const { data: waiting } = await db
     .from("job_matches")
-    .select("id, job_id, source, location, posted_at, created_at, checked_at, match_percent")
+    .select("id, job_id, source, location, remote, posted_at, created_at, checked_at, match_percent")
     .eq("user_id", viewer.id)
     .eq("status", "matched")
     .is("cv_version_id", null)
@@ -152,7 +154,7 @@ export async function tailorPending(viewer: Viewer, db: SupabaseClient = createA
     .order("checked_at", { ascending: false })
     .limit(100);
   // In the order Jobs for You shows them, so the CVs written first are for the jobs at the top.
-  const rows = listOrder((waiting ?? []) as Row[], viewer.homeCountry) as (Row & { job_id: string })[];
+  const rows = listOrder((waiting ?? []) as Row[], reachOf(viewer.targetMarkets, viewer.homeCountry)) as (Row & { job_id: string })[];
   if (!rows.length) return { tailored: 0, left: 0 };
   const access = accessOf(viewer);
   if (access.kind === "trial_ready") return { tailored: 0, left: rows.length, error: "Tailor ahead starts with your free trial. Tap Tailor my CV on a job to start it." };
@@ -225,16 +227,16 @@ async function checkOne(viewer: Viewer, supabase: SupabaseClient, db: SupabaseCl
   return ok;
 }
 
-type Row = { id: string; job_id: string | null; source: string; location: string | null; posted_at: string | null; created_at: string | null; checked_at: string | null; match_percent: number | null };
+type Row = { id: string; job_id: string | null; source: string; location: string | null; remote: boolean; posted_at: string | null; created_at: string | null; checked_at: string | null; match_percent: number | null };
 
 /**
- * Still open (posted in the last max_age_days) and open to them where they live (jobs listed
+ * Still open (posted in the last max_age_days) and in a place that suits them (jobs listed
  * before round 40 included), in Jobs for You's order: new first, then newest posted.
  */
-function listOrder<T extends Row>(rows: T[], home: string): T[] {
+function listOrder<T extends Row>(rows: T[], reach: Reach): T[] {
   const cutoff = Date.now() - LIMITS.matches.max_age_days * DAY;
   return rows
-    .filter((m) => (!m.posted_at || Date.parse(m.posted_at) >= cutoff) && openTo(placeOf(m), home))
+    .filter((m) => (!m.posted_at || Date.parse(m.posted_at) >= cutoff) && fits(m, reach))
     .map((m) => ({ m, key: { postedAt: m.posted_at, foundAt: m.created_at, percent: m.match_percent ?? 0, isNew: isNewMatch(m.checked_at, LIMITS.matches.new_days) } }))
     .sort((a, b) => newestFirst(a.key, b.key))
     .map(({ m }) => m);
@@ -268,7 +270,7 @@ export async function listMatches(viewer: Viewer): Promise<{ items: MatchView[];
     ready: true,
     searchedAt: u?.matches_searched_at ?? null,
     tailorAhead: Boolean(u?.tailor_ahead),
-    items: listOrder(data ?? [], viewer.homeCountry).map((m) => ({ id: m.id, title: m.title, employer: m.employer, location: m.location, remote: m.remote, postedAt: m.posted_at, url: m.url, credit: m.credit, percent: m.match_percent ?? 0, jobId: m.job_id, tailored: Boolean(m.cv_version_id), isNew: isNewMatch(m.checked_at, LIMITS.matches.new_days), source: m.source })),
+    items: listOrder(data ?? [], reachOf(viewer.targetMarkets, viewer.homeCountry)).map((m) => ({ id: m.id, title: m.title, employer: m.employer, location: m.location, remote: m.remote, postedAt: m.posted_at, url: m.url, credit: m.credit, percent: m.match_percent ?? 0, jobId: m.job_id, tailored: Boolean(m.cv_version_id), isNew: isNewMatch(m.checked_at, LIMITS.matches.new_days), source: m.source })),
   };
 }
 

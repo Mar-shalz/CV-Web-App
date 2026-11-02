@@ -1,8 +1,9 @@
 import list from "@/config/lists/remote_regions.json";
+import type { Reach } from "@/lib/markets";
 
-// Where a found job can be done from, and whether that suits where the person lives
-// (founder round 40, D-211): jobs in the country they live in, and remote jobs open to
-// people there. Pure, so it is unit tested. Read from what the source published, or from
+// Where a found job can be done from, and whether that suits the person (founder rounds 40
+// and 41, D-211, D-212): jobs in the country they live in, remote jobs open to people there,
+// and office jobs in the countries they apply to abroad. Pure, so it is unit tested. Read from what the source published, or from
 // the location we saved for a job already on someone's list.
 
 export type Place = { countries: string[]; anywhere: boolean };
@@ -42,4 +43,14 @@ export function placeOf(job: { source: string; location: string | null; countrie
 /** In the country they live in, or remote and open to people there. */
 export function openTo(place: Place, home: string): boolean {
   return place.anywhere || place.countries.includes(home);
+}
+
+/**
+ * Jobs for You's rule: in the country they live in, remote and open to people there, or an
+ * office job in a country they apply to. A remote job tied to another country (US only, say)
+ * needs the right to live and work there, so it isn't shown to people living elsewhere.
+ */
+export function fits(job: { source: string; location: string | null; countries?: string[]; remote: boolean }, reach: Reach): boolean {
+  const place = placeOf(job);
+  return openTo(place, reach.home) || (!job.remote && place.countries.some((c) => reach.away.includes(c)));
 }

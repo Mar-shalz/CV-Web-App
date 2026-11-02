@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bandFor, cleanRole, fresh, isNewMatch, levelFits, newestFirst, prescore, rolesFrom } from "@/lib/jobfeed/rank";
-import { openTo, parseGeo, placeOf } from "@/lib/jobfeed/place";
+import { fits, openTo, parseGeo, placeOf } from "@/lib/jobfeed/place";
+import { countryNames, reachOf } from "@/lib/markets";
 import { titleQuery } from "@/lib/jobfeed/headcount";
 import { plainText } from "@/lib/jobfeed/types";
 
@@ -52,6 +53,27 @@ describe("Jobs for you: which found jobs get a fit check (D-205)", () => {
     expect(openTo(remote("USA"), "GB")).toBe(false);
     expect(openTo(remote("Canada, USA"), "CA")).toBe(true);
     expect(openTo(placeOf({ source: "headcount", location: "Toronto, Ontario, CA" }), "CA")).toBe(true);
+  });
+  it("adds office jobs abroad for people who apply abroad (round 41)", () => {
+    // "Abroad" and "Both" add the usual countries; "Nigeria" adds none. Older accounts named their own.
+    expect(reachOf(["NG"], "NG")).toEqual({ home: "NG", away: [] });
+    expect(reachOf(["INTL"], "NG")).toEqual({ home: "NG", away: ["GB", "US", "CA", "AE", "IE"] });
+    expect(reachOf(["NG", "INTL"], "NG").away).toEqual(["GB", "US", "CA", "AE", "IE"]);
+    expect(reachOf(["NG", "GB"], "NG").away).toEqual(["GB"]);
+    expect(reachOf(["INTL"], "GB").away).toEqual(["US", "CA", "AE", "IE"]);
+    expect(reachOf(["NG"], "GB").away).toEqual(["NG"]);
+    const abroad = reachOf(["NG", "INTL"], "NG");
+    const office = (location: string, countries: string[], remote = false) => ({ source: "headcount", location, countries, remote });
+    expect(fits(office("London, England, GB", ["GB"]), abroad)).toBe(true);
+    expect(fits(office("Lagos, NG", ["NG"]), abroad)).toBe(true);
+    expect(fits(office("Berlin, DE", ["DE"]), abroad)).toBe(false);
+    // A remote job tied to another country needs the right to live there: not shown.
+    expect(fits(office("London, England, GB", ["GB"], true), abroad)).toBe(false);
+    expect(fits({ source: "jobicy", location: "Remote (USA)", remote: true }, abroad)).toBe(false);
+    expect(fits({ source: "jobicy", location: "Remote (EMEA)", remote: true }, abroad)).toBe(true);
+    // Applying in Nigeria only: no office jobs abroad.
+    expect(fits(office("London, England, GB", ["GB"]), reachOf(["NG"], "NG"))).toBe(false);
+    expect(countryNames(["GB", "CA"])).toBe("United Kingdom, Canada");
   });
   it("reads a list cut off before its closing bracket", () => {
     expect(placeOf({ source: "jobicy", location: "Remote (Australia, Brazil, Nigeria, Norw" }).countries).toContain("NG");

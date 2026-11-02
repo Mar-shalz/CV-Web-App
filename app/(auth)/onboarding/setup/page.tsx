@@ -4,7 +4,7 @@ import { AuthShell } from "@/components/shell/auth-shell";
 import { SetupForm } from "@/components/auth/setup-form";
 import { getViewer } from "@/lib/auth/viewer";
 import { MARKETS } from "@/lib/config";
-import { regionOf } from "@/lib/markets";
+import { countryNames, regionOf } from "@/lib/markets";
 
 export const metadata: Metadata = { title: "Set Up your Job Search" };
 
@@ -24,6 +24,7 @@ export default async function SetupPage() {
         stages={MARKETS.career_stages}
         regions={MARKETS.regions}
         countries={MARKETS.countries}
+        abroad={countryNames(MARKETS.abroad_default)}
         initial={{ stage: viewer.careerStage, region: regionOf(viewer.targetMarkets), home: viewer.homeCountry, lowData: viewer.lowDataMode }}
         submitLabel={editing ? "Save changes" : "Finish setup"}
       />

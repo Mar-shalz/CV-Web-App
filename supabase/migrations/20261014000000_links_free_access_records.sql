@@ -318,6 +318,8 @@ create table if not exists public.job_matches (
 );
 create index if not exists job_matches_user_idx on public.job_matches (user_id, status, created_at desc);
 alter table public.job_matches enable row level security;
+drop policy if exists job_matches_select_own on public.job_matches;
+drop policy if exists job_matches_update_own on public.job_matches;
 create policy job_matches_select_own on public.job_matches for select to authenticated using (user_id = (select auth.uid()));
 create policy job_matches_update_own on public.job_matches for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 revoke insert, update, delete on public.job_matches from anon, authenticated;

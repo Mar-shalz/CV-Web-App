@@ -2,6 +2,8 @@
   "version": "2026-11-02",
   "home_default": "NG",
   "home_note": "The country someone lives in (founder round 40, D-211): Jobs for You shows jobs there and remote jobs open to people there. Chosen from countries below; home_default until they choose.",
+  "abroad_default": ["GB", "US", "CA", "AE", "IE"],
+  "abroad_note": "Where someone applying abroad looks for office jobs (founder round 41, D-212): Jobs for You adds office jobs in these countries for people who chose Abroad or Both, as well as jobs where they live. Remote jobs still have to be open to people where they live.",
   "career_stages": [
     { "id": "final_year", "label": "Final year student" },
     { "id": "nysc", "label": "Serving NYSC member" },

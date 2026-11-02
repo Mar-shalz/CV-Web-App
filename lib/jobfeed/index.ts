@@ -21,10 +21,14 @@ async function shared(source: FeedSource, role: string, countries: string[], run
   return jobs ?? [];
 }
 
-/** Every job the sources have for these roles and places, posted on or after `since` (YYYY-MM-DD). */
-export async function findJobs(roles: string[], countries: string[], since: string): Promise<FeedJob[]> {
+/**
+ * Every job the sources have for these roles, posted on or after `since` (YYYY-MM-DD).
+ * `places`: one employer search per group of countries (where they live, then abroad), so
+ * the many jobs in a big country don't crowd out the ones where they live.
+ */
+export async function findJobs(roles: string[], places: string[][], since: string): Promise<FeedJob[]> {
   const runs = roles.flatMap((role) => [
-    ...(headcountOn() ? [shared("headcount", role, countries, () => searchHeadcount(role, countries, since))] : []),
+    ...(headcountOn() ? places.filter((countries) => countries.length).map((countries) => shared("headcount", role, countries, () => searchHeadcount(role, countries, since))) : []),
     shared("jobicy", role, [], () => searchJobicy(role)),
   ]);
   const seen = new Set<string>();
