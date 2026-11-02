@@ -52,12 +52,6 @@ export function fresh(job: Pick<FeedJob, "postedAt">, maxAgeDays: number, now = 
   return Number.isNaN(t) || now - t <= maxAgeDays * 86_400_000;
 }
 
-/** Remote jobs open to where the person is looking, or to anywhere. */
-export function placeFits(job: Pick<FeedJob, "countries" | "remote">, markets: string[]): boolean {
-  if (!job.countries.length) return true;
-  return job.countries.some((c) => markets.includes(c));
-}
-
 const words = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").split(" ").filter((w) => w.length > 2));
 
 /**

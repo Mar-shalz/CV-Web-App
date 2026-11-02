@@ -35,6 +35,7 @@ A verified seal with a tick, white on a blue gradient tile. It carries no letter
 | Proof green | proof-600 | #0B7A53 | Apply, Met, Verified, Invited |
 | Care amber | care-600 / 700 | #A15C07 / #7F4805 | Apply with care, Partly met, warnings |
 | Flag red | flag-600 / 700 | #C42B2B / #9F1F1F | Scam red flags, form errors, the alert dot |
+| Fresh violet | fresh-600 | #6D28D9 | The New badge on Jobs for You, white text 7.1:1 |
 
 - Status is never colour alone: every badge has an icon and a word.
 - **Skip, Not selected and No reply are grey, never red.**

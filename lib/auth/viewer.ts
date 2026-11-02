@@ -3,7 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isPreviewMode } from "@/lib/env";
-import { LEGAL } from "@/lib/config";
+import { LEGAL, MARKETS } from "@/lib/config";
 import { DEFAULT_PRICING, getPricing, type Pricing } from "@/lib/pricing/settings";
 
 export type Viewer = {
@@ -12,6 +12,8 @@ export type Viewer = {
   fullName: string | null;
   careerStage: string | null;
   targetMarkets: string[];
+  /** The country they live in (D-211): Jobs for You shows jobs there and remote jobs open to people there. */
+  homeCountry: string;
   lowDataMode: boolean;
   consentDone: boolean;
   setupDone: boolean;
@@ -30,6 +32,7 @@ const PREVIEW_VIEWER: Viewer = {
   fullName: "Tolu Adebayo",
   careerStage: "nysc",
   targetMarkets: ["NG", "GB"],
+  homeCountry: "NG",
   lowDataMode: false,
   consentDone: true,
   setupDone: true,
@@ -39,6 +42,12 @@ const PREVIEW_VIEWER: Viewer = {
   pricing: DEFAULT_PRICING,
   preview: true,
 };
+
+/** Where they live, before migration section 27 too: the default (Nigeria) until they choose. */
+export function homeOf(row: unknown): string {
+  const c = (row as { home_country?: string | null } | null)?.home_country;
+  return c && MARKETS.countries.some((m) => m.code === c) ? c : MARKETS.home_default;
+}
 
 /** The signed in user, read once per request. Null when signed out. */
 export const getViewer = cache(async (): Promise<Viewer | null> => {
@@ -77,6 +86,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     fullName: profile?.full_name ?? (user.user_metadata?.full_name as string | undefined) ?? null,
     careerStage: row?.career_stage ?? null,
     targetMarkets: row?.target_markets ?? [],
+    homeCountry: homeOf(row),
     lowDataMode: row?.low_data_mode ?? false,
     consentDone: Boolean(row?.age_confirmed_at) && hasCurrent("terms") && hasCurrent("privacy"),
     setupDone: Boolean(row?.setup_completed_at),

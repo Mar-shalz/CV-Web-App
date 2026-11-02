@@ -18,12 +18,13 @@ export default async function SetupPage() {
     <AuthShell
       step={3}
       title={editing ? "Your job search" : "Set up your job search"}
-      subtitle={editing ? "Change where you're applying or your stage. New CVs use it straight away." : "This helps us format your CV the way employers expect. You can change it later."}
+      subtitle={editing ? "Change where you're applying, where you live or your stage. New CVs and Jobs for You use it straight away." : "This helps us format your CV the way employers expect. You can change it later."}
     >
       <SetupForm
         stages={MARKETS.career_stages}
         regions={MARKETS.regions}
-        initial={{ stage: viewer.careerStage, region: regionOf(viewer.targetMarkets), lowData: viewer.lowDataMode }}
+        countries={MARKETS.countries}
+        initial={{ stage: viewer.careerStage, region: regionOf(viewer.targetMarkets), home: viewer.homeCountry, lowData: viewer.lowDataMode }}
         submitLabel={editing ? "Save changes" : "Finish setup"}
       />
     </AuthShell>

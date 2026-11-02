@@ -3,12 +3,12 @@
 import { useActionState, useState } from "react";
 import { saveSetup, type FormState } from "@/app/(auth)/actions";
 import { Award, Book1, Briefcase, Chart2, Mobile } from "@/components/icons";
-import { FieldError } from "@/components/ui/field";
+import { FieldError, inputClass } from "@/components/ui/field";
 import { SubmitButton } from "./submit-button";
 import { FormError } from "./form-error";
 
 type Option = { id: string; label: string };
-type Initial = { stage: string | null; region: string | null; lowData: boolean };
+type Initial = { stage: string | null; region: string | null; home: string; lowData: boolean };
 
 const STAGE_ICON: Record<string, typeof Book1> = {
   final_year: Book1,
@@ -26,7 +26,7 @@ const REGION_HINT: Record<string, string> = {
   both: "No need to pick countries. We read the country from each job post and format that CV for it.",
 };
 
-export function SetupForm({ stages, regions, initial, submitLabel = "Finish setup" }: { stages: Option[]; regions: Option[]; initial?: Initial; submitLabel?: string }) {
+export function SetupForm({ stages, regions, countries, initial, submitLabel = "Finish setup" }: { stages: Option[]; regions: Option[]; countries: { code: string; label: string }[]; initial?: Initial; submitLabel?: string }) {
   const [state, action] = useActionState<FormState, FormData>(saveSetup, undefined);
   const [region, setRegion] = useState<string>(initial?.region ?? "nigeria");
   const [stage, setStage] = useState<string>(initial?.stage ?? "");
@@ -89,6 +89,21 @@ export function SetupForm({ stages, regions, initial, submitLabel = "Finish setu
           {REGION_HINT[region]}
         </p>
       </fieldset>
+
+      {/* Where they live (founder round 40, D-211): Jobs for You shows jobs there and remote jobs open to people there. */}
+      <div>
+        <label htmlFor="home_country" className="text-sm font-semibold text-ink-900">
+          Which country do you live in?
+        </label>
+        <select id="home_country" name="home_country" defaultValue={initial?.home ?? countries[0]?.code} className={`${inputClass} mt-3`}>
+          {countries.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <p className="mt-2 text-[0.8125rem] leading-5 text-ink-600">Jobs for You shows jobs there, and remote jobs open to people there.</p>
+      </div>
 
       <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-ink-75 p-4 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand-500">
         <span className="flex items-start gap-3">

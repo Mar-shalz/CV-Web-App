@@ -38,6 +38,7 @@ export default async function SettingsPage() {
   const tailorAhead = await tailorAheadOf(viewer);
   const stage = MARKETS.career_stages.find((s) => s.id === viewer.careerStage)?.label;
   const markets = marketsLabel(viewer.targetMarkets);
+  const home = MARKETS.countries.find((c) => c.code === viewer.homeCountry)?.label ?? viewer.homeCountry;
   const access = accessOf(viewer);
 
   return (
@@ -90,7 +91,7 @@ export default async function SettingsPage() {
       <div className="grid items-start gap-3 xl:grid-cols-2">
         <section aria-label="Your job search and plan" className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-2 shadow-card">
           <ul>
-            <Row href="/onboarding/setup" icon={<Global size={20} />} title="Where you're applying" body={markets || "Not set"} />
+            <Row href="/onboarding/setup" icon={<Global size={20} />} title="Where you're applying" body={`${markets || "Not set"} · You live in ${home}`} />
             <li>
               <DataSaverSwitch initial={viewer.lowDataMode} icon={<Mobile size={20} />} />
             </li>

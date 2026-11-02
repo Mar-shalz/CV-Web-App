@@ -11,11 +11,11 @@ import { track } from "@/lib/analytics/server";
 
 const id = z.string().uuid();
 
-/** Search now (D-205): the daily search, run for the person, at most every 6 hours. */
+/** The daily search (D-205), run when they open Jobs for You and the cron hasn't reached them in a day. */
 export async function searchMatches(): Promise<MatchRun | { ran: false; error: string }> {
   const viewer = await getViewer();
   if (!viewer) return { ran: false, error: "Please sign in again." };
-  const run = await runMatches(viewer, { minHours: 6 });
+  const run = await runMatches(viewer);
   revalidatePath("/matches");
   revalidatePath("/home");
   return run;

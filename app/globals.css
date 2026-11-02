@@ -67,6 +67,10 @@
   --color-flag-500: #dc3c3c;
   --color-flag-600: #c42b2b;
   --color-flag-700: #9f1f1f;
+  /* New on a list (founder round 40): its own colour, apart from Proof Blue. White text 7.1:1 on fresh-600. */
+  --color-fresh-50: #f4f0ff;
+  --color-fresh-600: #6d28d9;
+  --color-fresh-700: #5b21b6;
 
   /* Lufga first; Urbanist fills any glyph Lufga lacks (₦, curly quotes, dashes); then the system font. */
   --font-sans: var(--font-lufga), var(--font-urbanist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

@@ -337,3 +337,9 @@ grant update (tailor_ahead) on public.users to authenticated;
 -- Shared job search results, reused by everyone looking for the same role in the same places.
 alter table public.lookup_cache drop constraint if exists lookup_cache_kind_check;
 alter table public.lookup_cache add constraint lookup_cache_kind_check check (kind in ('search', 'legitimacy_read', 'job_feed'));
+
+-- 27. Where someone lives (founder round 40, D-211): Jobs for You shows jobs in that country
+-- and remote jobs open to people there. Nigeria until they choose (Settings, Where you're
+-- applying). A two letter country code from config/markets.json.
+alter table public.users add column if not exists home_country text not null default 'NG' check (home_country ~ '^[A-Z]{2}$');
+grant update (home_country) on public.users to authenticated;

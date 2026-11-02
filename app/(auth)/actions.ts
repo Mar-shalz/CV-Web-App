@@ -198,6 +198,7 @@ const stageIds = MARKETS.career_stages.map((s) => s.id) as [string, ...string[]]
 const setupSchema = z.object({
   career_stage: z.enum(stageIds, { message: "Choose where you are right now." }),
   region: z.enum(["nigeria", "abroad", "both"], { message: "Choose where you're applying." }),
+  home_country: z.enum(MARKETS.countries.map((c) => c.code) as [string, ...string[]], { message: "Choose the country you live in." }),
   low_data_mode: z.boolean(),
 });
 
@@ -205,6 +206,7 @@ export async function saveSetup(_prev: FormState, formData: FormData): Promise<F
   const parsed = setupSchema.safeParse({
     career_stage: formData.get("career_stage"),
     region: formData.get("region"),
+    home_country: formData.get("home_country") ?? MARKETS.home_default,
     low_data_mode: formData.get("low_data_mode") === "on",
   });
   if (!parsed.success) {
@@ -216,7 +218,7 @@ export async function saveSetup(_prev: FormState, formData: FormData): Promise<F
     return { fieldErrors };
   }
 
-  const { career_stage, region, low_data_mode } = parsed.data;
+  const { career_stage, region, home_country, low_data_mode } = parsed.data;
   // No country list: the job post decides the country for each CV (D-085).
   const target_markets = marketsFor(region);
 
@@ -225,10 +227,10 @@ export async function saveSetup(_prev: FormState, formData: FormData): Promise<F
   const viewer = await getViewer();
   if (!viewer) redirect("/sign-in");
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("users")
-    .update({ career_stage, target_markets, low_data_mode, ...(viewer.setupDone ? {} : { setup_completed_at: new Date().toISOString() }) })
-    .eq("id", viewer.id);
+  const row = { career_stage, target_markets, low_data_mode, ...(viewer.setupDone ? {} : { setup_completed_at: new Date().toISOString() }) };
+  let { error } = await supabase.from("users").update({ ...row, home_country }).eq("id", viewer.id);
+  // Before migration section 27 there's no home_country: save the rest (Nigeria is assumed).
+  if (error && (error.code === "PGRST204" || error.code === "42703")) ({ error } = await supabase.from("users").update(row).eq("id", viewer.id));
   if (error) return { error: "We couldn't save your setup. Check your connection and try again." };
 
   // Opened again from Settings: back there. First time: on to Home.

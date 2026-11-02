@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { bandFor, cleanRole, fresh, isNewMatch, levelFits, newestFirst, placeFits, prescore, rolesFrom } from "@/lib/jobfeed/rank";
+import { bandFor, cleanRole, fresh, isNewMatch, levelFits, newestFirst, prescore, rolesFrom } from "@/lib/jobfeed/rank";
+import { openTo, parseGeo, placeOf } from "@/lib/jobfeed/place";
 import { titleQuery } from "@/lib/jobfeed/headcount";
 import { plainText } from "@/lib/jobfeed/types";
 
@@ -29,10 +30,33 @@ describe("Jobs for you: which found jobs get a fit check (D-205)", () => {
     expect(fresh({ postedAt: "2026-08-01T00:00:00Z" }, 60, now)).toBe(false);
     expect(fresh({ postedAt: null }, 60, now)).toBe(true);
   });
-  it("keeps remote jobs open to their countries or to anywhere", () => {
-    expect(placeFits({ countries: [], remote: true }, ["NG"])).toBe(true);
-    expect(placeFits({ countries: ["US"], remote: true }, ["NG"])).toBe(false);
-    expect(placeFits({ countries: ["GB", "NG"], remote: false }, ["NG"])).toBe(true);
+  it("keeps jobs where they live and remote jobs open to people there (round 40)", () => {
+    const remote = (geo: string) => placeOf({ source: "jobicy", location: `Remote (${geo})` });
+    // Someone in Nigeria.
+    expect(openTo(remote("Anywhere"), "NG")).toBe(true);
+    expect(openTo(remote("EMEA"), "NG")).toBe(true);
+    expect(openTo(remote("Africa"), "NG")).toBe(true);
+    expect(openTo(remote("Nigeria"), "NG")).toBe(true);
+    expect(openTo(remote("USA"), "NG")).toBe(false);
+    expect(openTo(remote("Canada,  USA"), "NG")).toBe(false);
+    expect(openTo(remote("Europe"), "NG")).toBe(false);
+    expect(openTo(remote("Philippines"), "NG")).toBe(false);
+    expect(openTo(placeOf({ source: "jobicy", location: "Remote" }), "NG")).toBe(false);
+    expect(openTo(placeOf({ source: "headcount", location: "Lagos, Lagos, NG" }), "NG")).toBe(true);
+    expect(openTo(placeOf({ source: "headcount", location: "London, England, GB" }), "NG")).toBe(false);
+    expect(openTo(placeOf({ source: "headcount", location: "Accra, GH", countries: ["GH", "NG"] }), "NG")).toBe(true);
+    expect(openTo(placeOf({ source: "headcount", location: null }), "NG")).toBe(false);
+    // Someone abroad: the same rule for where they live.
+    expect(openTo(remote("UK"), "GB")).toBe(true);
+    expect(openTo(remote("Europe"), "GB")).toBe(true);
+    expect(openTo(remote("USA"), "GB")).toBe(false);
+    expect(openTo(remote("Canada, USA"), "CA")).toBe(true);
+    expect(openTo(placeOf({ source: "headcount", location: "Toronto, Ontario, CA" }), "CA")).toBe(true);
+  });
+  it("reads a list cut off before its closing bracket", () => {
+    expect(placeOf({ source: "jobicy", location: "Remote (Australia, Brazil, Nigeria, Norw" }).countries).toContain("NG");
+    expect(parseGeo("USA only").countries).toEqual(["US"]);
+    expect(parseGeo("Worldwide").anywhere).toBe(true);
   });
   it("scores the title and the skills the post names", () => {
     const job = { title: "Accounts Officer", description: "You will handle reconciliation, Excel reports and IFRS." };

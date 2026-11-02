@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Viewer } from "@/lib/auth/viewer";
+import { homeOf, type Viewer } from "@/lib/auth/viewer";
 import type { ExtUser } from "./auth";
 import { getPricing } from "@/lib/pricing/settings";
 
@@ -27,6 +27,7 @@ export async function extViewer(db: SupabaseClient, user: ExtUser): Promise<View
     fullName: user.name,
     careerStage: u.career_stage ?? null,
     targetMarkets: u.target_markets ?? user.targetMarkets,
+    homeCountry: homeOf(row),
     lowDataMode: Boolean(u.low_data_mode),
     consentDone: true,
     setupDone: true,

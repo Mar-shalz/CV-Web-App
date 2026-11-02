@@ -3,6 +3,7 @@ import { TASKS } from "@/lib/ai/tasks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LIMITS } from "@/lib/config";
 import banned from "@/config/lists/banned_phrases.json";
+import remoteRegions from "@/config/lists/remote_regions.json";
 import { maskEmail } from "./permissions";
 import type { Staff } from "./auth";
 
@@ -266,6 +267,7 @@ export async function getRules(staff: Staff): Promise<{ rules: RuleRow[]; lists:
     { name: "Free email domains", file: "config/lists/free_email_domains.json", version: null, items: null, nextReview: null },
     { name: "Government agencies and official portals", file: "config/lists/government_agencies.json", version: null, items: null, nextReview: null },
     { name: "Pay thresholds by title", file: "config/lists/pay_thresholds.json", version: null, items: null, nextReview: null },
+    { name: "Who remote jobs are open to", file: "config/lists/remote_regions.json", version: remoteRegions.version, items: Object.keys(remoteRegions.regions).length + Object.keys(remoteRegions.names).length, nextReview: reviewDue(remoteRegions.version) },
   ];
   if (staff.preview) {
     return {

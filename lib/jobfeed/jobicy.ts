@@ -1,5 +1,6 @@
 import "server-only";
 import { httpsOnly, plainText, type FeedJob } from "./types";
+import { parseGeo } from "./place";
 
 // Jobicy (D-205): a free feed of remote jobs from the last 7 days, no key. Its terms: credit
 // Jobicy with a link, and send people to the listing's own Jobicy page to apply. Called at
@@ -15,8 +16,6 @@ function isoDate(v: string | undefined): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-const GEO: Record<string, string> = { USA: "US", UK: "GB", CANADA: "CA", UAE: "AE", NIGERIA: "NG", IRELAND: "IE", GERMANY: "DE" };
-
 export async function searchJobicy(role: string): Promise<FeedJob[] | null> {
   const tag = role.replace(/[^A-Za-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
   if (!tag) return null;
@@ -27,11 +26,7 @@ export async function searchJobicy(role: string): Promise<FeedJob[] | null> {
     return (data.jobs ?? []).flatMap((j): FeedJob[] => {
       const url = httpsOnly(j.url);
       if (!j.id || !j.jobTitle || !j.companyName || !url) return [];
-      const geo = (j.jobGeo ?? "").trim();
-      const codes = geo
-        .split(/[,/]| or /i)
-        .map((g) => GEO[g.trim().toUpperCase()] ?? null)
-        .filter((c): c is string => Boolean(c));
+      const geo = (j.jobGeo ?? "").replace(/\s+/g, " ").trim();
       return [
         {
           source: "jobicy",
@@ -39,7 +34,7 @@ export async function searchJobicy(role: string): Promise<FeedJob[] | null> {
           title: plainText(j.jobTitle).slice(0, 300),
           employer: plainText(j.companyName).slice(0, 200),
           location: geo ? `Remote (${geo})`.slice(0, 200) : "Remote",
-          countries: codes,
+          countries: parseGeo(geo).countries,
           remote: true,
           postedAt: isoDate(j.pubDate),
           url,

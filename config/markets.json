@@ -1,5 +1,7 @@
 {
-  "version": "2026-10-25",
+  "version": "2026-11-02",
+  "home_default": "NG",
+  "home_note": "The country someone lives in (founder round 40, D-211): Jobs for You shows jobs there and remote jobs open to people there. Chosen from countries below; home_default until they choose.",
   "career_stages": [
     { "id": "final_year", "label": "Final year student" },
     { "id": "nysc", "label": "Serving NYSC member" },
