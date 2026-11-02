@@ -79,7 +79,7 @@ export function InviteCard({ applicationId, invite, days }: { applicationId: str
           </p>
         ) : null}
         <div className="mt-4 flex gap-2">
-          <Button onClick={save} disabled={busy}>
+          <Button pending={busy} onClick={save} disabled={busy}>
             Save
           </Button>
           {!empty ? (

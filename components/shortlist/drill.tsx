@@ -185,7 +185,7 @@ function QuestionCard({ n, q, open, onToggle, applicationId, voice, tries }: { n
                   {error}
                 </p>
               ) : null}
-              <Button className="mt-3 w-full sm:w-auto" onClick={submit} disabled={busy || answer.trim().length < 15} aria-busy={busy || undefined}>
+              <Button pending={busy} className="mt-3 w-full sm:w-auto" onClick={submit} disabled={busy || answer.trim().length < 15} aria-busy={busy || undefined}>
                 {busy ? "Checking against your CV…" : "Check my answer"}
               </Button>
             </div>

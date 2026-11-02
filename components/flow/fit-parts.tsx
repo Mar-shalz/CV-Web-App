@@ -114,7 +114,7 @@ export function MatchItem({
               <p className="text-xs text-ink-500">Only add what&apos;s true: an interviewer may ask about it.</p>
               {error ? <p className="text-xs text-flag-700">{error}</p> : null}
               <div className="flex gap-2">
-                <Button size="sm" onClick={save} disabled={busy || skill.trim().length < 2}>
+                <Button pending={busy} size="sm" onClick={save} disabled={busy || skill.trim().length < 2}>
                   Add to my skills
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => (setAdding(false), setError(null))}>

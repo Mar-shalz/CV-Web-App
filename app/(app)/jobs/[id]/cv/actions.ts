@@ -39,6 +39,8 @@ const opSchema = z.discriminatedUnion("kind", [
   // Suggestions take effect only when accepted (D-163).
   z.object({ kind: z.literal("accept"), bulletId: z.string() }),
   z.object({ kind: z.literal("accept_all") }),
+  // Every suggested line under one role at once (founder round 39).
+  z.object({ kind: z.literal("accept_role"), roleId: z.string().max(64) }),
   z.object({ kind: z.literal("summary"), choice: z.enum(["suggested", "own", "edit"]), text: z.string().trim().max(900).optional() }),
   z.object({ kind: z.literal("remove_skill"), skill: z.string().trim().min(1).max(80) }),
 ]);
@@ -76,6 +78,9 @@ export async function editCv(cvId: string, rawOp: CvOp): Promise<EditResult> {
     doc = removeSkill(doc, o.skill);
   } else if (o.kind === "accept_all") {
     doc = { ...doc, sections: doc.sections.map((s) => (s.kind === "roles" ? { ...s, roles: s.roles.map((r) => ({ ...r, bullets: r.bullets.map((b) => ({ ...b, pending: false })) })) } : s)) };
+    await track("claim_review_completed", { confirmed: 1, edited: 0, reverted: 0 }, viewer.id);
+  } else if (o.kind === "accept_role") {
+    doc = { ...doc, sections: doc.sections.map((s) => (s.kind === "roles" ? { ...s, roles: s.roles.map((r) => (r.roleId === o.roleId ? { ...r, bullets: r.bullets.map((b) => ({ ...b, pending: false })) } : r)) } : s)) };
     await track("claim_review_completed", { confirmed: 1, edited: 0, reverted: 0 }, viewer.id);
   } else if (o.kind === "summary") {
     const own = doc.summary.own ?? "";

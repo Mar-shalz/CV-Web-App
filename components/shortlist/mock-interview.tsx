@@ -141,7 +141,7 @@ export function MockInterview({ applicationId, initial, voice }: { applicationId
             {error}
           </p>
         ) : null}
-        <Button size="lg" className="cta-sheen mt-4 w-full sm:w-auto" onClick={begin} disabled={busy} aria-busy={busy || undefined}>
+        <Button pending={busy} size="lg" className="cta-sheen mt-4 w-full sm:w-auto" onClick={begin} disabled={busy} aria-busy={busy || undefined}>
           <Teacher size={20} variant="bulk" />
           {busy ? "Starting" : "Start the mock interview"}
         </Button>
@@ -220,7 +220,7 @@ export function MockInterview({ applicationId, initial, voice }: { applicationId
             {error}
           </p>
         ) : null}
-        <Button variant="outline" className="mt-5" onClick={begin} disabled={busy} aria-busy={busy || undefined}>
+        <Button pending={busy} variant="outline" className="mt-5" onClick={begin} disabled={busy} aria-busy={busy || undefined}>
           <Repeat size={18} />
           {busy ? "Starting" : "Practise again"}
         </Button>
@@ -305,7 +305,7 @@ export function MockInterview({ applicationId, initial, voice }: { applicationId
                 </p>
               ) : null}
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button onClick={send} disabled={busy || answer.trim().length < 15} aria-busy={busy || undefined}>
+                <Button pending={busy} onClick={send} disabled={busy || answer.trim().length < 15} aria-busy={busy || undefined}>
                   {mock.turns.length >= mock.total ? "Send and see my analysis" : "Send answer"}
                 </Button>
                 {answered.length ? (

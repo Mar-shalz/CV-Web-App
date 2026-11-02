@@ -578,3 +578,9 @@ html[data-navigating] { cursor: progress; }
   box-shadow: 0 24px 50px -20px rgb(2 6 23 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.16);
   color: #fff;
 }
+
+/* A ButtonLink rolls only after 120ms, so a page that opens at once doesn't flash (D-210). */
+@keyframes rolling-hide { to { visibility: hidden; } }
+@keyframes rolling-show { to { opacity: 1; } }
+.rolling-late > .rolling-label { animation: rolling-hide 0s 120ms forwards; }
+.rolling-late > .rolling-spin { opacity: 0; animation: rolling-show 0s 120ms forwards; }

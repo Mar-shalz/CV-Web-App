@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bandFor, cleanRole, fresh, levelFits, placeFits, prescore, rolesFrom } from "@/lib/jobfeed/rank";
+import { bandFor, cleanRole, fresh, isNewMatch, levelFits, newestFirst, placeFits, prescore, rolesFrom } from "@/lib/jobfeed/rank";
 import { titleQuery } from "@/lib/jobfeed/headcount";
 import { plainText } from "@/lib/jobfeed/types";
 
@@ -76,5 +76,26 @@ describe("filling an employer's form (founder round 35, D-206)", async () => {
   it("splits a name, the last word as the surname", () => {
     expect(splitName("Tolu Grace Adebayo")).toEqual({ first: "Tolu Grace", last: "Adebayo" });
     expect(splitName("Tolu")).toEqual({ first: "Tolu", last: "" });
+  });
+});
+
+describe("Jobs for You's order (founder round 39, D-210)", () => {
+  const now = Date.parse("2026-11-02T12:00:00Z");
+  const ago = (d: number) => new Date(now - d * 86_400_000).toISOString();
+  it("marks jobs added to the list in the last few days as new", () => {
+    expect(isNewMatch(ago(1), 2, now)).toBe(true);
+    expect(isNewMatch(ago(3), 2, now)).toBe(false);
+    expect(isNewMatch(null, 2, now)).toBe(false);
+  });
+  it("puts new jobs first, then the most recently posted, then the better match", () => {
+    const list = [
+      { id: "old-best", postedAt: ago(20), foundAt: ago(5), percent: 97, isNew: false },
+      { id: "recent", postedAt: ago(2), foundAt: ago(4), percent: 86, isNew: false },
+      { id: "new-old-post", postedAt: ago(30), foundAt: ago(1), percent: 88, isNew: true },
+      { id: "new-recent", postedAt: ago(1), foundAt: ago(1), percent: 85, isNew: true },
+      { id: "no-date", postedAt: null, foundAt: ago(2), percent: 90, isNew: false },
+      { id: "recent-better", postedAt: ago(2), foundAt: ago(4), percent: 92, isNew: false },
+    ];
+    expect([...list].sort(newestFirst).map((m) => m.id)).toEqual(["new-recent", "new-old-post", "recent-better", "no-date", "recent", "old-best"]);
   });
 });

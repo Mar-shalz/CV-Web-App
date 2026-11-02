@@ -81,7 +81,7 @@ export function ProfileForm({ initial, codes }: { initial: ProfileValues; codes:
         </p>
       ) : null}
       <div className="flex items-center gap-3">
-        <Button type="submit" size="lg" disabled={pending || !dirty}>
+        <Button pending={pending} type="submit" size="lg" disabled={pending || !dirty}>
           {pending ? "Saving…" : "Save details"}
         </Button>
         {state?.ok && !dirty ? (
@@ -191,7 +191,7 @@ export function SensitiveList({ saved }: { saved: string[] }) {
           </li>
         ))}
       </ul>
-      <Button variant="danger" disabled={busy} onClick={() => remove("all")}>
+      <Button pending={busy} variant="danger" disabled={busy} onClick={() => remove("all")}>
         <Trash size={18} />
         Delete all sensitive details
       </Button>

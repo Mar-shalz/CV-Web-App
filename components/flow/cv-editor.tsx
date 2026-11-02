@@ -15,6 +15,7 @@ import type { ProfileId } from "@/lib/rules/destination";
 import { findBullet, removeSkill, splitSkills, updateBullet } from "@/lib/cv/ops";
 import { Danger, DocumentDownload, Edit2, Trash, TickCircle, ArrowDown2, InfoCircle, Magicpen, Warning2, Lock1, DocumentText, CloseCircle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { Rolling, usePressed } from "@/components/ui/button-client";
 import { inputClass } from "@/components/ui/field";
 
 type FileType = "pdf" | "docx";
@@ -67,6 +68,9 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
   const accept = (b: CvBullet) => run({ kind: "accept", bulletId: b.id }, (d) => updateBullet(d, b.id, (x) => ({ ...x, pending: false })));
   const acceptAll = () =>
     run({ kind: "accept_all" }, (d) => ({ ...d, sections: d.sections.map((s) => (s.kind === "roles" ? { ...s, roles: s.roles.map((r) => ({ ...r, bullets: r.bullets.map((b) => ({ ...b, pending: false })) })) } : s)) }));
+  // Every suggested line under one role at once (founder round 39).
+  const acceptRole = (roleId: string) =>
+    run({ kind: "accept_role", roleId }, (d) => ({ ...d, sections: d.sections.map((s) => (s.kind === "roles" ? { ...s, roles: s.roles.map((r) => (r.roleId === roleId ? { ...r, bullets: r.bullets.map((b) => ({ ...b, pending: false })) } : r)) } : s)) }));
   const chooseSummary = (choice: "suggested" | "own" | "edit", text?: string) =>
     run({ kind: "summary", choice, text }, (d) => ({ ...d, summary: { ...d.summary, text: choice === "own" ? (d.summary.own ?? "") : choice === "edit" ? (text ?? d.summary.text) : d.summary.text, confirmed: true } }));
   const saveEdit = (b: CvBullet) => {
@@ -181,6 +185,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
                         <p className="text-[0.8125rem] text-ink-600">{r.dates}</p>
                       </div>
                       {r.organisation || r.location ? <p className="text-[0.8125rem] italic text-ink-600">{[r.organisation, r.location].filter(Boolean).join(", ")}</p> : null}
+                      <RoleAccept count={r.bullets.filter((b) => b.pending).length} at={r.organisation ?? r.title} onAccept={() => acceptRole(r.roleId)} busy={busy} />
                       <ul className="mt-2 space-y-1.5">
                         {r.bullets.map((b) => {
                           const isOpen = open === b.id;
@@ -209,14 +214,14 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
                               {b.pending && !flaggedLine && !isOpen ? (
                                 <div className="ml-5 mt-1 flex flex-wrap items-center gap-1.5 font-[family-name:var(--font-sans)]">
                                   <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-brand-700">Suggested</span>
-                                  <SuggestButton onClick={() => accept(b)} disabled={busy} tone="yes">
+                                  <SuggestButton pending={busy} onClick={() => accept(b)} disabled={busy} tone="yes">
                                     <TickCircle size={14} variant="bulk" />
                                     Accept
                                   </SuggestButton>
-                                  <SuggestButton onClick={() => revertToOriginal(b)} disabled={busy}>
+                                  <SuggestButton pending={busy} onClick={() => revertToOriginal(b)} disabled={busy}>
                                     Keep my words
                                   </SuggestButton>
-                                  <SuggestButton onClick={() => setOpen(b.id)} disabled={busy}>
+                                  <SuggestButton pending={busy} onClick={() => setOpen(b.id)} disabled={busy}>
                                     Compare
                                   </SuggestButton>
                                 </div>
@@ -237,7 +242,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
                                       </label>
                                       <textarea id={`e-${b.id}`} rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} className={`${inputClass} py-2.5 text-sm leading-6`} />
                                       <div className="flex gap-2">
-                                        <Button size="sm" onClick={() => saveEdit(b)} disabled={busy || draft.trim().length < 5}>
+                                        <Button pending={busy} size="sm" onClick={() => saveEdit(b)} disabled={busy || draft.trim().length < 5}>
                                           Save line
                                         </Button>
                                         <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
@@ -388,7 +393,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
               </li>
             </ul>
             {pending.lines ? (
-              <Button size="sm" variant="secondary" className="mt-4 w-full" onClick={acceptAll} disabled={busy}>
+              <Button pending={busy} size="sm" variant="secondary" className="mt-4 w-full" onClick={acceptAll} disabled={busy}>
                 <TickCircle size={18} variant="bulk" />
                 Accept all {pending.lines} suggested {pending.lines === 1 ? "line" : "lines"}
               </Button>
@@ -437,11 +442,11 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
               <p className="font-semibold text-ink-900">Your summary for this job isn&apos;t confirmed</p>
               <p className="mt-1 text-ink-700">&ldquo;{doc.summary.text}&rdquo;</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                <SuggestButton onClick={() => chooseSummary("suggested")} disabled={busy} tone="yes">
+                <SuggestButton pending={busy} onClick={() => chooseSummary("suggested")} disabled={busy} tone="yes">
                   Use this summary
                 </SuggestButton>
                 {doc.summary.own ? (
-                  <SuggestButton onClick={() => chooseSummary("own")} disabled={busy}>
+                  <SuggestButton pending={busy} onClick={() => chooseSummary("own")} disabled={busy}>
                     Keep my own
                   </SuggestButton>
                 ) : null}
@@ -454,7 +459,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
                 {pending.lines} suggested {pending.lines === 1 ? "line isn't" : "lines aren't"} accepted yet
               </p>
               <p className="mt-1 text-ink-700">Accept them to use the wording that fits this job, or download now with your own words.</p>
-              <SuggestButton onClick={acceptAll} disabled={busy} tone="yes" className="mt-2">
+              <SuggestButton pending={busy} onClick={acceptAll} disabled={busy} tone="yes" className="mt-2">
                 Accept all
               </SuggestButton>
             </div>
@@ -509,7 +514,7 @@ function SummaryBlock({ doc, busy, onChoose }: { doc: CvDoc; busy: boolean; onCh
         </label>
         <textarea id="sum-edit" rows={4} value={draft} onChange={(e) => setDraft(e.target.value)} className={`${inputClass} py-2.5 text-sm leading-6`} />
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => (onChoose("edit", draft), setEditing(false))} disabled={busy || draft.trim().length < 20}>
+          <Button pending={busy} size="sm" onClick={() => (onChoose("edit", draft), setEditing(false))} disabled={busy || draft.trim().length < 20}>
             Save summary
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
@@ -530,18 +535,18 @@ function SummaryBlock({ doc, busy, onChoose }: { doc: CvDoc; busy: boolean; onCh
         {waiting ? (
           <>
             <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-brand-700">Suggested for this job{doc.summary.own ? ", from your summary" : ""}</span>
-            <SuggestButton onClick={() => onChoose("suggested")} disabled={busy} tone="yes">
+            <SuggestButton pending={busy} onClick={() => onChoose("suggested")} disabled={busy} tone="yes">
               <TickCircle size={14} variant="bulk" />
               Use this
             </SuggestButton>
             {doc.summary.own ? (
-              <SuggestButton onClick={() => onChoose("own")} disabled={busy}>
+              <SuggestButton pending={busy} onClick={() => onChoose("own")} disabled={busy}>
                 Keep my own
               </SuggestButton>
             ) : null}
           </>
         ) : null}
-        <SuggestButton onClick={() => (setDraft(doc.summary.text || doc.summary.own || ""), setEditing(true))} disabled={busy}>
+        <SuggestButton pending={busy} onClick={() => (setDraft(doc.summary.text || doc.summary.own || ""), setEditing(true))} disabled={busy}>
           <Edit2 size={13} />
           Edit
         </SuggestButton>
@@ -605,15 +610,39 @@ function MenuItem({ onClick, icon, title, body }: { onClick: () => void; icon: R
   );
 }
 
-function SuggestButton({ children, onClick, disabled, tone, className = "" }: { children: React.ReactNode; onClick: () => void; disabled?: boolean; tone?: "yes"; className?: string }) {
+/** Accept every suggested line under one role (founder round 39), shown when it has two or more. */
+function RoleAccept({ count, at, onAccept, busy }: { count: number; at: string; onAccept: () => void; busy: boolean }) {
+  if (count < 2) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-brand-50 px-2.5 py-1.5 font-[family-name:var(--font-sans)] ring-1 ring-brand-100">
+      <span className="flex-1 text-xs font-semibold text-brand-800">
+        {count} suggested lines at {at}
+      </span>
+      <SuggestButton onClick={onAccept} disabled={busy} pending={busy} tone="yes">
+        <TickCircle size={14} variant="bulk" />
+        Accept all {count}
+      </SuggestButton>
+    </div>
+  );
+}
+
+function SuggestButton({ children, onClick, disabled, pending = false, tone, className = "" }: { children: React.ReactNode; onClick: () => void; disabled?: boolean; pending?: boolean; tone?: "yes"; className?: string }) {
+  const [rolling, press] = usePressed(pending);
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`inline-flex min-h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 ${tone === "yes" ? "bg-brand-600 text-white hover:bg-brand-700" : "bg-white text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"} ${className}`}
+      onClick={() => {
+        if (rolling) return;
+        press();
+        onClick();
+      }}
+      disabled={rolling ? undefined : disabled}
+      aria-busy={rolling || undefined}
+      className={`inline-flex min-h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 ${rolling ? "pointer-events-none" : ""} ${tone === "yes" ? "bg-brand-600 text-white hover:bg-brand-700" : "bg-white text-ink-700 ring-1 ring-ink-150 hover:bg-ink-75"} ${className}`}
     >
-      {children}
+      <Rolling busy={rolling} size="sm">
+        {children}
+      </Rolling>
     </button>
   );
 }

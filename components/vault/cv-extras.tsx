@@ -77,7 +77,7 @@ function SummaryCard({ initial }: { initial: string | null }) {
           <textarea id="own-summary" rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="For example: Accounting graduate with SIWES banking experience. Good with Excel, reconciliations and customers." className={`${inputClass} py-2.5 text-sm leading-6`} />
           {error ? <p className="text-xs text-flag-700">{error}</p> : null}
           <div className="flex gap-2">
-            <Button size="sm" onClick={save} disabled={busy}>
+            <Button pending={busy} size="sm" onClick={save} disabled={busy}>
               Save summary
             </Button>
             <Button size="sm" variant="ghost" onClick={() => (setText(initial ?? ""), setEditing(false), setError(null))}>
@@ -132,7 +132,7 @@ function SkillsCard({ initial, added }: { initial: string[]; added: AddedSkill[]
           <textarea id="own-skills" rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Excel, Sage 50, reconciliation, customer service, Yoruba" className={`${inputClass} py-2.5 text-sm leading-6`} />
           {error ? <p className="text-xs text-flag-700">{error}</p> : null}
           <div className="flex gap-2">
-            <Button size="sm" onClick={save} disabled={busy}>
+            <Button pending={busy} size="sm" onClick={save} disabled={busy}>
               Save skills
             </Button>
             <Button size="sm" variant="ghost" onClick={() => (setDraft(skills.join(", ")), setEditing(false), setError(null))}>
@@ -229,7 +229,7 @@ function RefereesCard({ initial }: { initial: Referee[] }) {
           ) : null}
           {error ? <p className="text-xs text-flag-700">{error}</p> : null}
           <div className="flex gap-2">
-            <Button size="sm" onClick={save} disabled={busy}>
+            <Button pending={busy} size="sm" onClick={save} disabled={busy}>
               Save referees
             </Button>
             <Button size="sm" variant="ghost" onClick={() => (setEditing(false), setError(null))}>

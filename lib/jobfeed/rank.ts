@@ -74,3 +74,22 @@ export function prescore(job: Pick<FeedJob, "title" | "description">, roles: str
   const hits = new Set(skills.map((s) => s.toLowerCase().trim()).filter((s) => s.length > 1 && text.includes(` ${s}`))).size;
   return Math.round(50 * best + 50 * Math.min(1, hits / 8));
 }
+
+export type Listed = { postedAt: string | null; foundAt: string | null; percent: number; isNew: boolean };
+
+const dayOf = (iso: string | null) => Math.floor(Date.parse(iso ?? "") / 86_400_000) || 0;
+
+/** New on the list: added in the last `days` days. */
+export function isNewMatch(listedAt: string | null, days: number, now = Date.now()): boolean {
+  const t = Date.parse(listedAt ?? "");
+  return !Number.isNaN(t) && now - t <= days * 86_400_000;
+}
+
+/**
+ * Jobs for You's order (founder round 39, D-210): jobs new on the list first, then by the
+ * day posted, newest first (the day we found it when the post has no date), then the
+ * better match on the same day.
+ */
+export function newestFirst(a: Listed, b: Listed): number {
+  return Number(b.isNew) - Number(a.isNew) || dayOf(b.postedAt ?? b.foundAt) - dayOf(a.postedAt ?? a.foundAt) || b.percent - a.percent;
+}

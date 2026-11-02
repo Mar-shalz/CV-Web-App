@@ -173,7 +173,7 @@ export function InterviewFlow({ roles, voice, initialRoleId }: { roles: RoleOpti
             {followUp} You can add it on the next answer.
           </p>
         ) : null}
-        <Button size="lg" className="w-full sm:w-auto" onClick={keep} disabled={busy} aria-busy={busy || undefined}>
+        <Button pending={busy} size="lg" className="w-full sm:w-auto" onClick={keep} disabled={busy} aria-busy={busy || undefined}>
           {drafts.some((d) => d.keep) ? `Keep ${drafts.filter((d) => d.keep).length} and continue` : "Continue"}
           <ArrowRight size={20} />
         </Button>
@@ -269,7 +269,7 @@ export function InterviewFlow({ roles, voice, initialRoleId }: { roles: RoleOpti
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <Button size="lg" onClick={send} disabled={busy || answer.trim().length < 2} aria-busy={busy || undefined} className="sm:w-auto">
+        <Button pending={busy} size="lg" onClick={send} disabled={busy || answer.trim().length < 2} aria-busy={busy || undefined} className="sm:w-auto">
           {busy ? "Finding your achievements" : "Send answer"}
           <ArrowRight size={20} />
         </Button>

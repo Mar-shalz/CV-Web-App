@@ -28,7 +28,8 @@ const searched = (iso: string | null) => {
  * when the last one is a day old. Tailor moves a job to their CV and then My Applications.
  * Tailor ahead is switched in Settings; this page says plainly whether it's on and links
  * there to change it (founder round 36). While it's on, opening the page writes CVs for
- * the jobs here that don't have one yet, `perRun` at a time (founder round 38).
+ * the jobs here that don't have one yet, `perRun` at a time (founder round 38). The list
+ * comes newest first: jobs new on it, marked New, then the most recently posted (round 39).
  */
 export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, preview, minMatch, perRun }: { items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; preview: boolean; minMatch: number; perRun: number }) {
   const router = useRouter();
@@ -120,8 +121,11 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-ink-500">{searched(searchedAt)}</span>
-          <Button variant="secondary" size="sm" onClick={() => search(true)} disabled={busy || searching || preview}>
+          <span className="text-xs text-ink-500">
+            {searched(searchedAt)}
+            {items.length > 1 ? " · Newest first" : ""}
+          </span>
+          <Button pending={busy || searching} variant="secondary" size="sm" onClick={() => search(true)} disabled={busy || searching || preview}>
             <Refresh2 size={16} />
             Search now
           </Button>
@@ -142,6 +146,7 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
           {items.map((m) => (
             <li key={m.id} className="@container flex flex-col rounded-[var(--radius-card)] border border-ink-150 bg-white p-4 shadow-card">
               <div className="flex flex-wrap items-center gap-2">
+                {m.isNew ? <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-white">New</span> : null}
                 <span className="inline-flex items-center gap-1 rounded-full bg-proof-50 px-2.5 py-1 text-xs font-bold text-proof-700 ring-1 ring-proof-100">
                   <TickCircle size={14} variant="bulk" />
                   {m.percent}% match
@@ -187,7 +192,7 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
                 ) : null}
               </p>
               <div className="mt-auto grid gap-2 pt-4 @md:grid-cols-3">
-                <Button onClick={() => tailor(m)} disabled={busy || nowWriting.has(m.id)} className="whitespace-nowrap @md:px-3">
+                <Button pending={busy} onClick={() => tailor(m)} disabled={busy || nowWriting.has(m.id)} className="whitespace-nowrap @md:px-3">
                   <Magicpen size={18} variant="bulk" />
                   {m.tailored ? "Review my CV" : "Tailor my CV"}
                 </Button>

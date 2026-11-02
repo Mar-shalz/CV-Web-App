@@ -150,7 +150,7 @@ export function StatusUpdate({ applicationId, next, current, employer }: { appli
             placeholder="Paste the email or SMS from the employer here"
             className="w-full resize-y rounded-2xl border border-ink-200 bg-white p-4 text-[0.9375rem] leading-6 text-ink-900 placeholder:text-ink-350 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
           />
-          <Button className="mt-2 w-full" onClick={read} disabled={busy || message.trim().length < 10} aria-busy={busy || undefined}>
+          <Button pending={busy} className="mt-2 w-full" onClick={read} disabled={busy || message.trim().length < 10} aria-busy={busy || undefined}>
             <MagicStar size={20} variant="bulk" />
             {busy ? "Reading it…" : "Read it for me"}
           </Button>
@@ -241,11 +241,11 @@ function SuggestionCard({ s, busy, onConfirm, onChoose }: { s: OutcomeSuggestion
         {payment}
       </div>
       <div className="grid gap-2 border-t border-brand-100 p-3">
-        <Button onClick={onConfirm} disabled={busy}>
+        <Button pending={busy} onClick={onConfirm} disabled={busy}>
           <TickCircle size={20} variant="bulk" />
           Yes, update it
         </Button>
-        <Button variant="secondary" onClick={onChoose} disabled={busy}>
+        <Button pending={busy} variant="secondary" onClick={onChoose} disabled={busy}>
           No, I&apos;ll choose
         </Button>
       </div>

@@ -72,7 +72,7 @@ export function SentHowDialog({
         <Button variant="secondary" onClick={onClose}>
           Not yet
         </Button>
-        <Button onClick={() => via && onConfirm(via)} disabled={busy || !via}>
+        <Button pending={busy} onClick={() => via && onConfirm(via)} disabled={busy || !via}>
           {busy ? "Saving..." : "Yes, I've sent it"}
         </Button>
       </div>

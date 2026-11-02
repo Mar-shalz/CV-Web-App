@@ -21,7 +21,7 @@ export function MfaForm({ factorId: existing }: { factorId: string | null }) {
         <p className="text-[0.9375rem] leading-6 text-ink-600">
           Staff accounts need an authenticator app, like Google Authenticator or Microsoft Authenticator. It takes about a minute.
         </p>
-        <Button size="lg" className="w-full" disabled={busy} onClick={() => start(async () => setEnrol(await startEnrol()))}>
+        <Button pending={busy} size="lg" className="w-full" disabled={busy} onClick={() => start(async () => setEnrol(await startEnrol()))}>
           {busy ? "Starting" : "Set up two factor sign in"}
         </Button>
       </div>

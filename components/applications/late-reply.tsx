@@ -42,11 +42,11 @@ export function LateReply({ applicationId, days }: { applicationId: string; days
         </div>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <Button onClick={() => go("interview")} disabled={busy} className="cta-sheen">
+        <Button pending={busy} onClick={() => go("interview")} disabled={busy} className="cta-sheen">
           <Teacher size={20} variant="bulk" />
           I got invited
         </Button>
-        <Button variant="secondary" onClick={() => go("assessment")} disabled={busy}>
+        <Button pending={busy} variant="secondary" onClick={() => go("assessment")} disabled={busy}>
           Invited to a test
         </Button>
         <a href="#reply" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-[0.9375rem] font-semibold text-brand-700 hover:bg-brand-50">

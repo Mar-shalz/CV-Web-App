@@ -452,7 +452,7 @@ export function SendPack({
                         className={`${inputClass} py-3 text-sm leading-6`}
                       />
                       <div className="flex gap-2">
-                        <Button
+                        <Button pending={saving}
                           size="sm"
                           onClick={saveBody}
                           disabled={saving || draft.trim().length < 20}
@@ -684,7 +684,7 @@ export function SendPack({
                 </>
               ) : (
                 <>
-                  <Button size="sm" onClick={saveLetterText} disabled={savingLetter || letterDraft.trim().length < 80}>
+                  <Button pending={savingLetter} size="sm" onClick={saveLetterText} disabled={savingLetter || letterDraft.trim().length < 80}>
                     {savingLetter ? "Saving" : "Save letter"}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => (setLetterDraft(null), setLetterError(null))}>
@@ -718,7 +718,7 @@ export function SendPack({
               {error}
             </p>
           ) : null}
-          <Button
+          <Button pending={busy}
             variant="outline"
             size="lg"
             className="mt-4 w-full"

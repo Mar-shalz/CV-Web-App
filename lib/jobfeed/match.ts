@@ -15,7 +15,7 @@ import { generateForJob, getLatestCv } from "@/lib/cv/data";
 import { accessOf } from "@/lib/entitlements";
 import { track } from "@/lib/analytics/server";
 import { findJobs, type FeedJob } from "./index";
-import { bandFor, fresh, levelFits, placeFits, prescore, rolesFrom } from "./rank";
+import { bandFor, fresh, isNewMatch, levelFits, newestFirst, placeFits, prescore, rolesFrom } from "./rank";
 
 // Jobs for you (founder rounds 34 to 38, D-205, D-208, D-209). Every day, for everyone: search
 // employers' own career pages and remote job boards for the roles the person goes for,
@@ -127,14 +127,15 @@ export async function tailorPending(viewer: Viewer, db: SupabaseClient = createA
   if (!(me as { tailor_ahead?: boolean } | null)?.tailor_ahead) return { tailored: 0, left: 0 };
   const { data: waiting } = await db
     .from("job_matches")
-    .select("id, job_id")
+    .select("id, job_id, posted_at, created_at, checked_at, match_percent")
     .eq("user_id", viewer.id)
     .eq("status", "matched")
     .is("cv_version_id", null)
     .not("job_id", "is", null)
-    .order("match_percent", { ascending: false })
-    .limit(50);
-  const rows = (waiting ?? []) as { id: string; job_id: string }[];
+    .order("checked_at", { ascending: false })
+    .limit(100);
+  // In the order Jobs for You shows them, so the CVs written first are for the jobs at the top.
+  const rows = listOrder((waiting ?? []) as Row[]) as (Row & { job_id: string })[];
   if (!rows.length) return { tailored: 0, left: 0 };
   const access = accessOf(viewer);
   if (access.kind === "trial_ready") return { tailored: 0, left: rows.length, error: "Tailor ahead starts with your free trial. Tap Tailor my CV on a job to start it." };
@@ -207,9 +208,21 @@ async function checkOne(viewer: Viewer, supabase: SupabaseClient, db: SupabaseCl
   return ok;
 }
 
-export type MatchView = { id: string; title: string; employer: string; location: string | null; remote: boolean; postedAt: string | null; url: string; credit: { text: string; link: string } | null; percent: number; jobId: string | null; tailored: boolean; source: "headcount" | "jobicy" };
+type Row = { id: string; job_id: string | null; posted_at: string | null; created_at: string | null; checked_at: string | null; match_percent: number | null };
 
-/** Jobs that fit them and are waiting for a yes or no, best first. */
+/** Still open (posted in the last max_age_days), in Jobs for You's order: new first, then newest posted. */
+function listOrder<T extends Row>(rows: T[]): T[] {
+  const cutoff = Date.now() - LIMITS.matches.max_age_days * DAY;
+  return rows
+    .filter((m) => !m.posted_at || Date.parse(m.posted_at) >= cutoff)
+    .map((m) => ({ m, key: { postedAt: m.posted_at, foundAt: m.created_at, percent: m.match_percent ?? 0, isNew: isNewMatch(m.checked_at, LIMITS.matches.new_days) } }))
+    .sort((a, b) => newestFirst(a.key, b.key))
+    .map(({ m }) => m);
+}
+
+export type MatchView = { id: string; title: string; employer: string; location: string | null; remote: boolean; postedAt: string | null; url: string; credit: { text: string; link: string } | null; percent: number; jobId: string | null; tailored: boolean; isNew: boolean; source: "headcount" | "jobicy" };
+
+/** Jobs that fit them and are waiting for a yes or no: new on the list first, then the most recently posted (D-210). */
 export async function listMatches(viewer: Viewer): Promise<{ items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; ready: boolean }> {
   if (viewer.preview) {
     const ago = (d: number) => new Date(Date.now() - d * DAY).toISOString();
@@ -218,27 +231,24 @@ export async function listMatches(viewer: Viewer): Promise<{ items: MatchView[];
       searchedAt: ago(0.2),
       tailorAhead: false,
       items: [
-        { id: "m1", title: "Graduate Trainee, Finance", employer: "Northbridge Bank", location: "Lagos, Nigeria", remote: false, postedAt: ago(3), url: "https://example.com/jobs/1", credit: null, percent: 94, jobId: "demo", tailored: false, source: "headcount" },
-        { id: "m2", title: "Accounts Assistant", employer: "Lekki Foods Manufacturing", location: "Lagos, Nigeria", remote: false, postedAt: ago(9), url: "https://example.com/jobs/2", credit: null, percent: 91, jobId: "demo", tailored: true, source: "headcount" },
-        { id: "m3", title: "Finance Operations Associate (Remote)", employer: "Sample Fintech", location: "Remote (EMEA)", remote: true, postedAt: ago(1), url: "https://jobicy.com/jobs/0-sample", credit: { text: "Listed on Jobicy", link: "https://jobicy.com/jobs/0-sample" }, percent: 90, jobId: "demo", tailored: false, source: "jobicy" },
+        { id: "m3", title: "Finance Operations Associate (Remote)", employer: "Sample Fintech", location: "Remote (EMEA)", remote: true, postedAt: ago(1), url: "https://jobicy.com/jobs/0-sample", credit: { text: "Listed on Jobicy", link: "https://jobicy.com/jobs/0-sample" }, percent: 90, jobId: "demo", tailored: false, isNew: true, source: "jobicy" },
+        { id: "m1", title: "Graduate Trainee, Finance", employer: "Northbridge Bank", location: "Lagos, Nigeria", remote: false, postedAt: ago(3), url: "https://example.com/jobs/1", credit: null, percent: 94, jobId: "demo", tailored: false, isNew: false, source: "headcount" },
+        { id: "m2", title: "Accounts Assistant", employer: "Lekki Foods Manufacturing", location: "Lagos, Nigeria", remote: false, postedAt: ago(9), url: "https://example.com/jobs/2", credit: null, percent: 91, jobId: "demo", tailored: true, isNew: false, source: "headcount" },
       ],
     };
   }
   const supabase = await createClient();
   const [{ data, error }, { data: me }] = await Promise.all([
-    supabase.from("job_matches").select("*").eq("user_id", viewer.id).eq("status", "matched").order("match_percent", { ascending: false }).order("posted_at", { ascending: false }).limit(50),
+    supabase.from("job_matches").select("*").eq("user_id", viewer.id).eq("status", "matched").order("checked_at", { ascending: false }).limit(100),
     supabase.from("users").select("*").eq("id", viewer.id).maybeSingle(),
   ]);
   const u = me as { matches_searched_at?: string | null; tailor_ahead?: boolean } | null;
   if (error) return { items: [], searchedAt: null, tailorAhead: false, ready: false };
-  const cutoff = Date.now() - LIMITS.matches.max_age_days * DAY;
   return {
     ready: true,
     searchedAt: u?.matches_searched_at ?? null,
     tailorAhead: Boolean(u?.tailor_ahead),
-    items: (data ?? [])
-      .filter((m) => !m.posted_at || Date.parse(m.posted_at) >= cutoff)
-      .map((m) => ({ id: m.id, title: m.title, employer: m.employer, location: m.location, remote: m.remote, postedAt: m.posted_at, url: m.url, credit: m.credit, percent: m.match_percent ?? 0, jobId: m.job_id, tailored: Boolean(m.cv_version_id), source: m.source })),
+    items: listOrder(data ?? []).map((m) => ({ id: m.id, title: m.title, employer: m.employer, location: m.location, remote: m.remote, postedAt: m.posted_at, url: m.url, credit: m.credit, percent: m.match_percent ?? 0, jobId: m.job_id, tailored: Boolean(m.cv_version_id), isNew: isNewMatch(m.checked_at, LIMITS.matches.new_days), source: m.source })),
   };
 }
 

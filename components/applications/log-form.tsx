@@ -277,7 +277,7 @@ export function LogForm({ inModal = false }: { inModal?: boolean }) {
         </fieldset>
       </div>
 
-      <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={!ready || busy} aria-busy={busy || undefined}>
+      <Button pending={busy} type="submit" size="lg" className="w-full sm:w-auto" disabled={!ready || busy} aria-busy={busy || undefined}>
         {busy ? (jobMode === "paste" ? "Saving…" : "Reading the job and saving…") : "Save this application"}
         {!busy ? <ArrowRight size={20} /> : null}
       </Button>

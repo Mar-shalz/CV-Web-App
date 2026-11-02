@@ -125,7 +125,7 @@ export function DebriefForm({ applicationId, voice, existing }: { applicationId:
           {error}
         </p>
       ) : null}
-      <Button size="lg" className="mt-5 w-full sm:w-auto" onClick={submit} disabled={busy || text.trim().length < 20} aria-busy={busy || undefined}>
+      <Button pending={busy} size="lg" className="mt-5 w-full sm:w-auto" onClick={submit} disabled={busy || text.trim().length < 20} aria-busy={busy || undefined}>
         {busy ? "Saving…" : "Save my notes"}
       </Button>
     </section>
