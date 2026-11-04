@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { saveProfile, setLowData, removeSensitive, setConsent, deleteAccount, type SettingsState } from "@/app/(app)/settings/actions";
 import { setTailorAhead } from "@/app/(app)/matches/actions";
 import { Field, TextInput, inputClass } from "@/components/ui/field";
@@ -127,10 +128,16 @@ export function DataSaverSwitch({ initial, icon }: { initial: boolean; icon?: Re
 }
 
 /** Tailor ahead (founder rounds 35 and 38, D-205, D-209): CVs written for the jobs in Jobs for You. Off by default. */
-/** Jobs for You links here with #tailor-ahead to switch it (founder round 36): the row is picked out when they arrive. */
+/**
+ * Jobs for You links here with #tailor-ahead to switch it (founder round 36): the row is picked
+ * out when they arrive. It says when the change is saved, or why not (founder round 42: a
+ * switch that flipped back with no word looked broken).
+ */
 export function TailorAheadSwitch({ initial, icon }: { initial: boolean; icon?: ReactNode }) {
+  const router = useRouter();
   const [on, setOn] = useState(initial);
-  const [, start] = useTransition();
+  const [saving, start] = useTransition();
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [lit, setLit] = useState(false);
   useEffect(() => {
     if (window.location.hash !== "#tailor-ahead") return;
@@ -145,7 +152,10 @@ export function TailorAheadSwitch({ initial, icon }: { initial: boolean; icon?: 
       {icon ? <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-75 text-ink-700">{icon}</span> : null}
       <span className="min-w-0 flex-1">
         <span className="block text-[0.9375rem] font-semibold text-ink-900">Tailor ahead</span>
-        <span className="block text-[0.8125rem] leading-5 text-ink-500">{on ? "On. We write your CV for each job in Jobs for You, a few at a time, so it's ready when you look." : "Off. Your CV for a match is written when you tap Tailor."}</span>
+        <span className="block text-[0.8125rem] leading-5 text-ink-500">{on ? "On. We write your CV for each job in Jobs for You, a few at a time, so it's ready when you look." : "Off. Your CV for a match is written when you tap Tailor. CVs already written stay ready."}</span>
+        <span role="status" className={`block text-[0.8125rem] font-medium leading-5 ${note && !note.ok ? "text-flag-700" : "text-proof-700"}`}>
+          {saving ? "Saving..." : note?.text}
+        </span>
       </span>
       <input
         type="checkbox"
@@ -154,9 +164,16 @@ export function TailorAheadSwitch({ initial, icon }: { initial: boolean; icon?: 
         onChange={(e) => {
           const next = e.target.checked;
           setOn(next);
+          setNote(null);
           start(async () => {
-            const res = await setTailorAhead(next);
-            if (!res.ok) setOn(!next);
+            const res = await setTailorAhead(next).catch(() => ({ ok: false, error: "You seem to be offline. Try again when you're connected." }));
+            if (!res.ok) {
+              setOn(!next);
+              setNote({ ok: false, text: res.error ?? "We couldn't save that. Try again." });
+              return;
+            }
+            setNote({ ok: true, text: next ? "Saved. Tailor ahead is on." : "Saved. Tailor ahead is off." });
+            router.refresh();
           });
         }}
         className="peer sr-only"

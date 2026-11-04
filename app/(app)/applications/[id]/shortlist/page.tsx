@@ -89,7 +89,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
           Interview prep
         </p>
         <h1 className="mt-3 font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Get Ready for {app.employer}</h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Everything here comes from the job post you saved and the exact CV you sent. Nothing new to memorise, only your own proof to explain well.</p>
+        <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">Everything here comes from the job post you saved and the exact CV you sent. Nothing new to memorise, only your own proof to explain well.</p>
       </header>
 
       {/* Phones: the invite, then the mock interview, then the rest. Wide screens: practice on the left, the invite and the day on the right. */}

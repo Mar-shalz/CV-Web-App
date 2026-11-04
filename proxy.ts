@@ -38,6 +38,20 @@ export async function proxy(incoming: NextRequest) {
   const canonical = canonicalRedirect(request);
   if (canonical) return canonical;
 
+  // When Supabase doesn't know our callback address it sends Google sign in to the Site URL
+  // (founder round 42): finish it on /auth/callback, or say it didn't work, instead of
+  // leaving people on the landing page signed out.
+  if (path === "/") {
+    const params = request.nextUrl.searchParams;
+    const code = params.get("code");
+    if (code || params.has("error_description")) {
+      const url = request.nextUrl.clone();
+      url.pathname = code ? "/auth/callback" : "/sign-in";
+      url.search = code ? `?code=${encodeURIComponent(code)}` : "?error=google";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // The back office keeps its own session (D-136): only its cookie counts on /admin pages.
   if (path === "/admin" || path.startsWith("/admin/")) {
     const { response, user } = await updateAdminSession(request);

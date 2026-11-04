@@ -345,3 +345,9 @@ alter table public.lookup_cache add constraint lookup_cache_kind_check check (ki
 -- applying). A two letter country code from config/markets.json.
 alter table public.users add column if not exists home_country text not null default 'NG' check (home_country ~ '^[A-Z]{2}$');
 grant update (home_country) on public.users to authenticated;
+
+-- 28. Whether a job on someone's Jobs for You list is still listed (founder round 42, D-213):
+-- checked again every 12 hours and when they tap Tailor; closed jobs leave the list. Written
+-- by the server only; the person reads it with the rest of their own rows.
+alter table public.job_matches add column if not exists open_state text check (open_state in ('open', 'closed', 'unknown'));
+alter table public.job_matches add column if not exists open_checked_at timestamptz;

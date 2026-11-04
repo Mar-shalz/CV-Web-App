@@ -27,7 +27,7 @@ export default async function CheckRealPage() {
           <ShieldSearch size={30} variant="bulk" className="text-brand-600" />
           Is This Job Real?
         </h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Paste the job, its link or a screenshot. We check the company and the post before you send your details. Free, always.</p>
+        <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">Paste the job, its link or a screenshot. We check the company and the post before you send your details. Free, always.</p>
       </header>
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="rounded-[var(--radius-card)] border border-ink-150 bg-white p-5 shadow-card lg:p-7">

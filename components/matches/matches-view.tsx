@@ -4,18 +4,18 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MatchView } from "@/lib/jobfeed/match";
-import { acceptMatch, dismissMatch, searchMatches, tailorAheadNow } from "@/app/(app)/matches/actions";
+import { acceptMatch, checkOpenNow, dismissMatch, searchMatches, tailorAheadNow } from "@/app/(app)/matches/actions";
 import { toast } from "@/components/ui/toaster";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { Magicpen, Global, Calendar, Location, SearchStatus, TickCircle, ArrowRight2, CloseCircle, Export, Setting2, Flash } from "@/components/icons";
+import { Magicpen, Global, Calendar, Location, SearchStatus, TickCircle, ArrowRight2, CloseCircle, Export, Setting2, Flash, ShieldTick } from "@/components/icons";
 
 const HOUR = 3_600_000;
 const daysAgo = (iso: string) => Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
-const when = (iso: string | null) => {
-  if (!iso) return null;
+const dayWord = (iso: string) => {
   const d = daysAgo(iso);
-  return d === 0 ? "Posted today" : d === 1 ? "Posted yesterday" : `Posted ${d} days ago`;
+  return d === 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
 };
+const when = (iso: string | null) => (iso ? `Posted ${dayWord(iso)}` : null);
 
 /**
  * Jobs for you (founder rounds 34 to 40, D-205, D-208 to D-211): what the daily search found
@@ -26,6 +26,7 @@ const when = (iso: string | null) => {
  * to change it (founder round 36). While it's on, opening the page writes CVs for the
  * jobs here that don't have one yet, `perRun` at a time (founder round 38). The list
  * comes newest first: jobs new on it, marked New, then the most recently posted (round 39).
+ * Opening the page checks the jobs here are still listed; closed ones leave (round 42).
  */
 export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, preview, minMatch, perRun }: { items: MatchView[]; searchedAt: string | null; tailorAhead: boolean; preview: boolean; minMatch: number; perRun: number }) {
   const router = useRouter();
@@ -70,15 +71,27 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
     // Runs once on open; search() reads nothing that changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!searchedAt || Date.now() - Date.parse(searchedAt) > 20 * HOUR) search();
-    // The search writes Tailor ahead CVs when it's done, so this runs only without one.
-    else if (ahead && waiting.length) writeCvs();
+    // The search checks the list and writes Tailor ahead CVs when it's done, so these run
+    // only without one: closed jobs leave first, so no CV is written for them.
+    else
+      checkOpenNow()
+        .then((r) => {
+          if (r.closed) {
+            toast(`${r.closed} ${r.closed === 1 ? "job has" : "jobs have"} closed and left your list.`);
+            router.refresh();
+          } else if (ahead && waiting.length) writeCvs();
+        })
+        .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function tailor(m: MatchView) {
     start(async () => {
       const res = await acceptMatch(m.id);
-      if (!res.ok) return toast(res.error, "error");
+      if (!res.ok) {
+        if (res.closed) setItems((xs) => xs.filter((x) => x.id !== m.id));
+        return toast(res.error, "error");
+      }
       router.push(res.href);
     });
   }
@@ -103,10 +116,10 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
               Tailor ahead
               <span className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.06em] ${ahead ? "bg-proof-50 text-proof-700 ring-1 ring-proof-100" : "bg-ink-100 text-ink-600"}`}>{ahead ? "On" : "Off"}</span>
             </p>
-            <p className="mt-0.5 max-w-xl text-[0.8125rem] leading-5 text-ink-600">
+            <p className="mt-0.5 text-[0.8125rem] leading-5 text-ink-600">
               {ahead ? "Tailor ahead is on: we write your CV for each job here, a few at a time, so it's ready when you look." : "We write your CV when you tap Tailor my CV. Turn on Tailor ahead to have it ready as soon as a job matches."}
             </p>
-            {ahead && aheadNote ? <p className="mt-1 max-w-xl text-[0.8125rem] font-medium leading-5 text-flag-700">{aheadNote}</p> : null}
+            {ahead && aheadNote ? <p className="mt-1 text-[0.8125rem] font-medium leading-5 text-flag-700">{aheadNote}</p> : null}
           </div>
         </div>
         <ButtonLink href="/settings#tailor-ahead" variant="secondary" size="sm" className="shrink-0 self-start sm:self-center">
@@ -145,6 +158,12 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
                     {when(m.postedAt)}
                   </span>
                 ) : null}
+                {m.listedAt ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-ink-500">
+                    <ShieldTick size={14} />
+                    Still listed {dayWord(m.listedAt)}
+                  </span>
+                ) : null}
                 {m.tailored ? (
                   <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800">CV ready</span>
                 ) : nowWriting.has(m.id) ? (
@@ -160,6 +179,13 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
                 <p className="mt-1 flex items-center gap-1 text-[0.8125rem] text-ink-500">
                   {m.remote ? <Global size={14} /> : <Location size={14} />}
                   {m.location}
+                </p>
+              ) : null}
+              {/* An office job abroad is listed only when the post offers visa sponsorship or relocation (founder round 42). */}
+              {m.sponsor ? (
+                <p className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800">
+                  <Global size={14} />
+                  Offers visa sponsorship or relocation
                 </p>
               ) : null}
               <p className="mt-2 text-xs text-ink-500">

@@ -1,0 +1,23 @@
+{
+  "version": "2026-11-04",
+  "note": "What a job post says about visa sponsorship (founder round 42, D-213). An office job abroad is shown in Jobs for You only when its post offers sponsorship or relocation, or the person has said they can already work in that country. Any not_offered phrase wins over an offered one. Lowercase regular expressions, matched on the post's text with spaces collapsed.",
+  "not_offered": [
+    "\\bno (visa |work permit |immigration )?sponsorship",
+    "(unable|not able|cannot|can ?not|can't|do not|don't|does not|doesn't|won't|will not|not in a position)( to)?( currently| presently)? sponsor",
+    "(unable|not able|cannot|can ?not|can't|do not|don't|does not|doesn't|won't|will not|not in a position|not)( to)?( currently| presently)? (offer|provide|support)(ing)? (visa |work permit |immigration )?sponsorship",
+    "sponsorship (is |will )?not (be )?(available|offered|provided|possible|supported)",
+    "without (the need for |requiring |needing )?(current or future |now or in the future |future )?(visa |employer |employment |immigration )?sponsorship",
+    "(not|n't) (now or in the future )?require[sd]? (visa |employment |immigration )?sponsorship",
+    "(must|need to|should|required to) (already )?(have|hold|possess) (the |a |full |unrestricted |existing |valid )?right to work",
+    "right to work in [a-z ]{2,30} (is )?(required|essential|mandatory)",
+    "(eligible|authori[sz]ed|legally able|entitled) to work in [a-z ]{2,30} without"
+  ],
+  "offered": [
+    "visa sponsorship",
+    "sponsor(ship)? (for |of )?(your |a |the )?(work |skilled worker |employment )?(visa|permit)",
+    "skilled worker (visa )?sponsor",
+    "(we|will|can|happy to|able to) sponsor",
+    "relocation (support|assistance|package|allowance|bonus|budget)",
+    "help(ing)? (you )?(to )?relocate"
+  ]
+}

@@ -47,10 +47,22 @@ export function openTo(place: Place, home: string): boolean {
 
 /**
  * Jobs for You's rule: in the country they live in, remote and open to people there, or an
- * office job in a country they apply to. A remote job tied to another country (US only, say)
- * needs the right to live and work there, so it isn't shown to people living elsewhere.
+ * office job in a country they apply to, when they can work there: they've said they can, or
+ * the post offers visa sponsorship or relocation (founder round 42: someone in Nigeria can't
+ * take a UK office job that needs a visa it doesn't offer). A remote job tied to another
+ * country (US only, say) needs the right to live and work there, so it isn't shown to people
+ * living elsewhere.
  */
-export function fits(job: { source: string; location: string | null; countries?: string[]; remote: boolean }, reach: Reach): boolean {
+export function fits(job: { source: string; location: string | null; countries?: string[]; remote: boolean; visa?: string | null }, reach: Reach): boolean {
   const place = placeOf(job);
-  return openTo(place, reach.home) || (!job.remote && place.countries.some((c) => reach.away.includes(c)));
+  if (openTo(place, reach.home)) return true;
+  if (job.remote) return false;
+  const there = place.countries.filter((c) => reach.away.includes(c));
+  return there.length > 0 && (there.some((c) => reach.canWork.includes(c)) || job.visa === "offered");
+}
+
+/** An office job abroad that's listed because its post offers sponsorship (for the card). */
+export function sponsored(job: { source: string; location: string | null; countries?: string[]; remote: boolean; visa?: string | null }, reach: Reach): boolean {
+  const place = placeOf(job);
+  return !openTo(place, reach.home) && !job.remote && job.visa === "offered" && !place.countries.some((c) => reach.canWork.includes(c));
 }

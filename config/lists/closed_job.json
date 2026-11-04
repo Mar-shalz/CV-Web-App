@@ -1,0 +1,19 @@
+{
+  "version": "2026-11-04",
+  "note": "Words an employer's page shows when a job has closed (founder round 42, D-213). Matched, lowercase, on the page's text when the job board has no record we can ask directly.",
+  "phrases": [
+    "no longer accepting applications",
+    "no longer accepting applicants",
+    "this job is no longer available",
+    "this job has expired",
+    "this job has been closed",
+    "this position has been filled",
+    "this position is no longer available",
+    "the job you are looking for is no longer",
+    "this vacancy has now closed",
+    "this vacancy is closed",
+    "applications for this role have closed",
+    "this posting has expired",
+    "job not found"
+  ]
+}

@@ -23,7 +23,7 @@ export default async function JobReviewPage({ params }: { params: Promise<{ id: 
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">
           {manual ? "Fill in the job details" : "Check the details we found"}
         </h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
+        <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">
           {manual
             ? "We couldn't read this job automatically. Fill in what you can see; the title and how to apply matter most."
             : "Fix anything we got wrong. The email address and subject line matter most: they decide whether your application arrives."}

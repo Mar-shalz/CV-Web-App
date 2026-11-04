@@ -103,7 +103,7 @@ export function CvEditor({ cvId: initialId, doc: initial, jobId, preview, dobTog
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <h1 className="font-display text-[1.5rem] font-semibold leading-8 tracking-[-0.03em] text-ink-900 lg:text-[1.75rem] lg:leading-9">{title ?? "Your CV"}</h1>
-            {subtitle ? <p className="mt-0.5 max-w-2xl text-[0.875rem] leading-6 text-ink-600">{subtitle}</p> : null}
+            {subtitle ? <p className="mt-0.5 text-[0.875rem] leading-6 text-ink-600">{subtitle}</p> : null}
           </div>
           <div className="grid shrink-0 gap-2 sm:flex">
             <DownloadMenu onPick={(t) => download(t)} disabled={busy} />

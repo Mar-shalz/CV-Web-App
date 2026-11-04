@@ -30,7 +30,7 @@ export default async function CaptureJobPage({ searchParams }: { searchParams: P
       <FlowSteps current="add" back="/applications" />
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Tailor your CV to a Job</h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
+        <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">
           Start with the job description. The more complete it is, the better your CV will match.{" "}
           <Link href="/jobs/real" className="font-semibold text-brand-700 hover:underline">
             Only want to check if a job is real?

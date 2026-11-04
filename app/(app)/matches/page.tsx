@@ -20,11 +20,11 @@ export default async function MatchesPage() {
     <div className="space-y-3">
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Jobs for You</h1>
-        <p className="mt-1 max-w-3xl text-[0.9375rem] text-ink-600">
+        <p className="mt-1 text-[0.9375rem] text-ink-600">
           Every day we search employers&apos; own careers pages and remote job boards for jobs like the ones you go for, posted in the last {LIMITS.matches.max_age_days} days. Only jobs you match {LIMITS.matches.min_match}% or more show here. Tailor one and it moves to My Applications. We never apply for you.
         </p>
-        <p className="mt-1.5 max-w-3xl text-[0.8125rem] text-ink-500">
-          Jobs in {home}, {away.length ? <>office jobs abroad ({countryNames(away)}), </> : null}and remote jobs open to people in {home}.{" "}
+        <p className="mt-1.5 text-[0.8125rem] text-ink-500">
+          Jobs in {home}, {away.length ? <>office jobs abroad that offer visa sponsorship ({countryNames(away)}), </> : null}and remote jobs open to people in {home}.{" "}
           <Link href="/onboarding/setup" className="font-semibold text-brand-700 hover:underline">
             Change where you live or apply
           </Link>

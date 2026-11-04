@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { LIMITS } from "@/lib/config";
 import banned from "@/config/lists/banned_phrases.json";
 import remoteRegions from "@/config/lists/remote_regions.json";
+import visaSponsorship from "@/config/lists/visa_sponsorship.json";
+import closedJob from "@/config/lists/closed_job.json";
 import { maskEmail } from "./permissions";
 import type { Staff } from "./auth";
 
@@ -268,6 +270,8 @@ export async function getRules(staff: Staff): Promise<{ rules: RuleRow[]; lists:
     { name: "Government agencies and official portals", file: "config/lists/government_agencies.json", version: null, items: null, nextReview: null },
     { name: "Pay thresholds by title", file: "config/lists/pay_thresholds.json", version: null, items: null, nextReview: null },
     { name: "Who remote jobs are open to", file: "config/lists/remote_regions.json", version: remoteRegions.version, items: Object.keys(remoteRegions.regions).length + Object.keys(remoteRegions.names).length, nextReview: reviewDue(remoteRegions.version) },
+    { name: "Visa sponsorship wording", file: "config/lists/visa_sponsorship.json", version: visaSponsorship.version, items: visaSponsorship.offered.length + visaSponsorship.not_offered.length, nextReview: reviewDue(visaSponsorship.version) },
+    { name: "Closed job wording", file: "config/lists/closed_job.json", version: closedJob.version, items: closedJob.phrases.length, nextReview: reviewDue(closedJob.version) },
   ];
   if (staff.preview) {
     return {

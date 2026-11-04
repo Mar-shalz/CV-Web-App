@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bandFor, cleanRole, fresh, isNewMatch, levelFits, newestFirst, prescore, rolesFrom } from "@/lib/jobfeed/rank";
-import { fits, openTo, parseGeo, placeOf } from "@/lib/jobfeed/place";
+import { fits, openTo, parseGeo, placeOf, sponsored } from "@/lib/jobfeed/place";
 import { countryNames, reachOf } from "@/lib/markets";
 import { titleQuery } from "@/lib/jobfeed/headcount";
 import { plainText } from "@/lib/jobfeed/types";
@@ -56,17 +56,23 @@ describe("Jobs for you: which found jobs get a fit check (D-205)", () => {
   });
   it("adds office jobs abroad for people who apply abroad (round 41)", () => {
     // "Abroad" and "Both" add the usual countries; "Nigeria" adds none. Older accounts named their own.
-    expect(reachOf(["NG"], "NG")).toEqual({ home: "NG", away: [] });
-    expect(reachOf(["INTL"], "NG")).toEqual({ home: "NG", away: ["GB", "US", "CA", "AE", "IE"] });
+    expect(reachOf(["NG"], "NG")).toEqual({ home: "NG", away: [], canWork: [] });
+    expect(reachOf(["INTL"], "NG")).toEqual({ home: "NG", away: ["GB", "US", "CA", "AE", "IE"], canWork: [] });
     expect(reachOf(["NG", "INTL"], "NG").away).toEqual(["GB", "US", "CA", "AE", "IE"]);
     expect(reachOf(["NG", "GB"], "NG").away).toEqual(["GB"]);
     expect(reachOf(["INTL"], "GB").away).toEqual(["US", "CA", "AE", "IE"]);
     expect(reachOf(["NG"], "GB").away).toEqual(["NG"]);
     const abroad = reachOf(["NG", "INTL"], "NG");
-    const office = (location: string, countries: string[], remote = false) => ({ source: "headcount", location, countries, remote });
+    const office = (location: string, countries: string[], remote = false, visa = "offered") => ({ source: "headcount", location, countries, remote, visa });
     expect(fits(office("London, England, GB", ["GB"]), abroad)).toBe(true);
-    expect(fits(office("Lagos, NG", ["NG"]), abroad)).toBe(true);
+    expect(fits(office("Lagos, NG", ["NG"], false, "not_mentioned"), abroad)).toBe(true);
     expect(fits(office("Berlin, DE", ["DE"]), abroad)).toBe(false);
+    // Round 42: an office job abroad needs a visa the post offers, or their right to work there.
+    expect(fits(office("London, England, GB", ["GB"], false, "not_mentioned"), abroad)).toBe(false);
+    expect(fits(office("London, England, GB", ["GB"], false, "not_offered"), abroad)).toBe(false);
+    expect(fits(office("London, England, GB", ["GB"], false, "not_mentioned"), reachOf(["NG", "INTL"], "NG", ["GB"]))).toBe(true);
+    expect(sponsored(office("London, England, GB", ["GB"]), abroad)).toBe(true);
+    expect(sponsored(office("Lagos, NG", ["NG"]), abroad)).toBe(false);
     // A remote job tied to another country needs the right to live there: not shown.
     expect(fits(office("London, England, GB", ["GB"], true), abroad)).toBe(false);
     expect(fits({ source: "jobicy", location: "Remote (USA)", remote: true }, abroad)).toBe(false);

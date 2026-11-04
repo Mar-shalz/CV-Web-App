@@ -26,8 +26,8 @@ const REGION_HINT: Record<string, string> = {
   both: "No need to pick countries. We read the country from each job post and format that CV for it.",
 };
 
-// Jobs for You adds office jobs abroad for Abroad and Both (founder round 41, D-212).
-const abroadHint = (abroad: string) => ` Jobs for You also shows office jobs abroad (${abroad}).`;
+// Jobs for You adds office jobs abroad for Abroad and Both (founder round 41, D-212), when the post offers visa sponsorship (round 42).
+const abroadHint = (abroad: string) => ` Jobs for You also shows office jobs abroad that offer visa sponsorship (${abroad}).`;
 
 export function SetupForm({ stages, regions, countries, abroad, initial, submitLabel = "Finish setup" }: { stages: Option[]; regions: Option[]; countries: { code: string; label: string }[]; abroad: string; initial?: Initial; submitLabel?: string }) {
   const [state, action] = useActionState<FormState, FormData>(saveSetup, undefined);

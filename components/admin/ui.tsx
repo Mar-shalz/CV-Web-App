@@ -18,7 +18,7 @@ export function PageHeader({ title, intro, action }: { title: string; intro?: st
     <header className="flex flex-wrap items-end justify-between gap-3 animate-rise">
       <div>
         <h1 className="font-display text-[1.625rem] font-semibold leading-8 tracking-[-0.03em] text-ink-900 [overflow-wrap:anywhere]">{titleCase(title)}</h1>
-        {intro ? <p className="mt-0.5 max-w-3xl text-[0.9375rem] leading-6 text-ink-600">{intro}</p> : null}
+        {intro ? <p className="mt-0.5 text-[0.9375rem] leading-6 text-ink-600">{intro}</p> : null}
       </div>
       {action}
     </header>

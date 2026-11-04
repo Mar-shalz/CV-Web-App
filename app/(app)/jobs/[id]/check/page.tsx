@@ -200,7 +200,7 @@ async function VerdictHero({ promise, viewer, job, extras }: { promise: Promise<
             <h2 id="verdict-title" className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.02em] text-ink-900 lg:text-[1.5rem] lg:leading-8">
               {t.label}
             </h2>
-            <div className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-700">
+            <div className="mt-1 text-[0.9375rem] leading-6 text-ink-700">
               <SeeMore lines={2}>{v.line}</SeeMore>
             </div>
             {pct !== null ? (

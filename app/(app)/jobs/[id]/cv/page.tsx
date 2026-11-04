@@ -53,7 +53,7 @@ export default async function CvPage({ params }: { params: Promise<{ id: string 
         <>
           <header className="animate-rise">
             <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Your Tailored CV</h1>
-            <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
+            <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">
               For {job.parsed.title ?? "this job"}
               {job.parsed.employer_name ? ` at ${job.parsed.employer_name}` : ""}. Written only from your experience, in the {PROFILE_LABELS[job.destination.profile]} format.
             </p>

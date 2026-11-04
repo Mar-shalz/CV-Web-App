@@ -61,7 +61,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
       <header style={{ "--i": 0 } as CSSProperties} className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">My Experience</h1>
-          <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">Every line on your CV comes from here. Only confirmed achievements are used.</p>
+          <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">Every line on your CV comes from here. Only confirmed achievements are used.</p>
         </div>
         <DownloadCv ready={vault.confirmedItems > 0} />
       </header>

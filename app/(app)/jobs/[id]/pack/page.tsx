@@ -38,7 +38,7 @@ export default async function PackPage({ params }: { params: Promise<{ id: strin
       <FlowSteps current="send" hrefs={{ add: `/jobs/${job.id}`, check: `/jobs/${job.id}/check`, cv: `/jobs/${job.id}/cv` }} back={`/jobs/${job.id}/cv`} />
       <header className="animate-rise">
         <h1 className="font-display text-[1.75rem] font-semibold leading-9 tracking-[-0.03em] text-ink-900 lg:text-[2.125rem] lg:leading-10">Ready to Send</h1>
-        <p className="mt-1 max-w-2xl text-[0.9375rem] leading-6 text-ink-600">
+        <p className="mt-1 text-[0.9375rem] leading-6 text-ink-600">
           {channel === "email"
             ? "This employer wants applications by email. Here's everything they asked for, in the format they asked for it."
             : channel === "form"

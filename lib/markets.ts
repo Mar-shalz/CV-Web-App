@@ -32,16 +32,17 @@ export function countryMarkets(markets: string[]): string[] {
 }
 
 /**
- * Where Jobs for You looks for someone (founder rounds 40 and 41, D-211, D-212): the country
- * they live in, and the countries they apply to for office jobs. "Abroad" means the countries
- * in markets.json abroad_default; older accounts may name their own.
+ * Where Jobs for You looks for someone (founder rounds 40 to 42, D-211 to D-213): the country
+ * they live in, the countries they apply to for office jobs ("Abroad" means the countries in
+ * markets.json abroad_default; older accounts may name their own), and the countries they've
+ * said they can already work in (profiles.right_to_work), where no visa is needed.
  */
-export type Reach = { home: string; away: string[] };
+export type Reach = { home: string; away: string[]; canWork: string[] };
 
-export function reachOf(markets: string[], home: string): Reach {
+export function reachOf(markets: string[], home: string, canWork: string[] = []): Reach {
   const named = countryMarkets(markets);
   const away = markets.includes(ABROAD) && !named.some((c) => c !== "NG") ? [...named, ...MARKETS.abroad_default] : named;
-  return { home, away: [...new Set(away)].filter((c) => c !== home) };
+  return { home, away: [...new Set(away)].filter((c) => c !== home), canWork };
 }
 
 /** Country names from codes, for copy: "United Kingdom, Canada". */
