@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { Logo } from "@/components/brand/logo";
+import { LandingMenu } from "@/components/brand/landing-menu";
 import {
   ArrowRight,
   ShieldSearch,
@@ -225,30 +226,16 @@ export default async function LandingPage() {
                 Get started
                 <ArrowRight size={18} className="hidden sm:block" />
               </Link>
-              <details className="relative lg:hidden">
-                <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-xl text-white hover:bg-white/10" aria-label="Menu">
-                  <span aria-hidden="true" className="flex flex-col gap-1.5">
-                    <span className="block h-0.5 w-5 rounded bg-white" />
-                    <span className="block h-0.5 w-5 rounded bg-white" />
-                  </span>
-                </summary>
-                <ul className="lp-glass absolute right-0 top-14 w-56 rounded-2xl p-2 text-[0.9375rem] font-medium">
-                  {[
-                    ["How it works", "#how"],
-                    ["Features", "#features"],
-                    ["Job check", "#job-check"],
-                    ["Extension", "#extension"],
-                    ["FAQ", "#faq"],
-                    ["Sign in", "/sign-in"],
-                  ].map(([label, href]) => (
-                    <li key={href}>
-                      <a href={href} className="flex min-h-11 items-center rounded-xl px-3 text-white hover:bg-white/10">
-                        {label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </details>
+              <LandingMenu
+                links={[
+                  ["How it works", "#how"],
+                  ["Features", "#features"],
+                  ["Job check", "#job-check"],
+                  ["Extension", "#extension"],
+                  ["FAQ", "#faq"],
+                  ["Sign in", "/sign-in"],
+                ]}
+              />
             </div>
           </div>
         </nav>

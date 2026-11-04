@@ -492,6 +492,15 @@ html[data-navigating] { cursor: progress; }
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   box-shadow: 0 24px 60px -28px rgb(2 6 23 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.22);
 }
+/* The phone menu on the landing page (founder round 43). It opens inside the glass nav bar,
+   and a blur inside a blur shows the page through untouched, so this panel is nearly solid:
+   white text keeps its contrast over the hero's white headline. */
+.lp-menu {
+  background: rgb(9 20 64 / 0.985);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  box-shadow: 0 28px 60px -20px rgb(2 6 23 / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.12);
+  color: #fff;
+}
 .lp-glass-light {
   background: rgb(255 255 255 / 0.9);
   border: 1px solid rgb(255 255 255 / 0.9);

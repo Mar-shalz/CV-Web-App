@@ -14,7 +14,7 @@ export const metadata = { title: { absolute: "Overview · Back Office" } };
 
 export default async function AdminOverview() {
   const staff = await requireAdmin("overview");
-  const [o, designs, gmail] = await Promise.all([getOverview(staff), designUsage(), opsSummary("gmail_attach_failed")]);
+  const [o, designs, gmail, signIn] = await Promise.all([getOverview(staff), designUsage(), opsSummary("gmail_attach_failed"), opsSummary("sign_in_failed")]);
   const designTotal = CV_STYLES.reduce((n, s) => n + designs.downloads[s], 0);
   // Same cards as the app's Home: label, icon, number, one line of context.
   const queue = [
@@ -81,6 +81,25 @@ export default async function AdminOverview() {
             </p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {gmail.reasons.map((r) => (
+                <li key={r.reason} className="rounded-full bg-ink-75 px-2.5 py-1 text-xs font-medium text-ink-700">
+                  {r.reason.replaceAll("_", " ")}: {r.count}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Panel>
+      ) : null}
+
+      {/* Sign ins that didn't finish after Google or an email link, and why (D-214). */}
+      {signIn.count ? (
+        <Panel title="Needs a look: sign in" action={<span className="text-xs text-ink-500">last 7 days</span>}>
+          <div className="p-5 text-sm text-ink-700">
+            <p>
+              <span className="font-semibold text-flag-700">{signIn.count} {signIn.count === 1 ? "sign in" : "sign ins"}</span> didn&apos;t finish
+              {signIn.last ? `, most recently ${formatDate(signIn.last)}` : ""}. &quot;pkce code verifier not found&quot; means the sign in started in another browser or app window.
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {signIn.reasons.map((r) => (
                 <li key={r.reason} className="rounded-full bg-ink-75 px-2.5 py-1 text-xs font-medium text-ink-700">
                   {r.reason.replaceAll("_", " ")}: {r.count}
                 </li>
