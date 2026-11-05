@@ -18,7 +18,7 @@ export default async function AdminVerify() {
       title="Check your Email"
       subtitle={
         <>
-          We sent a code to <span className="font-semibold text-ink-900">{maskEmail(email)}</span>. Enter the {LIMITS.auth.otp_length} digit code, or tap the sign in link in that email on this device.
+          We sent a code to <span className="font-semibold text-ink-900">{maskEmail(email)}</span>. Enter the {LIMITS.auth.otp_length} digit code from it.
         </>
       }
     >

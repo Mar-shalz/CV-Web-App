@@ -1,4 +1,4 @@
-# Email sign in: send a 6 digit code (founder rounds 40 and 44, D-211, D-215)
+# Email sign in: send a 6 digit code (founder rounds 40, 44 and 45, D-211, D-215, D-216)
 
 ## Why codes don't arrive yet
 
@@ -13,12 +13,12 @@ Custom SMTP fixes both: Supabase sends through an email account you choose, real
 
 Good for the beta: Gmail sends up to about 500 emails a day from a personal account, for free. Gmail's own servers send it, so it rarely lands in spam.
 
-1. **Make a new Gmail account for the app**, for example `receipts.signin@gmail.com`. Don't use your personal Gmail: the app password below can read that whole mailbox.
+1. **Make a new Gmail account for the app**, for example `aptbrix.signin@gmail.com`. Don't use your personal Gmail: the app password below can read that whole mailbox.
 2. **Turn on 2-Step Verification** on that new account (myaccount.google.com, Security). App passwords only appear after this.
 3. **Make an app password.** Go to `https://myaccount.google.com/apppasswords`, name it `Supabase`, and copy the 16 character password. Google shows it only once.
 4. **Turn on custom SMTP in Supabase.** Authentication, then Emails, then SMTP Settings. Turn on "Enable custom SMTP" and enter:
    - Sender email: the new Gmail address (it must be the same address, or Gmail changes it)
-   - Sender name: `Receipts`
+   - Sender name: `Aptbrix`
    - Host: `smtp.gmail.com`
    - Port: `465`
    - Username: the new Gmail address
@@ -31,7 +31,7 @@ Keep the app password in Supabase only. Never put it in the code, in Vercel or i
 
 ## Option B: your own domain (when you have one)
 
-When the app has its own domain (for example `receipts.ng`), switch to an email service and send from `no-reply@` that domain. It looks more trustworthy and handles more volume.
+When the app has its own domain (for example `aptbrix.com`), switch to an email service and send from `no-reply@` that domain. It looks more trustworthy and handles more volume.
 
 - Resend: 3,000 emails a month free (100 a day). Brevo: 300 a day free.
 - Add the DNS records the service gives you (SPF, DKIM, DMARC) so emails don't land in spam.
@@ -42,10 +42,12 @@ When the app has its own domain (for example `receipts.ng`), switch to an email 
 
 Authentication, then Emails, then Templates. For both **Magic link** and **Confirm signup**:
 
-- Subject: `Your Receipts sign in code: {{ .Token }}`
+- Subject: `Your Aptbrix sign in code: {{ .Token }}`
 - Body: paste all of `supabase/templates/sign-in-code.html`.
 
-New people get "Confirm signup" and returning people get "Magic link", so both need the code. Putting the code in the subject means people can read it from the phone's notification.
+New people get "Confirm signup" and returning people get "Magic link", so both need the code. If the email still shows only a "Log In" link, the template wasn't saved: each template has its own Save button. Putting the code in the subject means people can read it from the phone's notification.
+
+The template has no link on purpose (D-216). A link to the Supabase address from a Gmail sender looks like phishing to spam filters, and the link fails when it opens in a different browser from the one the sign in started in.
 
 Check the code length: Authentication, then Sign In / Providers, then Email. "Email OTP Length" must be 6, to match `config/limits.json` (auth.otp_length).
 
@@ -53,4 +55,6 @@ Check the code length: Authentication, then Sign In / Providers, then Email. "Em
 
 Sign out. Sign in with an email that is not on the Supabase team (a friend's, or a second address of yours), then enter the code. If nothing arrives within a minute, check Spam and Promotions, then the back office overview for the reason.
 
-The link in the email keeps working too, as before. The code is the more reliable path on phones, because the link can open in a different browser from the one you started in.
+## Landing in spam
+
+A new Gmail sender with no history often lands in spam at first. What helps: the code only template (no link, no images), the sender name `Aptbrix`, and people tapping "Report not spam" (Gmail learns from it). Send a few test codes to your own Gmail and Yahoo addresses and mark them not spam. If most still land in spam after a week, move to Option B: a domain with SPF, DKIM and DMARC is what spam filters trust most.

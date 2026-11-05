@@ -39,7 +39,7 @@ export function SignInForm({ initialError, dest }: { initialError?: string; dest
 
       <form action={emailAction} className="space-y-5" noValidate>
         {dest ? <input type="hidden" name="dest" value={dest} /> : null}
-        <Field id="email" label="Email address" error={emailError} hint="We'll email you a code and a sign in link. No password needed.">
+        <Field id="email" label="Email address" error={emailError} hint="We'll email you a sign in code. No password needed.">
           <TextInput
             id="email"
             name="email"

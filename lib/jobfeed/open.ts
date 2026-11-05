@@ -30,7 +30,7 @@ export function safeUrl(raw: string): URL | null {
 async function get(raw: string, accept = "text/html,application/json"): Promise<{ status: number; url: string; text: string } | null> {
   let url = safeUrl(raw);
   for (let hop = 0; url && hop < 4; hop++) {
-    const res = await fetch(url, { redirect: "manual", headers: { Accept: accept, "User-Agent": "Mozilla/5.0 (compatible; ReceiptsJobCheck/1.0)" }, signal: AbortSignal.timeout(TIMEOUT), cache: "no-store" }).catch(() => null);
+    const res = await fetch(url, { redirect: "manual", headers: { Accept: accept, "User-Agent": "Mozilla/5.0 (compatible; AptbrixJobCheck/1.0)" }, signal: AbortSignal.timeout(TIMEOUT), cache: "no-store" }).catch(() => null);
     if (!res) return null;
     if (res.status >= 300 && res.status < 400) {
       const next = res.headers.get("location");

@@ -68,7 +68,7 @@ Primary user: Tolu, 21 to 27, NYSC or first 3 years of work, an Android phone wi
 
 ## Design
 - Brand and layout rules: design/brand.md. Tokens: app/globals.css (ships) and design/tokens.json (Figma).
-- Words: design/voice.md (UX writing rules, terms, microcopy library). The product name is a placeholder in config/app.json.
+- Words: design/voice.md (UX writing rules, terms, microcopy library). The product name is APP_NAME in config/app.json (Aptbrix since founder round 45, D-216); never hard code it.
 - Icons: import from @/components/icons (generated Iconsax, Linear and Bulk). Never add an icon library.
 - Back office lives at /admin behind lib/admin/auth.ts (staff role + two factor). Log every view of personal data with logAdminAction.
 - Security: the CSP nonce is set in proxy.ts (lib/csp.ts). Only the Paystack webhook unlocks a pass. Status changes go through lib/applications/status.ts.

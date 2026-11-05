@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireReadyViewer } from "@/lib/auth/viewer";
-import { APP } from "@/lib/config";
+import { APP, APP_NAME } from "@/lib/config";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Global, DocumentDownload, ShieldTick, Magicpen, ShieldSearch, TickCircle, Sms } from "@/components/icons";
 
@@ -12,8 +12,8 @@ const STEPS = [
   { title: "Open Chrome's extensions page", body: "Type this in the address bar, then press Enter:", copy: "chrome://extensions" },
   { title: "Turn on Developer mode", body: "It's the switch at the top right of that page." },
   { title: "Click Load unpacked", body: "Choose the receipts-extension folder." },
-  { title: "Pin it", body: "Click the puzzle piece next to the address bar, then the pin beside Receipts." },
-  { title: "Open it and sign in", body: "Click the Receipts icon. A panel opens beside the page: tap Sign in, and it signs in with this account." },
+  { title: "Pin it", body: `Click the puzzle piece next to the address bar, then the pin beside ${APP_NAME}.` },
+  { title: "Open it and sign in", body: `Click the ${APP_NAME} icon. A panel opens beside the page: tap Sign in, and it signs in with this account.` },
 ] as const;
 
 /**

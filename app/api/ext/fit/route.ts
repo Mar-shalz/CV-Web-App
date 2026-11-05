@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { APP_NAME } from "@/lib/config";
 import { extAllow, extUser } from "@/lib/ext/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { withClient } from "@/lib/supabase/server";
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       const added = new Set(extras.addedSkills.filter((a) => a.jobId === job.id).map((a) => requirementKey(a.requirement)));
       return { empty: false as const, v, pct: matchPercent(v.requirements, job.parsed.requirements, added), added };
     });
-    if (out.empty) return NextResponse.json({ ok: false, error: "Add and confirm your experience in Receipts first, so we can compare it with this job." }, { status: 422 });
+    if (out.empty) return NextResponse.json({ ok: false, error: `Add and confirm your experience in ${APP_NAME} first, so we can compare it with this job.` }, { status: 422 });
     const { v, pct, added } = out;
     return NextResponse.json({
       ok: true,

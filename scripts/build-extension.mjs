@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
 const APP_CONFIG = JSON.parse(readFileSync("config/app.json", "utf8"));
 const LIVE = APP_CONFIG.app_url.replace(/\/+$/, "");
 // The product name comes from the same config, so a rename reaches the extension too (round 31).
-const APP_NAME = String(APP_CONFIG.APP_NAME || "Receipts");
+const APP_NAME = String(APP_CONFIG.APP_NAME || "Aptbrix");
 const appUrl = (process.env.EXT_APP_URL || LIVE).replace(/\/+$/, "");
 if (!/^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(appUrl)) throw new Error(`EXT_APP_URL must be an origin like https://example.com, got ${appUrl}`);
 

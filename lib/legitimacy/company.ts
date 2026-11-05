@@ -14,7 +14,7 @@ export { normaliseName, domainOf };
 
 export type CompanyRecord = { label: string; description: string | null; website: string | null; domain: string | null; founded: number | null; sourceUrl: string };
 
-const UA = "ReceiptsJobCheck/1.0 (job advert scam check; contact via the Receipts app)";
+const UA = "AptbrixJobCheck/1.0 (job advert scam check; contact via the Aptbrix app)";
 // Organisation descriptions on Wikidata; people, places and names are left out.
 const ORG =
   /\b(company|companies|bank|firm|business|startup|start-up|enterprise|conglomerate|corporation|group|agency|ministry|commission|authority|university|school|hospital|organi[sz]ation|institution|manufacturer|retailer|platform|provider|fintech|operator|brand|subsidiary|cooperative|foundation|ngo|charity|airline|insurer|telecommunications|publisher|consultancy|firm)\b/i;

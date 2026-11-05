@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { APP_NAME } from "@/lib/config";
 import { connectExtension, disconnectAll } from "@/app/(app)/extension/actions";
 import { Global, TickCircle, Warning2, Logout } from "@/components/icons";
 import { Spinner } from "@/components/ui/pending-button";
@@ -66,7 +67,7 @@ export function ConnectExtension({ name }: { name: string }) {
       ) : state === "missing" ? (
         <>
           <h1 className="mt-4 font-display text-2xl font-semibold tracking-[-0.02em] text-ink-900">Add the Extension First</h1>
-          <p className="mt-2 text-[0.9375rem] leading-6 text-ink-600">We couldn&apos;t find the Receipts extension in this browser. Add it, then open it and tap Sign in.</p>
+          <p className="mt-2 text-[0.9375rem] leading-6 text-ink-600">We couldn&apos;t find the {APP_NAME} extension in this browser. Add it, then open it and tap Sign in.</p>
           <Link href="/extension" className="mt-5 inline-flex min-h-12 items-center justify-center rounded-2xl bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700">
             How to add it
           </Link>
