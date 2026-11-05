@@ -12,6 +12,8 @@ import { getViewer, nextOnboardingPath } from "@/lib/auth/viewer";
 import { track } from "@/lib/analytics/server";
 import { NEXT_COOKIE, isReturnPath } from "@/lib/auth/next-path";
 import { GOOGLE_COOKIE, googleDirectFor, startGoogle } from "@/lib/auth/google";
+import { sendFailure, type SendError } from "@/lib/auth/email-code";
+import { reportOps } from "@/lib/ops";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string>; ok?: boolean } | undefined;
 
@@ -76,8 +78,8 @@ export async function sendEmailCode(_prev: FormState, formData: FormData): Promi
     // The back office never creates accounts: a team member is added to an existing one.
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: !admin, emailRedirectTo: await linkTarget(admin) } });
     if (error) {
-      if (error.status === 429) return { error: "Too many codes asked for. Wait a minute, then try again." };
-      return { error: GENERIC_AUTH_ERROR };
+      const failed = await codeNotSent(error, admin ? "admin" : "send");
+      return failed.fieldError ? { fieldErrors: { email: failed.fieldError } } : { error: failed.error };
     }
   }
 
@@ -94,6 +96,14 @@ export async function sendEmailCode(_prev: FormState, formData: FormData): Promi
   redirect(admin ? "/admin/sign-in/verify" : "/sign-in/verify");
 }
 
+// Why a code wasn't sent goes to the back office (a short code, never the address), so a
+// misconfigured email service shows up there instead of only as people who never got a code.
+async function codeNotSent(error: SendError, step: "send" | "resend" | "admin") {
+  const failed = sendFailure(error);
+  if (failed.report) await reportOps("email_code_failed", { reason: failed.reason.slice(0, 60), step, status: error?.status ?? null }).catch(() => undefined);
+  return failed;
+}
+
 async function linkTarget(admin: boolean): Promise<string> {
   return `${await origin()}${admin ? "/admin/auth/callback" : "/auth/callback"}?method=email`;
 }
@@ -107,8 +117,8 @@ export async function resendEmailCode(): Promise<FormState> {
   const supabase = await authClient(admin);
   const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: !admin, emailRedirectTo: await linkTarget(admin) } });
   if (error) {
-    if (error.status === 429) return { error: "Please wait a little before asking for another code." };
-    return { error: GENERIC_AUTH_ERROR };
+    const failed = await codeNotSent(error, admin ? "admin" : "resend");
+    return { error: error.status === 429 ? "Please wait a little before asking for another code." : (failed.error ?? failed.fieldError) };
   }
   return { ok: true };
 }

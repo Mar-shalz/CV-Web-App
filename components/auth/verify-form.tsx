@@ -66,7 +66,7 @@ export function VerifyForm({ codeLength, resendSeconds }: { codeLength: number; 
       <div className="text-center text-sm text-ink-600" aria-live="polite">
         {left > 0 ? (
           <p>
-            Didn&apos;t get it? Resend in <span className="font-semibold tabular-nums text-ink-900">{left}s</span>
+            Not there? Look in Spam and Promotions too. Resend in <span className="font-semibold tabular-nums text-ink-900">{left}s</span>
           </p>
         ) : (
           <button

@@ -4,7 +4,7 @@ import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 
 // Problems the team must hear about, shown on the back office overview (D-181). Kinds are
 // fixed; details are short codes, never personal data.
-export type OpsKind = "gmail_attach_failed" | "sign_in_failed";
+export type OpsKind = "gmail_attach_failed" | "sign_in_failed" | "email_code_failed";
 
 export async function reportOps(kind: OpsKind, detail: Record<string, string | number | null>): Promise<void> {
   console.error(`[ops] ${kind}`, detail);

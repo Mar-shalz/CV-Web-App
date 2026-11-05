@@ -14,7 +14,7 @@ export const metadata = { title: { absolute: "Overview · Back Office" } };
 
 export default async function AdminOverview() {
   const staff = await requireAdmin("overview");
-  const [o, designs, gmail, signIn] = await Promise.all([getOverview(staff), designUsage(), opsSummary("gmail_attach_failed"), opsSummary("sign_in_failed")]);
+  const [o, designs, gmail, signIn, codes] = await Promise.all([getOverview(staff), designUsage(), opsSummary("gmail_attach_failed"), opsSummary("sign_in_failed"), opsSummary("email_code_failed")]);
   const designTotal = CV_STYLES.reduce((n, s) => n + designs.downloads[s], 0);
   // Same cards as the app's Home: label, icon, number, one line of context.
   const queue = [
@@ -90,21 +90,29 @@ export default async function AdminOverview() {
         </Panel>
       ) : null}
 
-      {/* Sign ins that didn't finish after Google or an email link, and why (D-214). */}
-      {signIn.count ? (
+      {/* Sign ins that didn't finish after Google or an email link (D-214), and sign in
+          codes the email service wouldn't send (D-215), each with why. */}
+      {signIn.count || codes.count ? (
         <Panel title="Needs a look: sign in" action={<span className="text-xs text-ink-500">last 7 days</span>}>
-          <div className="p-5 text-sm text-ink-700">
-            <p>
-              <span className="font-semibold text-flag-700">{signIn.count} {signIn.count === 1 ? "sign in" : "sign ins"}</span> didn&apos;t finish
-              {signIn.last ? `, most recently ${formatDate(signIn.last)}` : ""}. &quot;pkce code verifier not found&quot; means the sign in started in another browser or app window.
-            </p>
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {signIn.reasons.map((r) => (
-                <li key={r.reason} className="rounded-full bg-ink-75 px-2.5 py-1 text-xs font-medium text-ink-700">
-                  {r.reason.replaceAll("_", " ")}: {r.count}
-                </li>
-              ))}
-            </ul>
+          <div className="space-y-4 p-5 text-sm text-ink-700">
+            {signIn.count ? (
+              <div>
+                <p>
+                  <span className="font-semibold text-flag-700">{signIn.count} {signIn.count === 1 ? "sign in" : "sign ins"}</span> didn&apos;t finish
+                  {signIn.last ? `, most recently ${formatDate(signIn.last)}` : ""}. &quot;pkce code verifier not found&quot; means the sign in started in another browser or app window.
+                </p>
+                <Reasons list={signIn.reasons} />
+              </div>
+            ) : null}
+            {codes.count ? (
+              <div>
+                <p>
+                  <span className="font-semibold text-flag-700">{codes.count} sign in {codes.count === 1 ? "code" : "codes"}</span> couldn&apos;t be sent
+                  {codes.last ? `, most recently ${formatDate(codes.last)}` : ""}. &quot;email address not authorized&quot; means Supabase is still on its own email service, which only reaches the team: set up custom SMTP (docs/EMAIL_SIGN_IN.md). &quot;unexpected failure&quot; usually means the SMTP password or daily limit.
+                </p>
+                <Reasons list={codes.reasons} />
+              </div>
+            ) : null}
           </div>
         </Panel>
       ) : null}
@@ -153,5 +161,17 @@ export default async function AdminOverview() {
         </div>
       </Panel>
     </>
+  );
+}
+
+function Reasons({ list }: { list: { reason: string; count: number }[] }) {
+  return (
+    <ul className="mt-2 flex flex-wrap gap-2">
+      {list.map((r) => (
+        <li key={r.reason} className="rounded-full bg-ink-75 px-2.5 py-1 text-xs font-medium text-ink-700">
+          {r.reason.replaceAll("_", " ")}: {r.count}
+        </li>
+      ))}
+    </ul>
   );
 }
