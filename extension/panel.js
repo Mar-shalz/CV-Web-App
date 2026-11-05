@@ -249,15 +249,84 @@ async function findForm() {
     note.textContent = text;
     note.className = `small ${bad ? "error" : "okc"}`;
   };
+  const more = h("div", {});
+  // The job this form is for gives the CV to attach and the context for written answers:
+  // the job scanned in the panel, or one the person pastes (D-218).
+  const fill = async () => {
+    more.replaceChildren();
+    let c = openJob?.captured || null;
+    if (!c && openJob) {
+      say("Reading the job…");
+      c = await ensureCaptured().catch(() => null);
+      if (c) keepOpen();
+    }
+    if (!c) return askJob(more, say);
+    fillFor(c, say, more);
+  };
   formNote = h(
     "section",
     { class: "card" },
     h("p", { class: "eyebrow" }, "Application form on this page"),
-    h("p", { class: "small", style: "margin-top:6px;color:var(--ink-2)" }, "We fill in your details from __APP_NAME__, and attach your CV when you've tailored one for the job you scanned. You check it and press Submit."),
-    // The job you scanned, if it's in __APP_NAME__: its CV and its written answers.
-    h("button", { class: "btn primary", type: "button", style: "margin-top:10px", onclick: () => fillPage({ jobId: openJob?.captured?.jobId || null }, say) }, icon("tick", 18), "Fill this form"),
+    h("p", { class: "small", style: "margin-top:6px;color:var(--ink-2)" }, "We fill in your details, attach your CV for this job and draft the written answers. You check it and press Submit."),
+    h("button", { class: "btn primary", type: "button", style: "margin-top:10px", onclick: fill }, icon("tick", 18), "Fill this form"),
     note,
+    more,
   );
+}
+
+/** Fills for a job, then offers what's missing: its CV, or recording that it was submitted. */
+async function fillFor(c, say, more) {
+  const res = await fillPage(c, say);
+  if (!res) return;
+  more.replaceChildren(
+    res.cv
+      ? h("button", { class: "btn outline", type: "button", style: "margin-top:10px", onclick: () => submitted(c, say) }, icon("tick", 18), "I've submitted it")
+      : h(
+          "div",
+          { style: "margin-top:10px" },
+          h("p", { class: "small muted" }, "Write your CV for this job, and we attach it and draft the written answers. Usually 20 to 60 seconds."),
+          h("button", { class: "btn outline", type: "button", style: "margin-top:8px", onclick: () => (more.replaceChildren(), applyNow(c, "form")) }, icon("magic", 18), "Write my CV for this job"),
+        ),
+  );
+}
+
+/** No job in the panel: ask for the advert, pasted here or scanned on its own page. */
+function askJob(more, say) {
+  const box = h("textarea", { class: "paste", rows: "5", placeholder: "Paste the job description here", "aria-label": "Job description" });
+  const use = async () => {
+    const text = box.value.trim();
+    if (text.length < 200) return say("Paste the whole job description: the title, what you'd do and what they ask for.", true);
+    const tab = await activeTab();
+    current = { url: tab?.url || "", host: tab?.url ? new URL(tab.url).hostname.replace(/^www\./, "") : "", title: "", company: "", location: "", text, source: "selection", jobLike: true, images: [] };
+    say("Reading the job…");
+    try {
+      const c = await ensureCaptured();
+      more.replaceChildren();
+      jobCard();
+      fillFor(c, say, more);
+    } catch (e) {
+      if (e.message !== "signin") say(e.message, true);
+    }
+  };
+  more.replaceChildren(
+    h("p", { class: "small", style: "margin-top:12px" }, h("strong", {}, "Which job is this form for?"), " We need the job advert to attach the right CV and write answers that fit it."),
+    box,
+    h("button", { class: "btn primary", type: "button", style: "margin-top:8px", onclick: use }, "Use this job"),
+    h("p", { class: "small muted", style: "margin-top:10px" }, "Or open the job advert in this window, press Scan this page there, then come back to this form. We keep the job while you browse."),
+    h("button", { class: "btn ghost", type: "button", style: "margin-top:4px", onclick: () => (more.replaceChildren(), fillPage({ jobId: null }, say)) }, "Fill my details only"),
+  );
+  say("");
+}
+
+/** Applied on the employer's form: kept with the job post and the CV, like a sent email. */
+async function submitted(c, say) {
+  try {
+    await api("/api/ext/apply", { step: "sent", jobId: c.jobId });
+    keepOpen({ apply: { ...(openJob?.apply || {}), sent: true } });
+    say("Saved to your applications, with the job post and the exact CV you sent. We'll check in with you about it.");
+  } catch (e) {
+    if (e.message !== "signin") say(e.message, true);
+  }
 }
 
 async function scanFresh() {
@@ -499,16 +568,19 @@ function matchBar(pct) {
 
 function fitBox(c) {
   const box = h("section", { class: "card" });
+  // replaceChildren prints null as "null", so empty parts are dropped first.
   const showResult = (f) =>
     box.replaceChildren(
-      h("p", { class: "eyebrow" }, "Your match"),
-      h("p", { class: "fit-label", style: "margin-top:6px" }, f.label),
-      f.pct === null || f.pct === undefined ? null : matchBar(f.pct),
-      h("p", { class: "small muted", style: "margin-top:4px" }, `${f.met} of ${f.total} requirements met`),
-      f.line ? h("p", { class: "small", style: "margin-top:8px;color:var(--ink-2)" }, f.line) : null,
-      f.gaps && f.gaps.length ? h("p", { class: "small muted", style: "margin-top:6px" }, `Missing: ${f.gaps.join("; ")}`) : null,
-      h("button", { class: "btn ghost", type: "button", style: "margin-top:6px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/check` }) }, icon("external", 16), "Open the full fit check"),
-      applyChoice(c, f),
+      ...[
+        h("p", { class: "eyebrow" }, "Your match"),
+        h("p", { class: "fit-label", style: "margin-top:6px" }, f.label),
+        f.pct === null || f.pct === undefined ? null : matchBar(f.pct),
+        h("p", { class: "small muted", style: "margin-top:4px" }, `${f.met} of ${f.total} requirements met`),
+        f.line ? h("p", { class: "small", style: "margin-top:8px;color:var(--ink-2)" }, f.line) : null,
+        f.gaps && f.gaps.length ? h("p", { class: "small muted", style: "margin-top:6px" }, `Missing: ${f.gaps.join("; ")}`) : null,
+        h("button", { class: "btn ghost", type: "button", style: "margin-top:6px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/check` }) }, icon("external", 16), "Open the full fit check"),
+        applyChoice(c, f),
+      ].filter(Boolean),
     );
   const run = async () => {
     box.replaceChildren(h("div", { class: "working" }, h("span", { class: "spin", "aria-hidden": "true" }), h("p", {}, "Comparing the job with your experience")));
@@ -536,24 +608,27 @@ function fitBox(c) {
 // ---------------------------------------------------------------------------------------
 function applyChoice(c, f) {
   const a = openJob?.apply;
-  const resume = a?.pack ? () => packScreen(c, a.pack) : a?.cv ? () => cvReady(c, a.cv) : null;
+  const resume = a?.pack ? () => packScreen(c, a.pack) : a?.accepted ? () => formStep(c, a.cv) : a?.cv ? () => cvReady(c, a.cv, a.mode) : null;
   return h(
     "div",
     { class: "apply-box" },
-    h("p", { class: "apply-title" }, f.verdict === "skip" ? "Still want to apply?" : "Ready to apply?"),
+    h("p", { class: "apply-title" }, f.verdict === "skip" ? "Still want to apply?" : "How will you apply?"),
     h(
       "p",
       { class: "small muted" },
       resume
         ? "You've started this application. Pick up where you left off."
-        : "Apply now: we write your CV for this job from your experience and prepare your email, right here. Want to review or change the wording first? Open it in the app.",
+        : "We write your CV for this job from your experience, then prepare your email or help you fill their online form. Want to review or change the wording first? Open it in the app.",
     ),
-    h(
-      "div",
-      { class: "row", style: "margin-top:10px" },
-      h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/${a?.cv ? "cv" : "check"}` }) }, "Edit in the app"),
-      h("button", { class: "btn primary", type: "button", onclick: resume || (() => applyNow(c)) }, icon("send", 18), resume ? "Continue" : "Apply now"),
-    ),
+    resume
+      ? h("button", { class: "btn primary", type: "button", style: "margin-top:10px", onclick: resume }, icon("send", 18), "Continue")
+      : h(
+          "div",
+          { class: "row", style: "margin-top:10px" },
+          h("button", { class: "btn primary", type: "button", onclick: () => applyNow(c, "email") }, icon("send", 18), "Send an email"),
+          h("button", { class: "btn primary", type: "button", onclick: () => applyNow(c, "form") }, icon("tick", 18), "Fill their form"),
+        ),
+    h("button", { class: "btn ghost", type: "button", style: "margin-top:6px", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/${a?.cv ? "cv" : "check"}` }) }, icon("external", 16), "Edit in the app"),
   );
 }
 
@@ -593,22 +668,27 @@ function applyError(c, e, retry) {
   );
 }
 
-async function applyNow(c) {
+/** mode "email" prepares the email after the CV; "form" doesn't write one (D-218). */
+async function applyNow(c, mode = "email") {
   applyWorking(c, "Writing your CV for this job", "Only from experience you've confirmed. Usually 20 to 60 seconds.");
   try {
     const { cv } = await api("/api/ext/apply", { step: "cv", jobId: c.jobId });
-    keepOpen({ apply: { cv } });
-    cvReady(c, cv);
+    keepOpen({ apply: { cv, mode } });
+    cvReady(c, cv, mode);
   } catch (e) {
-    if (e.message !== "signin") applyError(c, e, () => applyNow(c));
+    if (e.message !== "signin") applyError(c, e, () => applyNow(c, mode));
   }
 }
 
-function cvReady(c, cv) {
+function cvReady(c, cv, mode = "email") {
   const accept = async () => {
-    applyWorking(c, "Preparing your email", "Using the CV you just accepted.");
+    applyWorking(c, mode === "form" ? "Saving your CV" : "Preparing your email", "Using the CV you just accepted.");
     try {
       await api("/api/ext/apply", { step: "accept", jobId: c.jobId, cvId: cv.cvId });
+      if (mode === "form") {
+        keepOpen({ apply: { cv, mode, accepted: true } });
+        return formStep(c, cv);
+      }
       const { pack } = await api("/api/ext/apply", { step: "pack", jobId: c.jobId });
       keepOpen({ apply: { cv, pack } });
       packScreen(c, pack);
@@ -634,9 +714,42 @@ function cvReady(c, cv) {
       h(
         "div",
         { class: "actions", style: "margin-top:12px" },
-        h("button", { class: "btn primary", type: "button", onclick: accept }, icon("tick", 18), "Accept and prepare my email"),
+        h("button", { class: "btn primary", type: "button", onclick: accept }, icon("tick", 18), mode === "form" ? "Accept and fill their form" : "Accept and prepare my email"),
         h("button", { class: "btn outline", type: "button", onclick: () => chrome.tabs.create({ url: `${APP_URL}/jobs/${c.jobId}/cv` }) }, icon("external", 16), "Review and edit in the app"),
       ),
+    ),
+  );
+}
+
+/** Applying on the employer's form: the CV is ready, no email is written (D-218). */
+function formStep(c, cv) {
+  const note = h("p", { class: "small", role: "status", style: "margin-top:8px" });
+  const say = (text, bad) => {
+    note.textContent = text;
+    note.className = `small ${bad ? "error" : "okc"}`;
+  };
+  const link = cv.applyUrl && /^https?:\/\//.test(cv.applyUrl) ? cv.applyUrl : null;
+  applyShow(
+    c,
+    h(
+      "section",
+      { class: "card" },
+      h("div", { class: "banner good" }, icon("tick", 20), h("span", {}, "Your CV for this job is ready")),
+      h(
+        "p",
+        { class: "small", style: "margin-top:10px;color:var(--ink-2)" },
+        formNote
+          ? "Press Fill this form at the top: we fill in your details, attach this CV and draft the written answers. You check it and press Submit."
+          : "Open their application form, then press Fill this form at the top of this panel: we fill in your details, attach this CV and draft the written answers. You check it and press Submit.",
+      ),
+      h(
+        "div",
+        { class: "actions", style: "margin-top:12px" },
+        !formNote && link ? h("button", { class: "btn primary", type: "button", onclick: () => chrome.tabs.create({ url: link }) }, icon("external", 16), "Open their application form") : null,
+        h("button", { class: "btn outline", type: "button", onclick: () => downloadCv(cv.cvId, cv.file, "classic").then(() => say("Your CV is in Downloads.")).catch((e) => say(e.message, true)) }, "Download my CV"),
+        h("button", { class: "btn outline", type: "button", onclick: () => submitted(c, say) }, icon("tick", 18), "I've submitted it"),
+      ),
+      note,
     ),
   );
 }
@@ -699,11 +812,13 @@ async function fillPage(c, say) {
     if (!filled) return say("We couldn't match this form's fields to your details. Fill it in yourself, using the CV you downloaded.", true);
     const parts = [`Filled ${filled} ${filled === 1 ? "field" : "fields"}, outlined in green.`];
     if (review) parts.push(`${review} written ${review === 1 ? "answer is" : "answers are"} outlined in orange: drafted from your CV, so read and make ${review === 1 ? "it" : "them"} yours.`);
-    if (!file && fields.some((f) => f.type === "file")) parts.push("Attach your CV yourself, or tailor your CV for this job first so we can attach it.");
+    // With a job but no CV yet, the form card offers to write it (D-218).
+    if (!file && !c.jobId && fields.some((f) => f.type === "file")) parts.push("Attach your CV yourself.");
     if (res.skipped) parts.push(`${res.skipped} personal ${res.skipped === 1 ? "question is" : "questions are"} left for you.`);
-    if (res.needsCv) parts.push("Tailor your CV for this job to get drafts of the written questions.");
+    if (res.needsCv && !c.jobId) parts.push("Written questions are left for you.");
     parts.push("We never press Submit: check every field, then submit it yourself.");
     say(parts.join(" "));
+    return res;
   } catch (e) {
     if (e.message !== "signin") say(e.message || "We couldn't fill this form. Try again.", true);
   }

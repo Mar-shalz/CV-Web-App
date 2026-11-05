@@ -90,8 +90,9 @@ export async function POST(request: NextRequest) {
       };
       const values: Value[] = kinds.flatMap(({ f, kind }) => (direct[kind] ? [{ key: f.key, value: String(direct[kind]).slice(0, 5000), kind, review: kind === "cover_letter" }] : []));
 
-      // Written questions: first drafts from the CV they're sending for this job.
-      const questions = kinds.filter((k) => k.kind === "question").slice(0, 8);
+      // Written questions: first drafts from the CV they're sending for this job. A cover
+      // letter box is one too when no email was prepared (applying by form, D-218).
+      const questions = kinds.filter((k) => k.kind === "question" || (k.kind === "cover_letter" && !letter)).slice(0, 8);
       if (questions.length && cv && job) {
         const doc = finalDoc(cv.doc);
         const lines = [doc.summary.text, ...doc.sections.flatMap((s) => (s.kind === "roles" ? s.roles.flatMap((r) => r.bullets.filter((b) => !b.flags.some((x) => x.status === "open")).map((b) => b.text)) : []))].filter(Boolean).slice(0, 20);

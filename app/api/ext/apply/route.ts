@@ -17,7 +17,8 @@ const body = z.discriminatedUnion("step", [
   z.object({ step: z.literal("cv"), jobId: z.string() }),
   z.object({ step: z.literal("accept"), jobId: z.string(), cvId: z.string() }),
   z.object({ step: z.literal("pack"), jobId: z.string() }),
-  z.object({ step: z.literal("sent"), jobId: z.string(), applicationId: z.string() }),
+  // No applicationId: applied on the employer's own form, with no email prepared (D-218).
+  z.object({ step: z.literal("sent"), jobId: z.string(), applicationId: z.string().optional() }),
 ]);
 
 /** What the panel shows about a CV: how much was tailored, and what still needs a yes. */
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
           cv = await getCvById(viewer, res.cvId);
         }
         if (!cv) return NextResponse.json({ ok: false, error: "We couldn't find your CV. Try again." }, { status: 500 });
-        return NextResponse.json({ ok: true, cv: cvSummary(cv.id, cv.doc) });
+        return NextResponse.json({ ok: true, cv: { ...cvSummary(cv.id, cv.doc), applyUrl: job.parsed.how_to_apply.url ?? null } });
       }
 
       if (b.step === "accept") {
@@ -129,6 +130,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true, pack: { applicationId: app.id, channel: p.channel, toEmail: p.toEmail, subject: p.subject, body: p.body, attachments: p.attachmentNames, checklist: p.checklist, applyUrl: p.applyUrl, cvId: cv.id } });
       }
 
+      if (!b.applicationId) {
+        const cv = await getLatestCv(viewer, job.id);
+        if (!cv) return NextResponse.json({ ok: false, error: "Write your CV for this job first." }, { status: 409 });
+        await ensureDraftApplication(viewer, job, cv.id);
+        const app = await getApplicationForJob(viewer, job.id);
+        if (!app) return NextResponse.json({ ok: false, error: "We couldn't save that. Try again." }, { status: 500 });
+        const res = await markSent(viewer, app.id, { via: "website", cvId: cv.id });
+        if ("error" in res) return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
+        return NextResponse.json({ ok: true, applicationId: app.id });
+      }
       const res = await markSent(viewer, b.applicationId);
       if ("error" in res) return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
       return NextResponse.json({ ok: true });
