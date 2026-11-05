@@ -1,4 +1,4 @@
-import { scanFormFields, fillFormFields } from "./autofill.js";
+import { scanFormFields, fillFormFields, isApplicationForm } from "./autofill.js";
 import { APP_URL } from "./config.js";
 import { detectJob } from "./detect.js";
 import { composeWithCv, blobToBase64 } from "./gmail.js";
@@ -55,7 +55,8 @@ function h(tag, props = {}, ...kids) {
 }
 // The note that sits above an open job while you're on another page (set by showOpen).
 let keptNote = null;
-const show = (...nodes) => view.replaceChildren(...(keptNote ? [keptNote] : []), ...nodes.filter((n) => n != null && n !== false));
+let formNote = null; // "Fill this form", on top whenever the page has an application form (D-217)
+const show = (...nodes) => view.replaceChildren(...(formNote && token ? [formNote] : []), ...(keptNote ? [keptNote] : []), ...nodes.filter((n) => n != null && n !== false));
 
 // ---------------------------------------------------------------------------------------
 // Account
@@ -227,8 +228,36 @@ async function showOpen() {
 /** Tab or page changes: keep the open job, otherwise read the new page. */
 async function scan() {
   if (!token) return signedOut();
+  await findForm();
   if (openJob) return showOpen();
   return scanFresh();
+}
+
+/**
+ * An application form on this page gets its own Fill button at the top of the panel, on
+ * whatever else the panel shows (founder round 46, D-217). Before, the button lived only on
+ * the last apply step, which the panel left as soon as the application page opened.
+ */
+async function findForm() {
+  formNote = null;
+  const tab = await activeTab();
+  if (!tab?.id || !/^https?:/.test(tab.url || "") || tab.url.startsWith(APP_URL) || !(await hasAllSites())) return;
+  const frames = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scanFormFields }).catch(() => []);
+  if (!isApplicationForm(frames.flatMap((f) => f.result || []))) return;
+  const note = h("p", { class: "small", role: "status", style: "margin-top:8px" });
+  const say = (text, bad) => {
+    note.textContent = text;
+    note.className = `small ${bad ? "error" : "okc"}`;
+  };
+  formNote = h(
+    "section",
+    { class: "card" },
+    h("p", { class: "eyebrow" }, "Application form on this page"),
+    h("p", { class: "small", style: "margin-top:6px;color:var(--ink-2)" }, "We fill in your details from __APP_NAME__, and attach your CV when you've tailored one for the job you scanned. You check it and press Submit."),
+    // The job you scanned, if it's in __APP_NAME__: its CV and its written answers.
+    h("button", { class: "btn primary", type: "button", style: "margin-top:10px", onclick: () => fillPage({ jobId: openJob?.captured?.jobId || null }, say) }, icon("tick", 18), "Fill this form"),
+    note,
+  );
 }
 
 async function scanFresh() {
@@ -670,6 +699,7 @@ async function fillPage(c, say) {
     if (!filled) return say("We couldn't match this form's fields to your details. Fill it in yourself, using the CV you downloaded.", true);
     const parts = [`Filled ${filled} ${filled === 1 ? "field" : "fields"}, outlined in green.`];
     if (review) parts.push(`${review} written ${review === 1 ? "answer is" : "answers are"} outlined in orange: drafted from your CV, so read and make ${review === 1 ? "it" : "them"} yours.`);
+    if (!file && fields.some((f) => f.type === "file")) parts.push("Attach your CV yourself, or tailor your CV for this job first so we can attach it.");
     if (res.skipped) parts.push(`${res.skipped} personal ${res.skipped === 1 ? "question is" : "questions are"} left for you.`);
     if (res.needsCv) parts.push("Tailor your CV for this job to get drafts of the written questions.");
     parts.push("We never press Submit: check every field, then submit it yourself.");
@@ -741,7 +771,7 @@ function packScreen(c, pack) {
             h("div", { class: "field" }, h("p", { class: "label" }, "Subject"), h("div", { class: "value" }, h("span", {}, pack.subject), copyButton(pack.subject, "subject"))),
             h("div", { class: "field" }, h("p", { class: "label" }, "Message"), h("pre", { class: "message" }, pack.body), copyButton(pack.body, "message")),
           )
-        : h("p", { class: "small", style: "margin-top:6px;color:var(--ink-2)" }, "This employer takes applications on their own page. Open it, then press Fill the form on this page: we fill in your details and attach your CV, and you check it and press Submit."),
+        : h("p", { class: "small", style: "margin-top:6px;color:var(--ink-2)" }, "This employer takes applications on their own page. Open it, then press Fill this form at the top of this panel: we fill in your details and attach your CV, and you check it and press Submit."),
       h("div", { class: "field", style: "margin-top:10px" }, h("p", { class: "label" }, "CV design"), style),
       h(
         "div",
@@ -751,7 +781,6 @@ function packScreen(c, pack) {
           : pack.applyUrl
             ? h("button", { class: "btn primary", type: "button", onclick: () => chrome.tabs.create({ url: pack.applyUrl }) }, icon("external", 16), "Open their application page")
             : null,
-        email ? null : h("button", { class: "btn outline", type: "button", onclick: () => fillPage(c, say) }, icon("tick", 16), "Fill the form on this page"),
         h("button", { class: "btn outline", type: "button", onclick: () => downloadCv(pack.cvId, file, style.value).then(() => say("Your CV is in Downloads.")).catch((e) => say(e.message, true)) }, "Download my CV"),
       ),
       note,

@@ -48,6 +48,15 @@ export function scanFormFields() {
   return out;
 }
 
+/**
+ * An application form, not a job board's search box or a newsletter sign up: two or more
+ * fields for personal details, or a CV upload plus one (founder round 46, D-217).
+ */
+export function isApplicationForm(fields) {
+  const personal = /name|e-?mail|phone|mobile|linkedin|resume|\bcv\b|cover/i;
+  return fields.filter((f) => ["file", "email", "tel"].includes(f.type) || personal.test(`${f.label} ${f.name} ${f.autocomplete || ""} ${f.placeholder || ""}`)).length >= 2;
+}
+
 /** Puts each value in its field the way typing would, attaches the CV, and marks what was filled. */
 export function fillFormFields(values, file) {
   let filled = 0;
