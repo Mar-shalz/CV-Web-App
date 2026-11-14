@@ -1,6 +1,6 @@
 import { scanFormFields, fillFormFields, isApplicationForm } from "./autofill.js";
 import { APP_URL } from "./config.js";
-import { detectJob } from "./detect.js";
+import { detectJob, pickArea } from "./detect.js";
 import { composeWithCv, blobToBase64 } from "./gmail.js";
 
 // The side panel (D-144). It stays open while you browse, reads the job on the page you're
@@ -403,7 +403,15 @@ function jobCard(note) {
       h("button", { class: "btn primary", type: "button", onclick: checkReal }, icon("shield", 20), "Is this job real?"),
       h("div", { class: "row" }, h("button", { class: "btn outline", type: "button", onclick: tailor }, icon("magic", 18), "Tailor my CV"), h("button", { class: "btn outline", type: "button", onclick: save }, icon("bookmark", 18), "Save for later")),
     ),
-    h("p", { class: "foot" }, "Not the right job? Highlight its text on the page, then ", h("a", { class: "link", href: "#", onclick: (e) => (e.preventDefault(), closeJob()) }, "scan again"), "."),
+    h(
+      "p",
+      { class: "foot" },
+      "Not the right job? ",
+      h("a", { class: "link", href: "#", onclick: (e) => (e.preventDefault(), scanArea()) }, "Select it on screen"),
+      ", or highlight its text and ",
+      h("a", { class: "link", href: "#", onclick: (e) => (e.preventDefault(), closeJob()) }, "scan again"),
+      ".",
+    ),
   );
   keepOpen();
 }
@@ -415,8 +423,14 @@ function noJobCard() {
       "section",
       { class: "card" },
       h("h2", {}, "No job advert found here"),
-      h("p", { class: "muted small", style: "margin-top:4px" }, "If the job is in a picture, or the page hides it, scan what's on your screen. You can also highlight the job's text and scan again."),
-      h("div", { class: "actions", style: "margin-top:12px" }, h("button", { class: "btn primary", type: "button", onclick: scanScreen }, icon("scan", 20), "Scan the screen"), h("button", { class: "btn ghost", type: "button", onclick: scanFresh }, "Scan this page again")),
+      h("p", { class: "muted small", style: "margin-top:4px" }, "Select the job on screen: drag over the advert and we read just that part. Or scan the whole screen, or highlight the job's text and scan this page again."),
+      h(
+        "div",
+        { class: "actions", style: "margin-top:12px" },
+        h("button", { class: "btn primary", type: "button", onclick: scanArea }, icon("scan", 20), "Select the job on screen"),
+        h("button", { class: "btn outline", type: "button", onclick: scanScreen }, "Scan the whole screen"),
+        h("button", { class: "btn ghost", type: "button", onclick: scanFresh }, "Scan this page again"),
+      ),
     ),
     imgs.length
       ? h(
@@ -528,6 +542,44 @@ async function scanScreen() {
   } catch {
     failed("Chrome wouldn't let us take that screenshot. Try again on the job's tab.", scanScreen);
   }
+}
+
+/** Drag over the job on the page, then read just that part of the screen (D-219). */
+async function scanArea() {
+  const tab = await activeTab();
+  if (!tab?.id || !/^https?:/.test(tab.url || "")) return failed("Open the job's page in this window, then try again.");
+  const cancel = () => chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => document.getElementById("rcpt-pick")?.dispatchEvent(new Event("cancel")) }).catch(() => {});
+  working = true;
+  show(
+    h(
+      "section",
+      { class: "card hero" },
+      h("div", { class: "art" }, icon("scan", 30)),
+      h("h1", {}, "Drag over the job"),
+      h("p", {}, "On the page, drag a box around the job advert. We read only what's inside it. Scroll first if the advert is lower down."),
+      h("button", { class: "btn ghost", type: "button", onclick: cancel }, "Cancel"),
+    ),
+  );
+  try {
+    const [{ result: area } = {}] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: pickArea });
+    working = false;
+    if (!area) return scan();
+    const shot = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+    current = { url: tab.url, host: new URL(tab.url).hostname.replace(/^www\./, ""), title: "", company: "", location: "", text: "", image: await crop(shot, area), source: "image", jobLike: true, images: [] };
+    await readCaptured();
+  } catch {
+    working = false;
+    failed("Chrome doesn't let us select on this page. Scan the whole screen instead.", scanScreen);
+  }
+}
+
+/** The dragged area of a screenshot, as a JPEG data address. Screenshot pixels per CSS pixel come from the widths. */
+async function crop(shot, a) {
+  const img = await createImageBitmap(await (await fetch(shot)).blob());
+  const k = img.width / a.vw;
+  const canvas = new OffscreenCanvas(Math.max(1, Math.round(a.w * k)), Math.max(1, Math.round(a.h * k)));
+  canvas.getContext("2d").drawImage(img, a.x * k, a.y * k, a.w * k, a.h * k, 0, 0, canvas.width, canvas.height);
+  return `data:image/jpeg;base64,${await blobToBase64(await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 }))}`;
 }
 
 async function readImage(src, pageUrl) {

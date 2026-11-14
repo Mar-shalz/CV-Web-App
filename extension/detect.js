@@ -187,3 +187,53 @@ export async function detectJob() {
   out.images = imgs;
   return out;
 }
+
+/**
+ * Drag over part of the page to read just that part (founder round 48, D-219), for pages
+ * where we can't find the job's text. Runs in the page through chrome.scripting, so it is
+ * self-contained. Resolves with the area in CSS pixels, or null when cancelled (Esc, the
+ * panel's Cancel, or an area too small to read). The overlay is gone before it resolves, so
+ * the screenshot taken next doesn't show it.
+ */
+export function pickArea() {
+  return new Promise((done) => {
+    document.getElementById("rcpt-pick")?.dispatchEvent(new Event("cancel"));
+    const box = document.createElement("div");
+    const sel = document.createElement("div");
+    const tip = document.createElement("div");
+    box.id = "rcpt-pick";
+    box.style.cssText = "position:fixed;inset:0;z-index:2147483647;cursor:crosshair;background:rgba(15,23,42,.35);touch-action:none";
+    sel.style.cssText = "position:fixed;display:none;border:2px solid #fff;outline:2px solid #1e47d9;background:rgba(255,255,255,.1);pointer-events:none";
+    tip.style.cssText = "position:fixed;top:12px;left:50%;transform:translateX(-50%);max-width:90vw;padding:8px 12px;border-radius:10px;background:#0f172a;color:#fff;font:600 14px/1.4 system-ui,sans-serif;pointer-events:none";
+    tip.textContent = "Drag over the job advert. Press Esc to cancel.";
+    box.append(sel, tip);
+    document.documentElement.append(box);
+    let start = null;
+    const area = (e) => ({ x: Math.min(start.x, e.clientX), y: Math.min(start.y, e.clientY), w: Math.abs(e.clientX - start.x), h: Math.abs(e.clientY - start.y) });
+    const key = (e) => e.key === "Escape" && (e.preventDefault(), end(null));
+    const end = (r) => {
+      box.remove();
+      removeEventListener("keydown", key, true);
+      requestAnimationFrame(() => requestAnimationFrame(() => done(r)));
+    };
+    addEventListener("keydown", key, true);
+    box.addEventListener("cancel", () => end(null));
+    box.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      start = { x: e.clientX, y: e.clientY };
+      try {
+        box.setPointerCapture(e.pointerId);
+      } catch {}
+    });
+    box.addEventListener("pointermove", (e) => {
+      if (!start) return;
+      const r = area(e);
+      Object.assign(sel.style, { display: "block", left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+    });
+    box.addEventListener("pointerup", (e) => {
+      if (!start) return;
+      const r = area(e);
+      end(r.w < 40 || r.h < 40 ? null : { ...r, vw: innerWidth });
+    });
+  });
+}
