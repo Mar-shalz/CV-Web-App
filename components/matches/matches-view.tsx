@@ -19,7 +19,8 @@ const when = (iso: string | null) => (iso ? `Posted ${dayWord(iso)}` : null);
 
 /**
  * Jobs for you (founder rounds 34 to 40, D-205, D-208 to D-211): what the daily search found
- * that the person matches `minMatch`% or more. The search runs by itself every day, so
+ * with how well the person matches each: `minMatch`% or more first, then the rest for them
+ * to decide (founder round 49). The search runs by itself every day, so
  * there's no Search button (round 40); opening the page runs it only when the cron hasn't
  * reached them in a day. Tailor moves a job to their CV and then My Applications. Tailor
  * ahead is switched in Settings; this page says plainly whether it's on and links there
@@ -148,10 +149,14 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
                     New
                   </span>
                 ) : null}
-                <span className="inline-flex items-center gap-1 rounded-full bg-proof-50 px-2.5 py-1 text-xs font-bold text-proof-700 ring-1 ring-proof-100">
-                  <TickCircle size={14} variant="bulk" />
-                  {m.percent}% match
-                </span>
+                {m.percent >= minMatch ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-proof-50 px-2.5 py-1 text-xs font-bold text-proof-700 ring-1 ring-proof-100">
+                    <TickCircle size={14} variant="bulk" />
+                    {m.percent}% match
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-ink-75 px-2.5 py-1 text-xs font-bold text-ink-700 ring-1 ring-ink-150">{m.percent}% match</span>
+                )}
                 {m.postedAt ? (
                   <span className="inline-flex items-center gap-1 text-xs text-ink-500">
                     <Calendar size={14} />
@@ -200,7 +205,7 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
                   <>
                     {" · "}
                     <Link href={`/jobs/${m.jobId}/check`} className="font-semibold text-brand-700 hover:underline">
-                      See why it fits
+                      See how you match
                     </Link>
                   </>
                 ) : null}
@@ -228,11 +233,11 @@ export function MatchesView({ items: initial, searchedAt, tailorAhead: ahead, pr
             <SearchStatus size={30} variant="bulk" />
           </span>
           <h2 className="mt-4 font-display text-xl font-semibold text-ink-900">No Matches Yet</h2>
-          <p className="mx-auto mt-2 max-w-sm text-[0.9375rem] leading-6 text-ink-600">We look every day and only show jobs you match {minMatch}% or more, so this list stays short and worth your time.</p>
+          <p className="mx-auto mt-2 max-w-sm text-[0.9375rem] leading-6 text-ink-600">We look every day for jobs in the roles you go for, and show how well you match each one.</p>
           <ul className="mx-auto mt-4 max-w-sm space-y-2 text-left text-[0.8125rem] leading-5 text-ink-700">
             <li className="flex gap-2">
               <ArrowRight2 size={16} className="mt-0.5 shrink-0 text-brand-600" />
-              Confirm more of your experience: the fuller it is, the more jobs reach {minMatch}%.
+              Confirm more of your experience: the fuller it is, the better we can match you.
             </li>
             <li className="flex gap-2">
               <ArrowRight2 size={16} className="mt-0.5 shrink-0 text-brand-600" />

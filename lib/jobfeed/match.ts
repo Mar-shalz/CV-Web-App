@@ -64,10 +64,11 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
   const { error: missing } = await db.from("job_matches").select("id").limit(1);
   if (missing) return none();
   const minHours = opts.minHours ?? 20;
-  const { data: me } = await db.from("users").select("matches_searched_at").eq("id", viewer.id).maybeSingle();
+  // "*": before migration section 29 there's no match_roles column to name.
+  const { data: me } = await db.from("users").select("*").eq("id", viewer.id).maybeSingle();
   const last = (me as { matches_searched_at?: string | null } | null)?.matches_searched_at;
   const supabase = await createClient();
-  // Earlier checks that now clear the bar (it went from 90% to 85%): our own records, no new fit check.
+  // Earlier checks turned down only for their percent are listed now (founder round 49): our own records, no new fit check.
   const promoted = await promoteNearMisses(viewer, supabase, db);
   if (last && Date.now() - Date.parse(last) < minHours * 3_600_000) return { ...none("recent"), matched: promoted };
 
@@ -77,9 +78,7 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
     supabase.from("jobs").select("parsed").eq("user_id", viewer.id).neq("state", "suggested").order("captured_at", { ascending: false }).limit(20),
   ]);
   if (!vault.confirmedItems) return none("no_experience");
-  const applied = (recent ?? []).map((j) => (j.parsed as { title?: string | null } | null)?.title ?? null);
-  const held = vault.roles.filter((r) => r.confirmed && r.kind === "job").map((r) => r.title);
-  const roles = rolesFrom(applied, held, LIMITS.matches.roles);
+  const { roles } = rolesOf(me, vault, recent ?? []);
   if (!roles.length) return none("no_roles");
 
   await db.from("users").update({ matches_searched_at: new Date().toISOString() }).eq("id", viewer.id);
@@ -123,6 +122,30 @@ export async function runMatches(viewer: Viewer, opts: { minHours?: number } = {
   // time left in this run (otherwise on their next visit or search).
   const { tailored } = Date.now() - begun < 170_000 ? await tailorPending(viewer, db) : { tailored: 0 };
   return { ran: true, found: fresh_.length, checked: results.length, matched, tailored };
+}
+
+/**
+ * The roles Jobs for You searches for: the ones they chose (founder round 49, for career
+ * switches), or else the titles of the jobs they checked and the jobs they've held.
+ */
+function rolesOf(me: unknown, vault: Awaited<ReturnType<typeof getVault>>, recent: { parsed: unknown }[]): { roles: string[]; chosen: boolean } {
+  const chosen = (me as { match_roles?: string[] | null } | null)?.match_roles ?? [];
+  if (chosen.length) return { roles: chosen.slice(0, LIMITS.matches.roles), chosen: true };
+  const applied = recent.map((j) => (j.parsed as { title?: string | null } | null)?.title ?? null);
+  const held = vault.roles.filter((r) => r.confirmed && r.kind === "job").map((r) => r.title);
+  return { roles: rolesFrom(applied, held, LIMITS.matches.roles), chosen: false };
+}
+
+/** What Jobs for You searches for, for the page to show and change. */
+export async function searchRoles(viewer: Viewer): Promise<{ roles: string[]; chosen: boolean }> {
+  if (viewer.preview) return { roles: ["Graduate Trainee", "Accounts Assistant"], chosen: false };
+  const supabase = await createClient();
+  const [{ data: me }, vault, { data: recent }] = await Promise.all([
+    supabase.from("users").select("*").eq("id", viewer.id).maybeSingle(),
+    getVault(viewer),
+    supabase.from("jobs").select("parsed").eq("user_id", viewer.id).neq("state", "suggested").order("captured_at", { ascending: false }).limit(20),
+  ]);
+  return rolesOf(me, vault, recent ?? []);
 }
 
 /** Where Jobs for You looks for them, with the countries they've said they can already work in. */
@@ -182,6 +205,7 @@ export async function tailorPending(viewer: Viewer, db: SupabaseClient = createA
     .select("*, job:jobs(visa:parsed->>visa_sponsorship)")
     .eq("user_id", viewer.id)
     .eq("status", "matched")
+    .gte("match_percent", LIMITS.matches.min_match)
     .is("cv_version_id", null)
     .not("job_id", "is", null)
     .order("checked_at", { ascending: false })
@@ -224,9 +248,9 @@ async function promoteNearMisses(viewer: Viewer, supabase: SupabaseClient, db: S
     .select("id, job_id")
     .eq("user_id", viewer.id)
     .eq("status", "not_a_match")
-    .gte("match_percent", LIMITS.matches.min_match)
+    .not("match_percent", "is", null)
     .not("job_id", "is", null)
-    .limit(20);
+    .limit(50);
   let n = 0;
   for (const m of near ?? []) {
     const [{ data: el }, { data: v }] = await Promise.all([
@@ -258,7 +282,9 @@ async function checkOne(viewer: Viewer, supabase: SupabaseClient, db: SupabaseCl
   const eligibility = await runEligibility(viewer, job, vault);
   const verdict = await getVerdict(viewer, job, vault, eligibility);
   const pct = matchPercent(verdict.requirements, job.parsed.requirements);
-  const ok = eligibility.overall !== "fail" && verdict.verdict !== "skip" && pct !== null && pct >= LIMITS.matches.min_match;
+  // Listed with its percent whatever it is (founder round 49): the person decides. A job they
+  // fail a must-have for, or that the fit check says to skip, still isn't.
+  const ok = eligibility.overall !== "fail" && verdict.verdict !== "skip" && pct !== null;
   await db
     .from("job_matches")
     .update({ status: ok ? "matched" : "not_a_match", match_percent: pct, job_id: captured.jobId, checked_at: new Date().toISOString() })
@@ -272,15 +298,15 @@ type Row = { id: string; job_id: string | null; source: string; location: string
 
 /**
  * Still open (posted in the last max_age_days, and not found closed) and in a place that suits
- * them (jobs listed before rounds 40 and 42 included), in Jobs for You's order: new first,
- * then newest posted.
+ * them (jobs listed before rounds 40 and 42 included), in Jobs for You's order: strong matches
+ * (min_match or more) first, then within each, new first, then newest posted (founder round 49).
  */
 function listOrder<T extends Row>(rows: T[], reach: Reach): T[] {
   const cutoff = Date.now() - LIMITS.matches.max_age_days * DAY;
   return rows
     .filter((m) => (!m.posted_at || Date.parse(m.posted_at) >= cutoff) && m.open_state !== "closed" && fits({ ...m, visa: m.job?.visa }, reach))
     .map((m) => ({ m, key: { postedAt: m.posted_at, foundAt: m.created_at, percent: m.match_percent ?? 0, isNew: isNewMatch(m.checked_at, LIMITS.matches.new_days) } }))
-    .sort((a, b) => newestFirst(a.key, b.key))
+    .sort((a, b) => Number(b.key.percent >= LIMITS.matches.min_match) - Number(a.key.percent >= LIMITS.matches.min_match) || newestFirst(a.key, b.key))
     .map(({ m }) => m);
 }
 
@@ -301,6 +327,7 @@ export async function listMatches(viewer: Viewer): Promise<{ items: MatchView[];
         { id: "m1", title: "Graduate Trainee, Finance", employer: "Northbridge Bank", location: "Lagos, Nigeria", remote: false, postedAt: ago(3), url: "https://example.com/jobs/1", credit: null, percent: 94, jobId: "demo", tailored: false, isNew: false, source: "headcount", listedAt: ago(0.2), sponsor: false },
         { id: "m2", title: "Accounts Assistant", employer: "Lekki Foods Manufacturing", location: "Lagos, Nigeria", remote: false, postedAt: ago(9), url: "https://example.com/jobs/2", credit: null, percent: 91, jobId: "demo", tailored: true, isNew: false, source: "headcount", listedAt: null, sponsor: false },
         { id: "m4", title: "Junior Financial Analyst", employer: "Sample Capital", location: "London, England, GB", remote: false, postedAt: ago(4), url: "https://example.com/jobs/4", credit: null, percent: 88, jobId: "demo", tailored: false, isNew: false, source: "headcount", listedAt: ago(1), sponsor: true },
+        { id: "m5", title: "Operations Analyst", employer: "Sample Logistics", location: "Lagos, Nigeria", remote: false, postedAt: ago(2), url: "https://example.com/jobs/5", credit: null, percent: 68, jobId: "demo", tailored: false, isNew: false, source: "headcount", listedAt: null, sponsor: false },
       ],
     };
   }

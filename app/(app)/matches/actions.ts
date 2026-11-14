@@ -10,8 +10,31 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getJob } from "@/lib/jobs/data";
 import { ensureDraftApplication } from "@/lib/applications/pack";
 import { track } from "@/lib/analytics/server";
+import { LIMITS } from "@/lib/config";
+import { chosenRoles } from "@/lib/jobfeed/rank";
 
 const id = z.string().uuid();
+
+/**
+ * The roles Jobs for You searches for (founder round 49): up to three, chosen by the person,
+ * for a career switch. None means the roles from their own record. Their words go into job
+ * searches only, cleaned of anything but letters, numbers and a little punctuation.
+ */
+export async function saveMatchRoles(roles: string[]): Promise<{ ok: true } | { ok: false; error: string }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Please sign in again." };
+  const parsed = z.array(z.string().max(60, "Keep each role under 60 characters.")).max(LIMITS.matches.roles).safeParse(roles);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the roles and try again." };
+  const unique = chosenRoles(parsed.data);
+  if (viewer.preview) return { ok: true };
+  const supabase = await createClient();
+  const { error } = await supabase.from("users").update({ match_roles: unique }).eq("id", viewer.id);
+  if (error) return { ok: false, error: "We couldn't save that just now. Try again." };
+  // The next visit searches again, for these roles.
+  await createAdminClient().from("users").update({ matches_searched_at: null }).eq("id", viewer.id);
+  revalidatePath("/matches");
+  return { ok: true };
+}
 
 /** The daily search (D-205), run when they open Jobs for You and the cron hasn't reached them in a day. */
 export async function searchMatches(): Promise<MatchRun | { ran: false; error: string }> {

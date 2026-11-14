@@ -351,3 +351,9 @@ grant update (home_country) on public.users to authenticated;
 -- by the server only; the person reads it with the rest of their own rows.
 alter table public.job_matches add column if not exists open_state text check (open_state in ('open', 'closed', 'unknown'));
 alter table public.job_matches add column if not exists open_checked_at timestamptz;
+
+-- 29. The roles Jobs for You searches for, chosen by the person (founder round 49, D-220), for
+-- people switching careers. Up to three; empty means the roles from their own experience and
+-- the jobs they checked, as before. They change their own.
+alter table public.users add column if not exists match_roles text[] not null default '{}' check (cardinality(match_roles) <= 3);
+grant update (match_roles) on public.users to authenticated;

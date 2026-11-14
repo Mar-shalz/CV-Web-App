@@ -45,6 +45,12 @@ export function rolesFrom(applied: (string | null)[], held: (string | null)[], m
   return out;
 }
 
+/** Roles a person typed (founder round 49): letters, numbers and a little punctuation, no repeats. */
+export function chosenRoles(list: string[]): string[] {
+  const clean = list.map((r) => r.replace(/[^\p{L}\p{N} &/,.+#()-]/gu, " ").replace(/\s+/g, " ").trim()).filter((r) => r.length >= 2);
+  return clean.filter((r, i) => clean.findIndex((x) => x.toLowerCase() === r.toLowerCase()) === i);
+}
+
 /** Posted within the window. A job with no date is kept: the sources only list open jobs. */
 export function fresh(job: Pick<FeedJob, "postedAt">, maxAgeDays: number, now = Date.now()): boolean {
   if (!job.postedAt) return true;
