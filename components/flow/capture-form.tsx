@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { DRAFT_KEY } from "@/lib/client/capture-draft";
 import { useRouter } from "next/navigation";
 import { compressImage } from "@/lib/client/compress-image";
 import { DocumentText, DocumentUpload, Link21, Gallery, ArrowRight, TickCircle, Trash, Global } from "@/components/icons";
@@ -23,7 +24,6 @@ const MODES: { id: Mode; label: string; icon: typeof DocumentText }[] = [
 ];
 
 const MIN_TEXT = 80;
-const DRAFT_KEY = "capture-draft-v1";
 
 const STEPS = ["Reading the job", "Finding the requirements", "Checking how to apply"];
 

@@ -50,6 +50,6 @@ export async function GET(request: NextRequest) {
   const next = request.cookies.get(NEXT_COOKIE)?.value;
   const onboarding = nextOnboardingPath(viewer);
   const res = NextResponse.redirect(`${origin}${onboarding === "/home" && isReturnPath(next) ? next : onboarding}`);
-  if (next) res.cookies.delete(NEXT_COOKIE);
+  if (next && onboarding === "/home") res.cookies.delete(NEXT_COOKIE);
   return res;
 }

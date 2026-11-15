@@ -158,8 +158,9 @@ export async function verifyEmailCode(_prev: FormState, formData: FormData): Pro
   const viewer = await getViewer();
   if (viewer && !viewer.consentDone) await track("signup_completed", { method: "email" }, viewer.id);
   const next = jar.get(NEXT_COOKIE)?.value;
-  if (next) jar.delete(NEXT_COOKIE);
   const onboarding = viewer ? nextOnboardingPath(viewer) : "/home";
+  // New people keep it through consent and setup, and saveSetup uses it (founder round 50).
+  if (next && onboarding === "/home") jar.delete(NEXT_COOKIE);
   redirect(onboarding === "/home" && isReturnPath(next) ? next : onboarding);
 }
 
@@ -246,7 +247,11 @@ export async function saveSetup(_prev: FormState, formData: FormData): Promise<F
   // Opened again from Settings: back there. First time: on to Home.
   if (viewer.setupDone) redirect("/settings");
   await track("setup_completed", { career_stage, target_markets_count: target_markets.length }, viewer.id);
-  redirect("/home");
+  // Back to what they came for (add an application, check a job), when sign in kept it.
+  const jar = await cookies();
+  const next = jar.get(NEXT_COOKIE)?.value;
+  if (next) jar.delete(NEXT_COOKIE);
+  redirect(isReturnPath(next) ? next : "/home");
 }
 
 // ---------------------------------------------------------------------------

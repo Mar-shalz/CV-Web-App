@@ -35,8 +35,7 @@ const urbanist = Urbanist({
 // Search and sharing (founder round 31): one public address, a description in plain
 // words, a share card, and private screens kept out of search (their layouts say noindex).
 const SITE = (APP as { app_url?: string }).app_url ?? "https://applywithproof.vercel.app";
-const DESCRIPTION =
-  "Check if a job is real, see how well you match, and send a CV built only from what you've actually done. Then practise for the interview one question at a time. Made for job seekers in Nigeria and beyond.";
+const DESCRIPTION = `Check job ads for warning signs and track applications with the job description and CV you used. Add applications made anywhere with ${APP_NAME}.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
@@ -47,6 +46,7 @@ export const metadata: Metadata = {
     "CV builder Nigeria",
     "tailor CV to job",
     "fake job checker",
+    "job application tracker",
     "job scam check Nigeria",
     "graduate trainee programme CV",
     "NYSC CV",

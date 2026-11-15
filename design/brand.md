@@ -2,7 +2,7 @@
 
 Version 0.2, 12 October 2026. Code source of truth: `app/globals.css`. Figma: `design/tokens.json`. Words: `design/voice.md`.
 
-The product name is a **placeholder** (`APP_NAME` in `config/app.json`). Nothing in the brand depends on it.
+The product name is **Aptbrix** (`APP_NAME` in `config/app.json`, D-216). Nothing in the brand depends on it.
 
 ## 1. Idea: proof
 
@@ -101,3 +101,15 @@ Quick and quiet, and all of it switches off under `prefers-reduced-motion`.
 | Sheen sweep | The main "Tailor my CV" button |
 | Count up | Home numbers, once on screen |
 | Shimmer skeleton | The live scam check while it loads |
+
+## 9. Landing page and public pages (round 50, D-221)
+
+Apple's material rule, in our colours:
+
+- **Blur floats, content doesn't.** Only the sticky bar (`.lp-bar`) is translucent. Cards, examples and text sit on solid white or `ink-50`.
+- **One deep blue stage** (`.lp-stage`) holds the hero examples and the closing panel. The rest of the page is light.
+- **Pills.** Buttons on public pages are fully rounded, 56px for the two main actions and 48px elsewhere.
+- **Type.** Headline 38px on phones to 64px on desktop, section titles 30 to 48px, body 17 to 19px. Labels above titles are sentence case and only where they say when something happens ("Before you apply").
+- **Examples** are drawn in HTML, use the fictional Northbridge Bank and carry the words "Illustrative example".
+- **Motion.** One entrance (the hero stage). Everything else answers a tap in 150 to 300ms.
+- In `app/globals.css`, write `-webkit-backdrop-filter` before `backdrop-filter`: the build keeps the last one, and Chrome reads only the unprefixed line.

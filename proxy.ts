@@ -5,7 +5,7 @@ import { isPreviewMode, isSupabaseConfigured } from "@/lib/env";
 import { buildCsp, newNonce } from "@/lib/csp";
 import { NEXT_COOKIE, isReturnPath } from "@/lib/auth/next-path";
 
-const APP_PREFIXES = ["/home", "/jobs", "/applications", "/experience", "/settings", "/onboarding", "/pass", "/extension"];
+const APP_PREFIXES = ["/home", "/jobs", "/applications", "/experience", "/settings", "/onboarding", "/pass", "/extension", "/matches"];
 const AUTH_PREFIXES = ["/sign-in"];
 
 export async function proxy(incoming: NextRequest) {
@@ -73,7 +73,7 @@ export async function proxy(incoming: NextRequest) {
     url.search = "";
     const res = NextResponse.redirect(url);
     // A few screens bring people back after they sign in (connecting the extension).
-    if (isReturnPath(path)) res.cookies.set(NEXT_COOKIE, path, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 900 });
+    if (isReturnPath(path)) res.cookies.set(NEXT_COOKIE, path, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 1800 });
     return res;
   }
   // Old back office links to the app's sign in go to the back office's own.

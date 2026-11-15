@@ -15,6 +15,7 @@ export type AnalyticsEvents = {
   country_requested: { country: string };
   eligibility_checked: { overall: string; failed_rule_types: string };
   legitimacy_checked: { state: string; red_count: number; amber_count: number; cached: boolean };
+  quick_check_done: { red_count: number; amber_count: number };
   verdict_shown: { verdict: string };
   verdict_overridden: { verdict: string };
   cv_generated: { format: string; bullets_changed: number };
@@ -64,6 +65,7 @@ const ALLOWED_KEYS: { [K in EventName]: (keyof AnalyticsEvents[K])[] } = {
   country_requested: ["country"],
   eligibility_checked: ["overall", "failed_rule_types"],
   legitimacy_checked: ["state", "red_count", "amber_count", "cached"],
+  quick_check_done: ["red_count", "amber_count"],
   verdict_shown: ["verdict"],
   verdict_overridden: ["verdict"],
   cv_generated: ["format", "bullets_changed"],

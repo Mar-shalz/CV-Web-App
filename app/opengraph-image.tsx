@@ -27,7 +27,7 @@ export default function OpengraphImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: -3, lineHeight: 1 }}>{APP.tagline}</div>
-          <div style={{ fontSize: 32, marginTop: 22, color: "rgba(255,255,255,0.85)", maxWidth: 940, lineHeight: 1.3 }}>Check if a job is real, see your match, and send a CV built only from what you&apos;ve done.</div>
+          <div style={{ fontSize: 32, marginTop: 22, color: "rgba(255,255,255,0.85)", maxWidth: 940, lineHeight: 1.3 }}>Check job ads for warning signs. Keep the job and the CV you sent with every application.</div>
         </div>
         <div style={{ display: "flex", gap: 18 }}>
           {chip("Is this job real?", "5 of 6 checks", "#4ade80")}

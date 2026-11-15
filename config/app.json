@@ -1,8 +1,8 @@
 {
-  "version": "2026-10-21",
+  "version": "2026-11-15",
   "APP_NAME": "Aptbrix",
   "tagline": "Apply with proof.",
-  "promise": "Find the jobs worth your time, send a CV that is true to you, and walk into interviews ready.",
+  "promise": "Check job ads for warning signs and keep the job, the CV you sent and what happened next in one place.",
   "support_email": "help@receipts.ng",
   "app_url": "https://applywithproof.vercel.app",
   "timezone": "Africa/Lagos",
